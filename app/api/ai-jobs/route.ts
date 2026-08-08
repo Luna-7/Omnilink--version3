@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
 type AiJobInsert = Database['public']['Tables']['ai_jobs']['Insert']

@@ -1,7 +1,7 @@
 'use server'
 
 import { initializeMerchantStore } from '@/lib/stores/service'
-import { createClientServer } from '@/lib/supabase'
+import { createClientServer } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export async function createStoreAction(formData: FormData) {

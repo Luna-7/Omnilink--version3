@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
 type StoreUpdate = Database['public']['Tables']['stores']['Update']
@@ -7,13 +7,14 @@ type StoreUpdate = Database['public']['Tables']['stores']['Update']
 // GET /api/stores/[id] - Get a specific store
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { data: store, error } = await supabase
       .from('stores')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -29,15 +30,16 @@ export async function GET(
 // PATCH /api/stores/[id] - Update a store
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body: StoreUpdate = await request.json()
 
     const { data: store, error } = await supabase
       .from('stores')
       .update(body)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -54,13 +56,14 @@ export async function PATCH(
 // DELETE /api/stores/[id] - Delete a store
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { error } = await supabase
       .from('stores')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

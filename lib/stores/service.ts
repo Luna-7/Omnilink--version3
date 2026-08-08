@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createClientServer } from '@/lib/supabase/server'
 import { Database } from '@/lib/database.types'
 
 type StoreInsert = Database['public']['Tables']['stores']['Insert']
@@ -12,6 +12,7 @@ export async function initializeMerchantStore(params: {
   industry_id: string
 }): Promise<string> {
   const { owner_id, store_name, industry_id } = params
+  const supabase = await createClientServer()
 
   // Step 1: Create store
   const store_slug = store_name.toLowerCase().replace(/\s+/g, '-')
@@ -71,6 +72,7 @@ export async function initializeMerchantStore(params: {
 }
 
 export async function getStoreByOwnerId(owner_id: string) {
+  const supabase = await createClientServer()
   const { data: store, error } = await supabase
     .from('stores')
     .select(`
@@ -88,6 +90,7 @@ export async function getStoreByOwnerId(owner_id: string) {
 }
 
 export async function getIndustries() {
+  const supabase = await createClientServer()
   const { data: industries, error } = await supabase
     .from('industries')
     .select('*')

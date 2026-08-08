@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
 type Store = Database['public']['Tables']['stores']['Row']

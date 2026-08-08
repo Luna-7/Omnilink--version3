@@ -1,8 +1,5 @@
 'use client'
 
-import { getIndustries } from '@/lib/stores/service'
-import { useEffect, useState } from 'react'
-
 interface Industry {
   id: string
   name: string
@@ -13,27 +10,10 @@ interface Industry {
 interface IndustrySelectorProps {
   value: string
   onChange: (value: string) => void
+  industries: Industry[]
 }
 
-export function IndustrySelector({ value, onChange }: IndustrySelectorProps) {
-  const [industries, setIndustries] = useState<Industry[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function loadIndustries() {
-      try {
-        const data = await getIndustries()
-        setIndustries(data)
-      } catch (error) {
-        console.error('Failed to load industries:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadIndustries()
-  }, [])
-
+export function IndustrySelector({ value, onChange, industries }: IndustrySelectorProps) {
   return (
     <div>
       <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-2">
@@ -46,7 +26,6 @@ export function IndustrySelector({ value, onChange }: IndustrySelectorProps) {
         onChange={(e) => onChange(e.target.value)}
         required
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        disabled={loading}
       >
         <option value="">Select an industry</option>
         {industries.map((industry) => (
@@ -55,9 +34,6 @@ export function IndustrySelector({ value, onChange }: IndustrySelectorProps) {
           </option>
         ))}
       </select>
-      {loading && (
-        <p className="mt-1 text-sm text-gray-500">Loading industries...</p>
-      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { getStoreByOwnerId } from '@/lib/stores/service'
-import { createClientServer } from '@/lib/supabase'
+import { createClientServer } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export default async function DashboardPage() {

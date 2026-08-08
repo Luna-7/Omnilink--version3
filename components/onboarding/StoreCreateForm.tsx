@@ -4,7 +4,18 @@ import { useState } from 'react'
 import { createStoreAction } from '@/app/actions/onboarding'
 import { IndustrySelector } from './IndustrySelector'
 
-export function StoreCreateForm() {
+interface Industry {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+}
+
+interface StoreCreateFormProps {
+  industries: Industry[]
+}
+
+export function StoreCreateForm({ industries }: StoreCreateFormProps) {
   const [storeName, setStoreName] = useState('')
   const [industryId, setIndustryId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -40,7 +51,7 @@ export function StoreCreateForm() {
         />
       </div>
 
-      <IndustrySelector value={industryId} onChange={setIndustryId} />
+      <IndustrySelector value={industryId} onChange={setIndustryId} industries={industries} />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
 type ProductUpdate = Database['public']['Tables']['products']['Update']
@@ -7,9 +7,10 @@ type ProductUpdate = Database['public']['Tables']['products']['Update']
 // GET /api/products/[id] - Get a specific product with semantics
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { data: product, error } = await supabase
       .from('products')
       .select(`
@@ -17,7 +18,7 @@ export async function GET(
         product_semantics(*),
         product_assets(*)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -33,15 +34,16 @@ export async function GET(
 // PATCH /api/products/[id] - Update a product
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body: ProductUpdate = await request.json()
 
     const { data: product, error } = await supabase
       .from('products')
       .update(body)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -58,13 +60,14 @@ export async function PATCH(
 // DELETE /api/products/[id] - Delete a product
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { error } = await supabase
       .from('products')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
