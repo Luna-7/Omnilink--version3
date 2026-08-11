@@ -1,6 +1,7 @@
 import { getStoreByOwnerId } from '@/lib/stores/service'
 import { createClientServer } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export default async function DashboardPage() {
   // Get user from Supabase session
@@ -53,6 +54,15 @@ export default async function DashboardPage() {
                 {store.store_slug}
               </p>
             </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <Link
+              href="/dashboard/products"
+              className="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Products
+            </Link>
           </div>
         </div>
       </div>

@@ -173,6 +173,8 @@ export interface Database {
           currency: string
           inventory: number
           status: string
+          raw_data: Json | null
+          semantic_data: Json | null
           created_at: string
           updated_at: string
         }
@@ -186,6 +188,8 @@ export interface Database {
           currency?: string
           inventory?: number
           status?: string
+          raw_data?: Json | null
+          semantic_data?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -199,6 +203,8 @@ export interface Database {
           currency?: string
           inventory?: number
           status?: string
+          raw_data?: Json | null
+          semantic_data?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -223,6 +229,390 @@ export interface Database {
           industry_id?: string | null
           version?: string
           schema?: Json
+          created_at?: string
+        }
+      }
+      semantic_fields: {
+        Row: {
+          id: string
+          schema_id: string
+          field_name: string
+          field_type: string
+          display_name: string
+          aliases: Json
+          normalization_rules: Json
+          required: boolean
+          validation_rules: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          schema_id: string
+          field_name: string
+          field_type: string
+          display_name: string
+          aliases?: Json
+          normalization_rules?: Json
+          required?: boolean
+          validation_rules?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          schema_id?: string
+          field_name?: string
+          field_type?: string
+          display_name?: string
+          aliases?: Json
+          normalization_rules?: Json
+          required?: boolean
+          validation_rules?: Json
+          created_at?: string
+        }
+      }
+      semantic_processing_logs: {
+        Row: {
+          id: string
+          product_id: string
+          schema_id: string | null
+          processor_version: string
+          status: string
+          confidence: number | null
+          error_message: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          schema_id?: string | null
+          processor_version: string
+          status: string
+          confidence?: number | null
+          error_message?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          schema_id?: string | null
+          processor_version?: string
+          status?: string
+          confidence?: number | null
+          error_message?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+      }
+      semantic_ontology: {
+        Row: {
+          id: string
+          canonical_name: string
+          description: string | null
+          industry: string | null
+          aliases: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          canonical_name: string
+          description?: string | null
+          industry?: string | null
+          aliases?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          canonical_name?: string
+          description?: string | null
+          industry?: string | null
+          aliases?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      semantic_relations: {
+        Row: {
+          id: string
+          source_concept_id: string
+          relation_type: string
+          target_concept_id: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          source_concept_id: string
+          relation_type: string
+          target_concept_id: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          source_concept_id?: string
+          relation_type?: string
+          target_concept_id?: string
+          metadata?: Json
+          created_at?: string
+        }
+      }
+      semantic_rules: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          industry: string | null
+          condition: Json
+          conclusion: Json
+          confidence: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          industry?: string | null
+          condition: Json
+          conclusion: Json
+          confidence?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          industry?: string | null
+          condition?: Json
+          conclusion?: Json
+          confidence?: number
+          created_at?: string
+        }
+      }
+      semantic_candidates: {
+        Row: {
+          id: string
+          candidate_name: string
+          candidate_type: string
+          confidence: number
+          reason: string | null
+          source: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_name: string
+          candidate_type: string
+          confidence?: number
+          reason?: string | null
+          source?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_name?: string
+          candidate_type?: string
+          confidence?: number
+          reason?: string | null
+          source?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      semantic_change_logs: {
+        Row: {
+          id: string
+          candidate_id: string
+          change_type: string
+          before_state: Json
+          after_state: Json
+          operator: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          candidate_id: string
+          change_type: string
+          before_state?: Json
+          after_state?: Json
+          operator?: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          candidate_id?: string
+          change_type?: string
+          before_state?: Json
+          after_state?: Json
+          operator?: string
+          status?: string
+          created_at?: string
+        }
+      }
+      semantic_memory: {
+        Row: {
+          id: string
+          entity_type: string
+          entity_id: string | null
+          memory_type: string
+          content: Json
+          source: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          entity_type: string
+          entity_id?: string | null
+          memory_type: string
+          content: Json
+          source?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          entity_type?: string
+          entity_id?: string | null
+          memory_type?: string
+          content?: Json
+          source?: string
+          created_at?: string
+        }
+      }
+      semantic_queries: {
+        Row: {
+          id: string
+          query_text: string
+          parsed_result: Json
+          confidence: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          query_text: string
+          parsed_result: Json
+          confidence?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          query_text?: string
+          parsed_result?: Json
+          confidence?: number
+          created_at?: string
+        }
+      }
+      semantic_query_events: {
+        Row: {
+          id: string
+          query_text: string
+          parsed_intent: string | null
+          matched_product_ids: Json
+          matched_concepts: Json
+          confidence: number
+          source: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          query_text: string
+          parsed_intent?: string | null
+          matched_product_ids?: Json
+          matched_concepts?: Json
+          confidence?: number
+          source?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          query_text?: string
+          parsed_intent?: string | null
+          matched_product_ids?: Json
+          matched_concepts?: Json
+          confidence?: number
+          source?: string
+          created_at?: string
+        }
+      }
+      semantic_evidence: {
+        Row: {
+          id: string
+          product_id: string
+          semantic_field: string
+          field_value: Json
+          evidence_type: string
+          evidence_source: string
+          confidence: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          semantic_field: string
+          field_value: Json
+          evidence_type: string
+          evidence_source: string
+          confidence?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          semantic_field?: string
+          field_value?: Json
+          evidence_type?: string
+          evidence_source?: string
+          confidence?: number
+          created_at?: string
+        }
+      }
+      semantic_unknown_fields: {
+        Row: {
+          id: string
+          schema_id: string | null
+          product_id: string
+          raw_field: string
+          raw_value: Json
+          reason: string | null
+          status: string
+          normalized_field_name: string | null
+          occurrence_count: number
+          last_seen_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          schema_id?: string | null
+          product_id: string
+          raw_field: string
+          raw_value?: Json
+          reason?: string | null
+          status?: string
+          normalized_field_name?: string | null
+          occurrence_count?: number
+          last_seen_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          schema_id?: string | null
+          product_id?: string
+          raw_field?: string
+          raw_value?: Json
+          reason?: string | null
+          status?: string
+          normalized_field_name?: string | null
+          occurrence_count?: number
+          last_seen_at?: string
           created_at?: string
         }
       }
