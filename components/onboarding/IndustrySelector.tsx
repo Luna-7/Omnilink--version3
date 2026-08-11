@@ -1,39 +1,28 @@
-'use client'
-
-interface Industry {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-}
+"use client"
 
 interface IndustrySelectorProps {
-  value: string
-  onChange: (value: string) => void
-  industries: Industry[]
+  value?: string
+  onChange?: (value:string)=>void
 }
 
-export function IndustrySelector({ value, onChange, industries }: IndustrySelectorProps) {
+export default function IndustrySelector({
+  value,
+  onChange
+}:IndustrySelectorProps){
+
   return (
-    <div>
-      <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-2">
-        Industry
+    <div className="space-y-2">
+      <label className="text-sm font-medium">
+        Industry (optional)
       </label>
-      <select
-        id="industry"
-        name="industry_id"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      >
-        <option value="">Select an industry</option>
-        {industries.map((industry) => (
-          <option key={industry.id} value={industry.id}>
-            {industry.name}
-          </option>
-        ))}
-      </select>
+
+      <input
+        className="w-full rounded-md border px-3 py-2"
+        value={value ?? ""}
+        onChange={(e)=>onChange?.(e.target.value)}
+        placeholder="Example: Eyewear, Fashion, Electronics"
+      />
+
     </div>
   )
 }

@@ -6,10 +6,10 @@ import { redirect } from 'next/navigation'
 
 export async function createStoreAction(formData: FormData) {
   const store_name = formData.get('store_name') as string
-  const industry_id = formData.get('industry_id') as string
+  const industry_category = formData.get('industry_category') as string | null
 
-  if (!store_name || !industry_id) {
-    throw new Error('Store name and industry are required')
+  if (!store_name) {
+    throw new Error('Store name is required')
   }
 
   // Get user from Supabase session
@@ -26,7 +26,8 @@ export async function createStoreAction(formData: FormData) {
     const store_id = await initializeMerchantStore({
       owner_id,
       store_name,
-      industry_id,
+      industry_id: null,
+      industry_category: industry_category || null,
     })
 
     redirect('/dashboard')

@@ -41,6 +41,7 @@ export interface Database {
           store_name: string
           store_slug: string
           industry_id: string | null
+          industry_category: string | null
           logo_url: string | null
           description: string | null
           currency: string
@@ -54,6 +55,7 @@ export interface Database {
           store_name: string
           store_slug: string
           industry_id?: string | null
+          industry_category?: string | null
           logo_url?: string | null
           description?: string | null
           currency?: string
@@ -67,6 +69,7 @@ export interface Database {
           store_name?: string
           store_slug?: string
           industry_id?: string | null
+          industry_category?: string | null
           logo_url?: string | null
           description?: string | null
           currency?: string

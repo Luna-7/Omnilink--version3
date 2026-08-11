@@ -2,28 +2,22 @@
 
 import { useState } from 'react'
 import { createStoreAction } from '@/app/actions/onboarding'
-import { IndustrySelector } from './IndustrySelector'
+import IndustrySelector from './IndustrySelector'
 
-interface Industry {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-}
-
-interface StoreCreateFormProps {
-  industries: Industry[]
-}
-
-export function StoreCreateForm({ industries }: StoreCreateFormProps) {
+export function StoreCreateForm() {
   const [storeName, setStoreName] = useState('')
-  const [industryId, setIndustryId] = useState('')
+  const [industryCategory, setIndustryCategory] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
   async function handleSubmit(formData: FormData) {
     setIsSubmitting(true)
     setError('')
+
+    // Add industry_category to form data
+    if (industryCategory) {
+      formData.set('industry_category', industryCategory)
+    }
 
     try {
       await createStoreAction(formData)
@@ -51,7 +45,7 @@ export function StoreCreateForm({ industries }: StoreCreateFormProps) {
         />
       </div>
 
-      <IndustrySelector value={industryId} onChange={setIndustryId} industries={industries} />
+      <IndustrySelector value={industryCategory} onChange={setIndustryCategory} />
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -61,7 +55,7 @@ export function StoreCreateForm({ industries }: StoreCreateFormProps) {
 
       <button
         type="submit"
-        disabled={isSubmitting || !storeName || !industryId}
+        disabled={isSubmitting || !storeName}
         className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
       >
         {isSubmitting ? 'Creating Store...' : 'Create Store'}
