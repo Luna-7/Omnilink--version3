@@ -29,9 +29,11 @@ export async function createStoreAction(formData: FormData) {
       industry_id: null,
       industry_category: industry_category || null,
     })
-
-    redirect('/dashboard')
   } catch (error) {
     throw new Error(`Failed to create store: ${error}`)
   }
+  // redirect() throws NEXT_REDIRECT; it must NOT be caught by the business
+  // try/catch above. Keep it as the last statement at function scope so
+  // Next.js sees and translates it into a 303 navigation.
+  redirect('/dashboard')
 }
