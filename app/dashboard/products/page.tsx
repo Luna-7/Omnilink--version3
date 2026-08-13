@@ -1,25 +1,42 @@
+import { getStoreByOwnerId } from '@/lib/stores/service'
+import { createClientServer } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { ProductCreateDialog } from '@/components/product/ProductCreateDialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
-async function getProducts() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/merchant/products`, {
-    cache: 'no-store',
-  })
+async function getProducts(storeId: string) {
+  const supabase = await createClientServer()
 
-  if (!res.ok) {
-    return []
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('store_id', storeId)
+
+  if (error) {
+    throw new Error(`Failed to load products: ${error.message}`)
   }
 
-  const data = await res.json()
-
-  return data.products ?? []
+  return products ?? []
 }
 
 export default async function ProductsPage() {
-  const products = await getProducts()
+  const supabase = await createClientServer()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    redirect('/login')
+  }
+
+  const store = await getStoreByOwnerId(user.id)
+
+  if (!store) {
+    redirect('/onboarding')
+  }
+
+  const products = await getProducts(store.id)
 
   return (
     <div className="p-8 space-y-6">
