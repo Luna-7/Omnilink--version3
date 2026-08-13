@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
   if (userError || !user) {
-    redirect('/onboarding')
+    redirect('/login')
   }
 
   const owner_id = user.id
