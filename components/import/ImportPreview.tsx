@@ -10,30 +10,30 @@ export function ImportPreview({ preview }: ImportPreviewProps) {
   return (
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">File Preview</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">文件预览</h3>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div>
-            <p className="text-sm text-gray-500">File Name</p>
+            <p className="text-sm text-gray-500">文件名</p>
             <p className="font-medium text-gray-900">{preview.fileName}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Total Rows</p>
+            <p className="text-sm text-gray-500">总行数</p>
             <p className="font-medium text-gray-900">{preview.totalRows}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Columns</p>
+            <p className="text-sm text-gray-500">列数</p>
             <p className="font-medium text-gray-900">{preview.headers.length}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Unknown Fields</p>
+            <p className="text-sm text-gray-500">未识别字段</p>
             <p className="font-medium text-gray-900">{preview.unknownFields.length}</p>
           </div>
         </div>
 
         {preview.warnings.length > 0 && (
           <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h4 className="text-sm font-medium text-yellow-800 mb-2">Warnings</h4>
+            <h4 className="text-sm font-medium text-yellow-800 mb-2">警告</h4>
             <ul className="text-sm text-yellow-700 space-y-1">
               {preview.warnings.map((warning, index) => (
                 <li key={index}>• {warning}</li>
@@ -43,7 +43,7 @@ export function ImportPreview({ preview }: ImportPreviewProps) {
         )}
 
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Detected Columns</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">检测到的列</h4>
           <div className="flex flex-wrap gap-2">
             {preview.headers.map((header) => (
               <span
@@ -58,7 +58,7 @@ export function ImportPreview({ preview }: ImportPreviewProps) {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Sample Data (First 10 Rows)</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">样例数据（前 10 行）</h3>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>

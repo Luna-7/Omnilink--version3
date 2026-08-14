@@ -16,7 +16,7 @@ export default function NewProductPage() {
           <p className="text-gray-600 mt-1">Create a new product for your store</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-white rounded-md shadow-lg p-8">
           <ProductForm />
         </div>
       </div>

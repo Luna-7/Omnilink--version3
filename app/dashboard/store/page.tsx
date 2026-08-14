@@ -83,7 +83,11 @@ export default function StorePage() {
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="glass-panel rounded-lg h-40 ai-shimmer" aria-label="加载中" />
+      </div>
+    )
   }
 
   if (!store) {
@@ -91,44 +95,42 @@ export default function StorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Store Website</h1>
-        
-        <div className="bg-white rounded-lg p-6 shadow mb-6">
-          <h2 className="text-xl font-semibold mb-4">Select Template</h2>
-          <TemplateSelector 
-            storeId={store.id} 
-            onTemplateSelect={(templateId) => {
-              console.log('Template selected:', templateId)
-            }}
-          />
-        </div>
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold tracking-tight text-gray-900 mb-6">模板与发布控制台</h1>
 
-        <div className="bg-white rounded-lg p-6 shadow">
-          <h2 className="text-xl font-semibold mb-4">Publish Store</h2>
-          
-          {published ? (
-            <div className="mb-4">
-              <p className="text-green-600 font-semibold">✓ Published</p>
-              <a
-                href={`/store/${store.store_slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-700"
-              >
-                View Public Store →
-              </a>
-            </div>
-          ) : (
-            <button
-              onClick={publishStore}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+      <div className="glass-panel rounded-lg p-6 mb-6">
+        <h2 className="text-base font-bold text-gray-800 mb-4">选择模板</h2>
+        <TemplateSelector
+          storeId={store.id}
+          onTemplateSelect={(templateId) => {
+            console.log('Template selected:', templateId)
+          }}
+        />
+      </div>
+
+      <div className="glass-panel rounded-lg p-6">
+        <h2 className="text-base font-bold text-gray-800 mb-4">发布门店</h2>
+
+        {published ? (
+          <div className="mb-4">
+            <p className="text-emerald-600 font-semibold text-sm">已发布</p>
+            <a
+              href={`/store/${store.store_slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-violet-600 hover:text-violet-700 text-sm font-medium"
             >
-              Publish Store
-            </button>
-          )}
-        </div>
+              查看公开门店 →
+            </a>
+          </div>
+        ) : (
+          <button
+            onClick={publishStore}
+            className="btn-primary-omni px-6 py-2.5 rounded-lg text-sm"
+          >
+            发布门店
+          </button>
+        )}
       </div>
     </div>
   )

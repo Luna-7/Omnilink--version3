@@ -39,9 +39,9 @@ export function ImportResult({ success, successRows, failedRows, errors, mapping
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-red-900">Import Failed</h3>
+          <h3 className="text-lg font-semibold text-red-900">导入失败</h3>
         </div>
-        <p className="text-red-700">{error || 'An error occurred during import'}</p>
+        <p className="text-red-700">{error || '导入过程中发生错误'}</p>
       </div>
     )
   }
@@ -64,30 +64,30 @@ export function ImportResult({ success, successRows, failedRows, errors, mapping
             />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-green-900">Import Completed</h3>
+        <h3 className="text-lg font-semibold text-green-900">导入完成</h3>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <p className="text-sm text-green-700">Success Rows</p>
+          <p className="text-sm text-green-700">成功行数</p>
           <p className="text-2xl font-bold text-green-900">{successRows}</p>
         </div>
         <div>
-          <p className="text-sm text-red-700">Failed Rows</p>
+          <p className="text-sm text-red-700">失败行数</p>
           <p className="text-2xl font-bold text-red-900">{failedRows}</p>
         </div>
       </div>
 
       {errors && errors.length > 0 && (
         <div className="mb-6">
-          <h4 className="text-sm font-medium text-red-900 mb-2">Errors ({errors.length})</h4>
+          <h4 className="text-sm font-medium text-red-900 mb-2">错误（{errors.length})</h4>
           <div className="bg-white border border-red-200 rounded-lg p-4 max-h-64 overflow-y-auto">
             <table className="min-w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Row</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Message</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">行</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">字段</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">信息</th>
                 </tr>
               </thead>
               <tbody>
@@ -101,7 +101,7 @@ export function ImportResult({ success, successRows, failedRows, errors, mapping
                 {errors.length > 20 && (
                   <tr>
                     <td colSpan={3} className="px-3 py-2 text-sm text-gray-500 text-center">
-                      ... and {errors.length - 20} more errors
+                      … 另有 {errors.length - 20} 条错误
                     </td>
                   </tr>
                 )}
@@ -113,7 +113,7 @@ export function ImportResult({ success, successRows, failedRows, errors, mapping
 
       {mapping && Object.keys(mapping).length > 0 && (
         <div className="mb-6">
-          <h4 className="text-sm font-medium text-green-900 mb-2">Field Mapping</h4>
+          <h4 className="text-sm font-medium text-green-900 mb-2">字段映射</h4>
           <div className="space-y-2">
             {Object.entries(mapping).map(([field, header]) => (
               <div key={field} className="flex items-center gap-2 text-sm">

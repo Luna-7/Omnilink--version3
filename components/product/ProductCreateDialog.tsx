@@ -36,38 +36,38 @@ export function ProductCreateDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button>Add Product</Button>
+        <Button className="btn-primary-omni rounded-md border-0">添加产品</Button>
       </DialogTrigger>
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create AI Product</DialogTitle>
+          <DialogTitle>创建产品</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label>Title</Label>
+            <Label>产品名称</Label>
             <Input
               onChange={e => setForm({ ...form, title: e.target.value })}
             />
           </div>
 
           <div>
-            <Label>Description</Label>
+            <Label>产品描述</Label>
             <Textarea
               onChange={e => setForm({ ...form, description: e.target.value })}
             />
           </div>
 
           <div>
-            <Label>Category</Label>
+            <Label>分类</Label>
             <Input
               onChange={e => setForm({ ...form, category: e.target.value })}
             />
           </div>
 
           <Button onClick={submit} className="w-full">
-            Create
+            创建
           </Button>
         </div>
       </DialogContent>

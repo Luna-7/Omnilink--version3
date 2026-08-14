@@ -59,14 +59,15 @@ export function ImportForm({ onPreview }: ImportFormProps) {
 
   return (
     <div className="space-y-6">
+      {/* 大型亚克力拖入区 */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+        className={`glass-panel rounded-lg border-2 border-dashed p-12 text-center transition-colors duration-200 ${
           isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-[#8b5cf6] bg-[#8b5cf6]/[0.04]'
+            : 'border-[#8b5cf6]/25 hover:border-[#8b5cf6]/45'
         }`}
       >
         <input
@@ -77,45 +78,45 @@ export function ImportForm({ onPreview }: ImportFormProps) {
           className="hidden"
         />
         <div className="space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+          <div className="mx-auto w-14 h-14 bg-[#8b5cf6]/[0.08] border border-[#8b5cf6]/15 rounded-md flex items-center justify-center">
             <svg
-              className="w-8 h-8 text-gray-400"
+              className="w-7 h-7 text-[#8b5cf6]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              strokeWidth={1.75}
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
           </div>
           <div>
-            <p className="text-lg font-medium text-gray-900">
-              {isDragging ? 'Drop your file here' : 'Drag & drop your Excel file'}
+            <p className="text-base font-medium text-gray-900">
+              {isDragging ? '松开以上传文件' : '拖入 Excel / CSV 产品文件'}
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              or click to browse
+              AI 将自动识别产品字段、分类与语义数据
             </p>
           </div>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="btn-primary-omni px-5 h-9 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isUploading ? 'Processing...' : 'Choose Excel File'}
+            {isUploading ? 'AI 正在解析…' : '选择文件'}
           </button>
           <p className="text-xs text-gray-400">
-            Supports .xlsx, .xls, .csv
+            支持 .xlsx / .xls / .csv
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-[#f59e0b]/[0.08] border border-[#f59e0b]/25 text-[#b45309] px-4 py-3 rounded-md text-sm">
           {error}
         </div>
       )}

@@ -10,12 +10,12 @@ interface FieldMappingProps {
 }
 
 const STABLE_FIELDS: { key: StableField; label: string; required: boolean }[] = [
-  { key: 'name', label: 'Product Name', required: true },
+  { key: 'name', label: '产品名称', required: true },
   { key: 'sku', label: 'SKU', required: false },
-  { key: 'price', label: 'Price', required: true },
-  { key: 'currency', label: 'Currency', required: false },
-  { key: 'inventory', label: 'Inventory', required: false },
-  { key: 'description', label: 'Description', required: false },
+  { key: 'price', label: '价格', required: true },
+  { key: 'currency', label: '货币', required: false },
+  { key: 'inventory', label: '库存', required: false },
+  { key: 'description', label: '描述', required: false },
 ]
 
 export function FieldMapping({ headers, detectedMapping, onMappingChange }: FieldMappingProps) {
@@ -38,9 +38,9 @@ export function FieldMapping({ headers, detectedMapping, onMappingChange }: Fiel
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Field Mapping</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">字段映射</h3>
       <p className="text-sm text-gray-600 mb-6">
-        Map your Excel columns to Omnilink product fields
+        将你的表格列映射到 Omnilink 产品字段
       </p>
 
       <div className="space-y-4">
@@ -56,9 +56,9 @@ export function FieldMapping({ headers, detectedMapping, onMappingChange }: Fiel
               <select
                 value={mapping[key] || ''}
                 onChange={(e) => handleFieldChange(key, e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#8b5cf6]/25 focus:border-[#8b5cf6]"
               >
-                <option value="">-- Select Field --</option>
+                <option value="">-- 选择列 --</option>
                 {headers.map((header) => (
                   <option key={header} value={header}>
                     {header}
@@ -71,7 +71,7 @@ export function FieldMapping({ headers, detectedMapping, onMappingChange }: Fiel
       </div>
 
       <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Detected Mapping</h4>
+        <h4 className="text-sm font-medium text-gray-700 mb-2">自动检测结果</h4>
         <div className="space-y-1">
           {Object.entries(detectedMapping).map(([field, header]) => (
             <div key={field} className="text-xs text-gray-600">
@@ -79,7 +79,7 @@ export function FieldMapping({ headers, detectedMapping, onMappingChange }: Fiel
             </div>
           ))}
           {Object.keys(detectedMapping).length === 0 && (
-            <p className="text-xs text-gray-500">No fields automatically detected</p>
+            <p className="text-xs text-gray-500">未自动识别到字段</p>
           )}
         </div>
       </div>

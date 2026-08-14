@@ -45,7 +45,7 @@ export default async function ProductSemanticPage({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Stable Core */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white rounded-md shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Stable Core</h2>
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b">
@@ -72,7 +72,7 @@ export default async function ProductSemanticPage({
           </div>
 
           {/* Raw Data */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white rounded-md shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Raw Data</h2>
             {rawData ? (
               <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -91,7 +91,7 @@ export default async function ProductSemanticPage({
           </div>
 
           {/* Semantic Data */}
-          <div className="bg-white rounded-xl shadow-lg p-6 lg:col-span-2">
+          <div className="bg-white rounded-md shadow-lg p-6 lg:col-span-2">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Semantic Data</h2>
             {semantics ? (
               <div className="space-y-4">

@@ -82,20 +82,21 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <Link
-            href="/dashboard/products"
-            className="text-blue-600 hover:text-blue-700 text-sm"
-          >
-            ← Back to Products
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mt-4">Import Products</h1>
-          <p className="text-gray-600 mt-1">Upload your Excel or CSV file to import products</p>
-        </div>
+    <div className="max-w-5xl mx-auto">
+      <div className="mb-8">
+        <Link
+          href="/dashboard/products"
+          className="text-violet-600 hover:text-violet-700 text-sm font-medium"
+        >
+          ← 返回产品列表
+        </Link>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 mt-4">AI 智能导入</h1>
+        <p className="text-sm text-gray-500 mt-1.5">
+          上传 Excel 或 CSV 文件，AI 帮你把非结构化商品资料解析为机器可理解的数据
+        </p>
+      </div>
 
-        <div className="space-y-6">
+      <div className="space-y-6">
           {step === 'upload' && (
             <ImportForm onPreview={handlePreview} />
           )}
@@ -114,14 +115,14 @@ export default function ImportPage() {
                   disabled={isProcessing}
                   className="flex-1 bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  Cancel
+                  取消
                 </button>
                 <button
                   onClick={handleConfirmImport}
                   disabled={isProcessing || !mapping.name || !mapping.price}
                   className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isProcessing ? 'Importing...' : 'Confirm Import'}
+                  {isProcessing ? '正在导入…' : '确认导入'}
                 </button>
               </div>
             </>
@@ -139,14 +140,13 @@ export default function ImportPage() {
               />
               <button
                 onClick={handleReset}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                className="btn-primary-omni w-full py-3 px-4 rounded-lg"
               >
-                Import Another File
+                继续导入下一个文件
               </button>
             </>
           )}
         </div>
-      </div>
     </div>
   )
 }
