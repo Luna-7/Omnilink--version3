@@ -62,7 +62,7 @@ className="border p-2 rounded flex-1"
 <button
 onClick={search}
 disabled={loading}
-className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+className="bg-iris text-white px-4 py-2 rounded hover:bg-iris disabled:bg-gray-400 disabled:cursor-not-allowed"
 >
 
 {

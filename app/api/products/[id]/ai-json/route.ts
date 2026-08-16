@@ -1,122 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
-import { resolveSemanticGraph } from '@/lib/semantic/graph'
-import { applyRules } from '@/lib/semantic/reasoning'
-import { getProductEvidence } from '@/lib/evidence/service'
+import { NextResponse } from 'next/server'
+import { createClientServer } from '@/lib/supabase/server'
 
-// GET /api/products/[id]/ai-json - Get AI-ready unified product data
+// GET /api/products/[id]/ai-json — Public AI-readable product data (Demo #56).
+//
+// Source of truth = products.semantic_data. Row-level RLS filters to
+// status='active' (anon/public reads only published products). This endpoint
+// deliberately returns ONLY public commerce fields and NEVER raw_data /
+// inventory / sku / internal management fields. The legacy semantic_* tables
+// are not used here (DEFERRED — see #56 P4/P9).
+const AI_PRODUCT_SELECT =
+  'id, name, description, price, currency, status, store_id, semantic_data'
+
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params
+  const { id } = await params
+  const supabase = await createClientServer()
 
-    const { data: product, error: productError } = await supabase
-      .from('products')
-      .select('*, stores(*)')
-      .eq('id', id)
-      .single()
+  const { data: product, error } = await supabase
+    .from('products')
+    .select(AI_PRODUCT_SELECT)
+    .eq('id', id)
+    .eq('status', 'active')
+    .maybeSingle()
 
-    if (productError || !product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
-    }
-
-    const { data: semantics } = await supabase
-      .from('product_semantics')
-      .select(`
-        *,
-        semantic_schemas(*)
-      `)
-      .eq('product_id', id)
-      .maybeSingle()
-
-    // Get ontology concepts and relations for semantic graph
-    const { data: ontology } = await supabase
-      .from('semantic_ontology')
-      .select('id, canonical_name, description, aliases')
-
-    const { data: relations } = await supabase
-      .from('semantic_relations')
-      .select('id, source_concept_id, relation_type, target_concept_id, metadata, created_at')
-
-    // Get semantic rules for reasoning
-    const { data: rules } = await supabase
-      .from('semantic_rules')
-      .select('*')
-
-    // Resolve semantic graph if semantic data exists
-    let semantic_graph = null
-    if (semantics && ontology && relations) {
-      const semanticData = semantics.semantic_data as Record<string, unknown>
-      const conceptIds = Object.keys(semanticData)
-        .map(key => ontology?.find(o => o.canonical_name === key)?.id)
-        .filter(Boolean) as string[]
-
-      const resolvedConceptIds = conceptIds.flatMap(conceptId =>
-        resolveSemanticGraph(conceptId, relations || [], 2),
-      )
-
-      const resolvedConcepts = (ontology || []).filter(o =>
-        resolvedConceptIds.includes(o.id),
-      )
-
-      const resolvedRelations = (relations || []).filter(r =>
-        resolvedConceptIds.includes(r.source_concept_id) ||
-        resolvedConceptIds.includes(r.target_concept_id),
-      )
-
-      semantic_graph = {
-        concepts: resolvedConcepts,
-        relations: resolvedRelations,
-      }
-    }
-
-    // Apply reasoning rules to derive semantics
-    let derived_semantics = null
-    if (semantics && rules) {
-      const semanticData = semantics.semantic_data as Record<string, unknown>
-      derived_semantics = applyRules(rules, semanticData)
-    }
-
-    // Get product evidence
-    const evidence = await getProductEvidence(id)
-
-    const metadata = {
-      industry: (product.stores as { industries?: { slug?: string } } | null)?.industries?.slug || 'unknown',
-      store_id: product.store_id,
-      product_id: product.id,
-      created_at: product.created_at,
-      updated_at: product.updated_at,
-      has_semantics: !!semantics,
-      semantic_confidence: semantics?.confidence || null,
-      semantic_generated_by: semantics?.generated_by || null,
-    }
-
-    return NextResponse.json({
-      product: {
-        id: product.id,
-        store_id: product.store_id,
-        sku: product.sku,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        currency: product.currency,
-        inventory: product.inventory,
-        status: product.status,
-      },
-      semantic: semantics ? {
-        schema_id: semantics.schema_id,
-        schema: semantics.semantic_schemas,
-        semantic_data: semantics.semantic_data,
-        confidence: semantics.confidence,
-        generated_by: semantics.generated_by,
-      } : null,
-      derived_semantics,
-      semantic_graph,
-      metadata,
-    })
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  if (error || !product) {
+    return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   }
+
+  // Resolve store slug separately (robust regardless of FK embed support).
+  let storeSlug: string | null = null
+  if (product.store_id) {
+    const { data: store } = await supabase
+      .from('stores')
+      .select('store_slug')
+      .eq('id', product.store_id)
+      .maybeSingle()
+    storeSlug = store?.store_slug ?? null
+  }
+
+  const semantic =
+    product.semantic_data && typeof product.semantic_data === 'object'
+      ? (product.semantic_data as Record<string, unknown>)
+      : {}
+  const category = typeof semantic.category === 'string' ? semantic.category : null
+
+  return NextResponse.json({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    currency: product.currency,
+    status: product.status,
+    category,
+    semantic_data: semantic,
+    url: storeSlug ? `/store/${storeSlug}/products/${product.id}` : null,
+  })
 }

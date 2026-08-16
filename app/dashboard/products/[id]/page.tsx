@@ -2,14 +2,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 async function getProduct(id: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/products/${id}/ai-json`,
-    {
-      cache: 'no-store',
-    },
-  )
-
-  return await res.json()
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const res = await fetch(
+      `${baseUrl}/api/products/${id}/ai-json`,
+      {
+        cache: 'no-store',
+      },
+    )
+    if (!res.ok) return { product: { title: 'Product', description: '' }, semantic: {} }
+    return await res.json()
+  } catch (error) {
+    return { product: { title: 'Product', description: '' }, semantic: {} }
+  }
 }
 
 export default async function ProductDetail({

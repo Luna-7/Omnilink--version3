@@ -19,29 +19,40 @@ export default async function OnboardingPage() {
     redirect('/login')
   }
 
+  // Seed industries for the optional industry selector (#57 P2).
+  const { data: industries } = await supabase
+    .from('industries')
+    .select('id, name, slug')
+    .order('name', { ascending: true })
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to Omnilink
-          </h1>
-          <p className="text-gray-600">
-            Create your store to get started with AI-native commerce
-          </p>
+    <div className="h-screen grid grid-rows-[1fr_auto] overflow-hidden bg-[#F9F9F8] text-[#111111]">
+      <main className="main-viewport">
+        <div className="auth-container">
+          <header className="auth-header">
+            <span className="label-meta">[ STORE_INITIALIZATION_V1 ]</span>
+            <h1 className="title-display">Omnilink</h1>
+            <p className="tagline-design">创建你的 AI 原生店铺节点</p>
+          </header>
+
+          <StoreCreateForm industries={industries ?? []} />
+
+          <form action={logoutAction} className="mt-6 text-center">
+            <button
+              type="submit"
+              className="text-xs font-mono tracking-wider uppercase text-[#111111]/50 hover:text-[#111111] transition-colors"
+            >
+              [ Sign Out ]
+            </button>
+          </form>
         </div>
+      </main>
 
-        <StoreCreateForm />
-
-        <form action={logoutAction} className="mt-6 text-center">
-          <button
-            type="submit"
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
-          >
-            Sign out
-          </button>
-        </form>
-      </div>
+      <footer className="footer-design">
+        <div className="footer-logo-design">OMNILINK.AI</div>
+        <div className="footer-meta-design">AI-NATIVE INFRASTRUCTURE // CORE.BUILD_2024</div>
+      </footer>
     </div>
   )
 }
+

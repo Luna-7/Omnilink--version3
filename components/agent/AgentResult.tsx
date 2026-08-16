@@ -71,7 +71,7 @@ export default function AgentResult({
 
               <Link
                 href={`/store/${product.store_slug}/products/${product.product_id || product.id}`}
-                className="inline-block mt-2 text-blue-600 hover:text-blue-700"
+                className="inline-block mt-2 text-iris hover:text-iris"
               >
                 View Product
               </Link>

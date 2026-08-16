@@ -7,25 +7,35 @@ import { SemanticEditor } from '@/components/product/node/SemanticEditor'
 import DemoNav from '@/components/demo/DemoNav'
 
 async function getAIProduct(id: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/products/${id}/ai-json`,
-    {
-      cache: 'no-store',
-    },
-  )
-
-  return res.json()
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const res = await fetch(
+      `${baseUrl}/api/products/${id}/ai-json`,
+      {
+        cache: 'no-store',
+      },
+    )
+    if (!res.ok) return { product: {}, semantic: {}, derived_semantics: [] }
+    return await res.json()
+  } catch (error) {
+    return { product: {}, semantic: {}, derived_semantics: [] }
+  }
 }
 
 async function getEvidence(id: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/products/${id}/evidence`,
-    {
-      cache: 'no-store',
-    },
-  )
-
-  return res.json()
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const res = await fetch(
+      `${baseUrl}/api/products/${id}/evidence`,
+      {
+        cache: 'no-store',
+      },
+    )
+    if (!res.ok) return []
+    return await res.json()
+  } catch (error) {
+    return []
+  }
 }
 
 export default async function NodePage({
@@ -49,12 +59,12 @@ export default async function NodePage({
         <h1 className="text-3xl font-bold">AI Product Node</h1>
 
       {/* AI Product Node Showcase Card */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-iris border-iris">
         <CardHeader>
           <CardTitle>AI Product Node</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-blue-900">
+          <p className="text-iris">
             This product is structured and ready for AI agents. The semantic data below enables 
             AI systems to understand and discover this product based on meaning rather than keywords.
           </p>

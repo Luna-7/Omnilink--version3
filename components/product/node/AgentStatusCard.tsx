@@ -13,15 +13,15 @@ export function AgentStatusCard() {
         </Badge>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-green-500">✓</span>
+            <span className="text-apricot">✓</span>
             <span>Structured Data</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-green-500">✓</span>
+            <span className="text-apricot">✓</span>
             <span>Semantic Understanding</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-green-500">✓</span>
+            <span className="text-apricot">✓</span>
             <span>Agent Accessible</span>
           </div>
         </div>

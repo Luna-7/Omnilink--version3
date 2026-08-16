@@ -39,7 +39,7 @@ export default function SubscriptionPage() {
             '团队协作（即将推出）',
           ].map((f) => (
             <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
-              <CheckCircle2 size={15} className="text-violet-500 shrink-0" />
+              <CheckCircle2 size={15} className="text-iris shrink-0" />
               {f}
             </li>
           ))}

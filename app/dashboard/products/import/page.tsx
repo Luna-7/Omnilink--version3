@@ -86,7 +86,7 @@ export default function ImportPage() {
       <div className="mb-8">
         <Link
           href="/dashboard/products"
-          className="text-violet-600 hover:text-violet-700 text-sm font-medium"
+          className="text-iris hover:text-iris text-sm font-medium"
         >
           ← 返回产品列表
         </Link>
@@ -120,7 +120,7 @@ export default function ImportPage() {
                 <button
                   onClick={handleConfirmImport}
                   disabled={isProcessing || !mapping.name || !mapping.price}
-                  className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 bg-apricot text-white py-3 px-4 rounded-lg hover:bg-apricot disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   {isProcessing ? '正在导入…' : '确认导入'}
                 </button>

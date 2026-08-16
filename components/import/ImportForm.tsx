@@ -66,8 +66,8 @@ export function ImportForm({ onPreview }: ImportFormProps) {
         onDrop={handleDrop}
         className={`glass-panel rounded-lg border-2 border-dashed p-12 text-center transition-colors duration-200 ${
           isDragging
-            ? 'border-[#8b5cf6] bg-[#8b5cf6]/[0.04]'
-            : 'border-[#8b5cf6]/25 hover:border-[#8b5cf6]/45'
+            ? 'border-[#3b3686] bg-[#3b3686]/[0.04]'
+            : 'border-[#3b3686]/25 hover:border-[#3b3686]/45'
         }`}
       >
         <input
@@ -78,9 +78,9 @@ export function ImportForm({ onPreview }: ImportFormProps) {
           className="hidden"
         />
         <div className="space-y-4">
-          <div className="mx-auto w-14 h-14 bg-[#8b5cf6]/[0.08] border border-[#8b5cf6]/15 rounded-md flex items-center justify-center">
+          <div className="mx-auto w-14 h-14 bg-[#3b3686]/[0.08] border border-[#3b3686]/15 rounded-md flex items-center justify-center">
             <svg
-              className="w-7 h-7 text-[#8b5cf6]"
+              className="w-7 h-7 text-[#3b3686]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

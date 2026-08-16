@@ -9,7 +9,7 @@ export default function DataSettingsPage() {
       <div className="space-y-4">
         <GlassCard>
           <div className="flex items-center gap-2.5 mb-2">
-            <Database size={15} className="text-violet-500" />
+            <Database size={15} className="text-iris" />
             <SectionTitle title="数据结构" />
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">
@@ -19,7 +19,7 @@ export default function DataSettingsPage() {
 
         <GlassCard>
           <div className="flex items-center gap-2.5 mb-2">
-            <Sparkles size={15} className="text-violet-500" />
+            <Sparkles size={15} className="text-iris" />
             <SectionTitle title="语义处理" />
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">
@@ -29,7 +29,7 @@ export default function DataSettingsPage() {
 
         <GlassCard>
           <div className="flex items-center gap-2.5 mb-2">
-            <ShieldCheck size={15} className="text-violet-500" />
+            <ShieldCheck size={15} className="text-iris" />
             <SectionTitle title="数据安全" />
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">

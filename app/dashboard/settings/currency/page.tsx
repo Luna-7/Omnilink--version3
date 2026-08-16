@@ -20,7 +20,7 @@ export default function CurrencyPage() {
               key={c.code}
               className={`flex items-center gap-3 px-4 py-3.5 rounded-lg border transition-colors ${
                 c.code === 'CNY'
-                  ? 'bg-white border-violet-300/60'
+                  ? 'bg-white border-iris/60'
                   : 'bg-gray-50 border-gray-200 opacity-60'
               }`}
             >
@@ -29,12 +29,12 @@ export default function CurrencyPage() {
                 name="currency"
                 defaultChecked={c.code === 'CNY'}
                 disabled={c.code !== 'CNY'}
-                className="accent-violet-500"
+                className="accent-iris"
               />
               <span className="text-sm font-semibold text-gray-800">{c.code}</span>
               <span className="text-xs text-gray-500">{c.label}</span>
               {c.code === 'CNY' && (
-                <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-600">
+                <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-iris text-iris">
                   当前
                 </span>
               )}

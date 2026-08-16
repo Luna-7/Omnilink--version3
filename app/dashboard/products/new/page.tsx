@@ -8,7 +8,7 @@ export default function NewProductPage() {
         <div className="mb-8">
           <Link
             href="/dashboard/products"
-            className="text-blue-600 hover:text-blue-700 text-sm"
+            className="text-iris hover:text-iris text-sm"
           >
             ← Back to Products
           </Link>

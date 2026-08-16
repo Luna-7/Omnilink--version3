@@ -49,14 +49,14 @@ export function FieldMapping({ headers, detectedMapping, onMappingChange }: Fiel
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700">
                 {label}
-                {required && <span className="text-red-500 ml-1">*</span>}
+                {required && <span className="text-deep-orange ml-1">*</span>}
               </label>
             </div>
             <div className="flex-1">
               <select
                 value={mapping[key] || ''}
                 onChange={(e) => handleFieldChange(key, e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#8b5cf6]/25 focus:border-[#8b5cf6]"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#3b3686]/25 focus:border-[#3b3686]"
               >
                 <option value="">-- 选择列 --</option>
                 {headers.map((header) => (

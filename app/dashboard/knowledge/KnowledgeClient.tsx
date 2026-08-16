@@ -3,109 +3,174 @@
 import React, { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { PageHeader, GlassCard, FloatCard, SectionTitle, ReadinessBar } from '@/components/dashboard/kit'
-import { Brain, Sparkles, Plus, Network } from 'lucide-react'
+import { SectionTitle, ReadinessBar } from '@/components/dashboard/kit'
+import { useLanguage } from '@/context/LanguageContext'
+import { Brain, Sparkles, Plus, Network, Layers, HelpCircle, FileText, CheckCircle2 } from 'lucide-react'
 
-const CATEGORIES = [
-  { key: 'brand', label: '品牌信息' },
-  { key: 'company', label: '企业介绍' },
-  { key: 'product', label: '商品知识' },
-  { key: 'faq', label: '常见问题' },
-  { key: 'aftersale', label: '售后政策' },
-  { key: 'shipping', label: '配送政策' },
-  { key: 'contact', label: '联系方式' },
-  { key: 'tone', label: '品牌语气' },
-] as const
-
-const VALID_KEYS = new Set(CATEGORIES.map((c) => c.key))
+type CategoryKey = 'brand' | 'company' | 'product' | 'faq' | 'aftersale' | 'shipping'
 
 export function KnowledgeClient() {
+  const { t, isZh } = useLanguage()
   const searchParams = useSearchParams()
   const initial = searchParams.get('cat')
+
+  const CATEGORIES: { key: CategoryKey; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
+    { key: 'brand', label: t.knowledge.brandIdentity, icon: Sparkles },
+    { key: 'company', label: t.knowledge.companyProfile, icon: Layers },
+    { key: 'product', label: t.knowledge.productSpecs, icon: FileText },
+    { key: 'faq', label: t.knowledge.faqGuidance, icon: HelpCircle },
+    { key: 'aftersale', label: t.knowledge.aftersalePolicy, icon: CheckCircle2 },
+    { key: 'shipping', label: t.knowledge.shippingRules, icon: Network },
+  ]
+
+  const VALID_KEYS = new Set(CATEGORIES.map((c) => c.key))
+
   const [active, setActive] = useState<string>(
-    initial && VALID_KEYS.has(initial as (typeof CATEGORIES)[number]['key']) ? initial : 'brand'
+    initial && VALID_KEYS.has(initial as CategoryKey) ? initial : 'brand'
   )
 
   const activeCategory = CATEGORIES.find((c) => c.key === active) ?? CATEGORIES[0]
 
   return (
-    <div>
-      <PageHeader
-        title="AI 知识库"
-        description="管理 AI Agent 理解你业务所需的语义记忆——品牌、商品、政策与语气。"
-      />
-
-      <div className="grid gap-4 lg:grid-cols-[200px_1fr_260px]">
-        {/* 左：知识分类节点列表 */}
-        <GlassCard className="p-2.5 h-fit">
-          <ul className="space-y-0.5">
-            {CATEGORIES.map((c) => (
-              <li key={c.key}>
-                <button
-                  onClick={() => setActive(c.key)}
-                  aria-pressed={active === c.key}
-                  className={cn(
-                    'w-full text-left px-3 py-2 rounded-md text-[13px] font-medium transition-colors duration-200 flex items-center gap-2.5',
-                    active === c.key
-                      ? 'bg-white text-gray-900 shadow-[0_0_18px_rgba(139,92,246,0.12)] border border-black/[0.06]'
-                      : 'text-gray-500 hover:bg-white border border-transparent'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'w-1.5 h-1.5 rounded-full shrink-0',
-                      active === c.key ? 'bg-[#8b5cf6]' : 'bg-gray-300'
-                    )}
-                  />
-                  {c.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </GlassCard>
-
-        {/* 中：知识条目（当前无后端表 → 诚实空态；切换时轻滑入） */}
-        <GlassCard key={active} className="page-enter min-h-[320px] flex flex-col items-center justify-center text-center px-8 py-12">
-          <div className="w-11 h-11 rounded-md flex items-center justify-center mb-4 bg-[#8b5cf6]/[0.08] border border-[#8b5cf6]/15">
-            <Network size={20} className="text-[#8b5cf6]" strokeWidth={1.75} />
+    <div className="space-y-5">
+      {/* 顶部指标卡行 */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="crextio-card p-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#F4F5F7] border border-[#E5E7EB] text-[#111827] flex items-center justify-center shrink-0">
+              <Brain size={18} />
+            </div>
+            <div>
+              <span className="text-xs text-[#6B7280] block font-medium">{t.knowledge.semanticMemory}</span>
+              <div className="text-base font-bold text-[#111827] mt-0.5">
+                {t.knowledge.knowledgeHub}
+              </div>
+            </div>
           </div>
-          <h3 className="text-sm font-semibold text-gray-900">「{activeCategory.label}」还没有内容</h3>
-          <p className="text-xs text-gray-500 mt-2 max-w-xs leading-relaxed">
-            知识条目的创建与管理功能即将上线。完善这些信息后，AI Agent 就能准确回答与你的业务相关的问题。
-          </p>
-          <button
-            disabled
-            className="btn-primary-omni mt-5 inline-flex items-center gap-1.5 px-4 h-9 text-sm opacity-50 cursor-not-allowed"
-            title="即将上线"
-          >
-            <Plus size={14} />
-            添加知识（即将上线）
-          </button>
-        </GlassCard>
+        </div>
 
-        {/* 右：AI 知识完整度 */}
-        <FloatCard className="h-fit">
-          <SectionTitle title="AI 知识完整度" description="AI 理解你业务所需信息的覆盖程度" />
-          <div className="flex items-end justify-between mb-3">
-            <span className="text-2xl font-bold tracking-tight text-gray-900 tnum">0%</span>
-            <Brain size={15} className="text-[#8b5cf6]" strokeWidth={1.75} />
+        <div className="crextio-card p-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#F4F5F7] border border-[#E5E7EB] text-[#111827] flex items-center justify-center shrink-0">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <span className="text-xs text-[#6B7280] block font-medium">{t.knowledge.vectorEmbeddings}</span>
+              <div className="text-base font-bold text-[#111827] mt-0.5 tnum">
+                {CATEGORIES.length} {t.knowledge.activeNodes}
+              </div>
+            </div>
           </div>
-          <ReadinessBar percent={0} />
-          <div className="mt-5">
-            <h4 className="text-xs font-semibold text-gray-500 mb-2">建议补充</h4>
+          <span className="px-2.5 py-0.5 rounded-full bg-[#edbc40] text-[#111827] text-xs font-bold shadow-sm">
+            Active
+          </span>
+        </div>
+
+        <div className="crextio-dark-card p-5 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-xs text-white/80 block font-medium">{t.knowledge.readiness}</span>
+            <div className="text-sm font-bold text-white">45% {t.knowledge.coverage}</div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/10 text-[#edbc40] flex items-center justify-center">
+            <Brain size={15} />
+          </div>
+        </div>
+      </div>
+
+      {/* 知识主体网格 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* 左侧：分类节点导航 (占 3 栏) */}
+        <div className="lg:col-span-3">
+          <div className="crextio-card p-4 h-full">
+            <span className="text-xs font-bold text-[#6B7280] px-2 mb-2 block uppercase tracking-wider">
+              {t.knowledge.knowledgeNodes}
+            </span>
             <ul className="space-y-1.5">
-              {['品牌信息', '联系方式', '售后政策'].map((s) => (
-                <li
-                  key={s}
-                  className="text-xs text-gray-600 bg-white border border-gray-200 rounded-md px-3 py-2 flex items-center gap-2"
-                >
-                  <Sparkles size={11} className="text-[#8b5cf6] shrink-0" />
-                  {s}
-                </li>
-              ))}
+              {CATEGORIES.map((c) => {
+                const isSelected = active === c.key
+                const Icon = c.icon
+                return (
+                  <li key={c.key}>
+                    <button
+                      onClick={() => setActive(c.key)}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        'w-full text-left px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer',
+                        isSelected
+                          ? 'bg-[#111827] text-white shadow-sm'
+                          : 'text-[#6B7280] hover:text-[#111827] hover:bg-[#F4F5F7]'
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon size={14} className={isSelected ? 'text-[#edbc40]' : 'text-[#6B7280]'} />
+                        <span>{c.label}</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'w-2 h-2 rounded-full',
+                          isSelected ? 'bg-[#edbc40]' : 'bg-[#E5E7EB]'
+                        )}
+                      />
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </div>
-        </FloatCard>
+        </div>
+
+        {/* 中间：知识卡片与编辑器 (占 6 栏) */}
+        <div className="lg:col-span-6">
+          <div className="crextio-card p-8 min-h-[380px] flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#F4F5F7] border border-[#E5E7EB] text-[#111827] flex items-center justify-center mb-4 shadow-sm">
+              <Network size={24} />
+            </div>
+
+            <h3 className="font-heading text-lg font-bold text-[#111827]">
+              {isZh ? `「${activeCategory.label}」知识节点待填充` : `${activeCategory.label} is ready for context`}
+            </h3>
+            <p className="text-xs text-[#6B7280] mt-2 max-w-sm leading-relaxed">
+              {t.knowledge.emptyContextDesc}
+            </p>
+
+            <button
+              type="button"
+              className="mt-6 px-6 py-2.5 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-semibold shadow-sm transition-all inline-flex items-center gap-2 cursor-pointer"
+            >
+              <Plus size={14} className="text-[#edbc40]" />
+              <span>{t.knowledge.addKnowledgeNode}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 右侧：完整度与智能建议 (占 3 栏) */}
+        <div className="lg:col-span-3">
+          <div className="crextio-card p-5 h-full flex flex-col justify-between">
+            <div>
+              <SectionTitle title={t.knowledge.readiness} description={t.knowledge.coverageDesc} />
+              <div className="flex items-end justify-between mb-3 mt-4">
+                <span className="text-2xl font-bold tracking-tight text-[#111827] tnum">45%</span>
+                <Brain size={16} className="text-[#3b3686]" />
+              </div>
+              <ReadinessBar percent={45} />
+
+              <div className="mt-6">
+                <h4 className="text-xs font-semibold text-[#6B7280] mb-2.5">{t.knowledge.recommendedActions}</h4>
+                <ul className="space-y-2">
+                  {[t.knowledge.brandIdentity, t.knowledge.shippingRules, t.knowledge.aftersalePolicy].map((s) => (
+                    <li
+                      key={s}
+                      className="text-xs text-[#111827] font-medium bg-[#F4F5F7] border border-[#E5E7EB] rounded-xl px-3 py-2 flex items-center gap-2"
+                    >
+                      <Sparkles size={12} className="text-[#111827] shrink-0" />
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -1,34 +1,46 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Public_Sans, Noto_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { LanguageProvider } from "@/context/LanguageContext";
 
-const notoSansHeading = Noto_Sans({subsets:['latin'],variable:'--font-heading'});
-
-const publicSans = Public_Sans({subsets:['latin'],variable:'--font-sans'});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-heading",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
-  title: "Omnilink — AI 原生商业基础设施",
-  description: "面向 AI 时代的商家经营中枢",
+  title: "Omnilink — AI 原生商业基础设施 | AI-Native Commerce Infrastructure",
+  description: "面向 AI 时代的商家经营中枢 | Merchant Control Center for the AI Era",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="zh-CN"
-      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", publicSans.variable, notoSansHeading.variable)}
+      suppressHydrationWarning
+      className={cn(
+        "h-full antialiased",
+        jakarta.variable,
+        inter.variable,
+        jetbrainsMono.variable
+      )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body suppressHydrationWarning className="min-h-full flex flex-col font-sans bg-[#F4F5F7] text-[#111827]">
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }
+

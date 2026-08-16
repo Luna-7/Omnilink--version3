@@ -38,6 +38,18 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
+    if (error.message.includes('Invalid login credentials')) {
+      return {
+        error:
+          '账号或密码不正确。如果您尚未注册该账号，请点击右侧「Join」按钮创建账号。',
+      }
+    }
+    if (error.message.includes('Email not confirmed')) {
+      return {
+        error:
+          '该邮箱尚未完成验证。Supabase 已发送确认邮件，请前往您的邮箱（包含垃圾邮件箱）点击激活链接后再登录。',
+      }
+    }
     return { error: error.message }
   }
 
@@ -64,6 +76,9 @@ export async function signupAction(
   const { data, error } = await supabase.auth.signUp({ email, password })
 
   if (error) {
+    if (error.message.includes('already registered')) {
+      return { error: '该邮箱已被注册，请直接点击「Sign In」登录。' }
+    }
     return { error: error.message }
   }
 
@@ -72,7 +87,7 @@ export async function signupAction(
   if (!data.session) {
     return {
       message:
-        'Account created. Please check your email to confirm, then sign in.',
+        '账号创建成功！Supabase 已向您的邮箱发送了激活链接，请前往邮箱点击确认后再点击「Sign In」登录。',
     }
   }
 

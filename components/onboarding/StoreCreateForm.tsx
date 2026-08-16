@@ -4,9 +4,15 @@ import { useState } from 'react'
 import { createStoreAction } from '@/app/actions/onboarding'
 import IndustrySelector from './IndustrySelector'
 
-export function StoreCreateForm() {
+interface IndustryOption {
+  id: string
+  name: string
+  slug: string
+}
+
+export function StoreCreateForm({ industries = [] }: { industries?: IndustryOption[] }) {
   const [storeName, setStoreName] = useState('')
-  const [industryCategory, setIndustryCategory] = useState('')
+  const [industryId, setIndustryId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -14,9 +20,10 @@ export function StoreCreateForm() {
     setIsSubmitting(true)
     setError('')
 
-    // Add industry_category to form data
-    if (industryCategory) {
-      formData.set('industry_category', industryCategory)
+    if (industryId) {
+      formData.set('industry_id', industryId)
+      const ind = industries.find((i) => i.id === industryId)
+      if (ind) formData.set('industry_category', ind.name)
     }
 
     try {
@@ -28,10 +35,10 @@ export function StoreCreateForm() {
   }
 
   return (
-    <form action={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="store_name" className="block text-sm font-medium text-gray-700 mb-2">
-          Store Name
+    <form action={handleSubmit} className="space-y-4">
+      <div className="form-group-design">
+        <label htmlFor="store_name" className="label-design">
+          Store Identifier / Name
         </label>
         <input
           type="text"
@@ -41,25 +48,27 @@ export function StoreCreateForm() {
           onChange={(e) => setStoreName(e.target.value)}
           required
           placeholder="e.g., Luna Glasses"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="input-design"
         />
       </div>
 
-      <IndustrySelector value={industryCategory} onChange={setIndustryCategory} />
+      <IndustrySelector industries={industries} value={industryId} onChange={setIndustryId} />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-deep-orange/10 border border-deep-orange/20 text-deep-orange text-xs px-3 py-2 rounded font-mono">
           {error}
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={isSubmitting || !storeName}
-        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-      >
-        {isSubmitting ? 'Creating Store...' : 'Create Store'}
-      </button>
+      <div className="pt-2">
+        <button
+          type="submit"
+          disabled={isSubmitting || !storeName}
+          className="btn-design-primary w-full"
+        >
+          {isSubmitting ? 'Initializing Node…' : 'Initialize Store Node'}
+        </button>
+      </div>
     </form>
   )
 }

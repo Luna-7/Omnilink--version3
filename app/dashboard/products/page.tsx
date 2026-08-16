@@ -1,56 +1,52 @@
-import { getStoreByOwnerId } from '@/lib/stores/service'
-import { createClientServer } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ProductCreateDialog } from '@/components/product/ProductCreateDialog'
-import { ProductTable, type ProductRow } from '@/components/product/ProductTable'
-import { PageHeader, GhostLink } from '@/components/dashboard/kit'
-import { Sparkles } from 'lucide-react'
+import { createClientServer } from '@/lib/supabase/server'
+import { getStoreByOwnerId } from '@/lib/stores/service'
+import { type ProductRow } from '@/components/product/ProductTable'
+import { ProductsView } from '@/components/product/ProductsView'
 
-async function getProducts(storeId: string): Promise<ProductRow[]> {
+const PRODUCT_SELECT =
+  'id, store_id, sku, name, description, price, currency, inventory, status, raw_data, semantic_data, created_at, updated_at'
+
+async function getRealProducts(storeId: string): Promise<ProductRow[]> {
   const supabase = await createClientServer()
-
   const { data: products, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_SELECT)
     .eq('store_id', storeId)
+    .order('created_at', { ascending: false })
+    .limit(50)
 
   if (error) {
+    // Surface a real error to the page rather than substituting fake rows.
     throw new Error(`Failed to load products: ${error.message}`)
   }
-
-  return (products ?? []) as ProductRow[]
+  return (products ?? []) as unknown as ProductRow[]
 }
 
+/**
+ * /dashboard/products — real merchant products only.
+ *
+ * Demo fallback rows ("Minimalist Ceramic Vase" / "Nordic Oak Dining Chair"
+ * / etc.) were previously used when the merchant had zero products. Per
+ * the #59 UX rule "no fake data on the real-user path", this page now
+ * returns an empty list when the merchant has not yet added any products;
+ * the empty state in ProductsView communicates this honestly.
+ */
 export default async function ProductsPage() {
   const supabase = await createClientServer()
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (userError || !user) {
+  if (!user) {
     redirect('/login')
   }
 
   const store = await getStoreByOwnerId(user.id)
-
   if (!store) {
     redirect('/onboarding')
   }
 
-  const products = await getProducts(store.id)
-
-  return (
-    <div className="max-w-6xl mx-auto">
-      <PageHeader
-        title="产品"
-        description="管理你的结构化商品数据，追踪每个商品的 AI 就绪状态。"
-      >
-        <GhostLink href="/dashboard/products/import">
-          <Sparkles size={15} />
-          AI 智能导入
-        </GhostLink>
-        <ProductCreateDialog />
-      </PageHeader>
-
-      <ProductTable products={products} />
-    </div>
-  )
+  const products = await getRealProducts(store.id)
+  return <ProductsView products={products} />
 }

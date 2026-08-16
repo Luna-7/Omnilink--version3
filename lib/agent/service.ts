@@ -1,89 +1,66 @@
-import { parseSemanticQuery } from '@/lib/semantic/parser'
-import { applyRules } from '@/lib/semantic/reasoning'
-import { supabase } from '@/lib/supabase/client'
-import { recordSemanticQueryEvent } from '@/lib/analytics/events'
-import { getProductEvidence } from '@/lib/evidence/service'
+/**
+ * Agent product query — PUBLIC commerce search.
+ *
+ * Contract (PUBLIC_AGENT): returns ONLY public commerce data for ACTIVE
+ * products across stores. No sku / inventory / raw_data / semantic_data /
+ * evidence / derived semantics. Row-limited. No `select(*)`.
+ *
+ * This is a deliberately constrained public path. A merchant-private Agent
+ * (auth + ownership / API key) would be a separate, future contract.
+ */
+
+import { createClientServer } from '@/lib/supabase/server'
 import type { AgentQueryResponse, AgentProductResponse } from './types'
 
+const PUBLIC_PRODUCT_SELECT = 'id, name, description, price, currency, stores:stores(store_slug)'
+const MAX_RESULTS = 20
+
 export async function queryAgentProducts(query: string): Promise<AgentQueryResponse> {
-  const semanticQuery = await parseSemanticQuery(query)
+  const supabase = await createClientServer()
+  const term = (query || '').trim()
 
-  const { data: products, error: productsError } = await supabase
+  let req = supabase
     .from('products')
-    .select('*, stores(store_slug)')
-    .limit(20)
+    .select(PUBLIC_PRODUCT_SELECT)
+    .eq('status', 'active')
+    .limit(MAX_RESULTS)
 
-  if (productsError) {
-    throw productsError
+  if (term) {
+    // Simple public text search on public fields only.
+    req = req.or(`name.ilike.%${escapeIlike(term)}%,description.ilike.%${escapeIlike(term)}%`)
   }
 
-  // Fetch reasoning rules
-  const { data: rules, error: rulesError } = await supabase
-    .from('semantic_rules')
-    .select('*')
-
-  if (rulesError) {
-    throw rulesError
+  const { data: products, error } = await req
+  if (error) {
+    throw error
   }
 
-  const results = await Promise.all(
-    products.map(async product => {
-      const productData = product as any
-      const semantic = (productData.semantic_data as Record<string, unknown>) || {}
-      const storeSlug = productData.stores?.store_slug || ''
-
-      const score = calculateMatch(semantic, semanticQuery.concepts)
-
-      if (score === 0) {
-        return null
-      }
-
-      const derived = applyRules(rules || [], semantic)
-      const evidence = await getProductEvidence(productData.id)
-
-      return {
-        product_id: productData.id,
-        title: productData.name,
-        semantic_match_score: score,
-        semantic_data: semantic,
-        derived_semantics: derived,
-        evidence,
-        purchase_url: productData.url,
-        store_slug: storeSlug,
-      }
-    })
-  )
-
-  const filteredResults = results.filter(Boolean) as AgentProductResponse[]
-
-  // Record semantic query event for analytics
-  await recordSemanticQueryEvent({
-    query_text: query,
-    parsed_intent: semanticQuery.intent,
-    matched_product_ids: filteredResults.map(item => item.product_id),
-    matched_concepts: semanticQuery.concepts,
-    confidence: semanticQuery.confidence,
+  const results: AgentProductResponse[] = (products ?? []).map((row) => {
+    const r = row as unknown as {
+      id: string
+      name: string
+      description: string | null
+      price: number
+      currency: string
+      stores?: { store_slug?: string | null } | null
+    }
+    return {
+      product_id: r.id,
+      title: r.name,
+      description: r.description,
+      price: r.price,
+      currency: r.currency,
+      store_slug: r.stores?.store_slug ?? null,
+    }
   })
 
   return {
-    products: filteredResults,
+    products: results,
     query,
-    confidence: semanticQuery.confidence,
+    confidence: term ? 0.6 : 0.5,
   }
 }
 
-function calculateMatch(semantic: Record<string, unknown>, concepts: string[]): number {
-  let matched = 0
-
-  for (const concept of concepts) {
-    if (semantic[concept]) {
-      matched++
-    }
-  }
-
-  if (concepts.length === 0) {
-    return 0
-  }
-
-  return matched / concepts.length
+function escapeIlike(s: string): string {
+  return s.replace(/[%_\\]/g, (m) => '\\' + m)
 }

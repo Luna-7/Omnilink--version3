@@ -1,5 +1,11 @@
 import { createClientServer } from "@/lib/supabase/server";
 
+// Merchant-owned product reads: explicit whitelist (Demo #56). Includes
+// sku/inventory/raw_data because the merchant dashboard semantic page needs
+// them; this is merchant-private, not a public endpoint.
+const MERCHANT_PRODUCT_SELECT =
+  "id, store_id, sku, name, description, price, currency, inventory, status, raw_data, semantic_data, created_at, updated_at";
+
 export type ProductInput = {
   name: string;
   description?: string;
@@ -7,7 +13,20 @@ export type ProductInput = {
   currency?: string;
   inventory?: number;
   sku?: string;
+  /** Optional pre-computed semantic data (e.g. from a future AI pipeline). */
+  semantic_data?: Record<string, unknown> | null;
 };
+
+/**
+ * Demo semantic fallback (#57 P4): the Demo has no AI extraction pipeline, so
+ * a freshly created product gets a minimal valid semantic_data instead of null.
+ * This is explicitly a Demo fallback — NOT real semantic-engine output — and
+ * exists only so the public ai-json / agent query have structured data to
+ * return. Source of Truth for semantics in the Demo remains products.semantic_data.
+ */
+function buildDemoSemanticFallback(): Record<string, unknown> {
+  return { category: null, attributes: {}, confidence: 1 };
+}
 
 async function getAuthenticatedUser() {
   const supabase = await createClientServer();
@@ -53,7 +72,7 @@ export async function getProductsByStore() {
 
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select(MERCHANT_PRODUCT_SELECT)
     .eq("store_id", store.id)
     .order("created_at", {
       ascending: false,
@@ -71,7 +90,7 @@ export async function getProductById(productId: string) {
 
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select(MERCHANT_PRODUCT_SELECT)
     .eq("id", productId)
     .eq("store_id", store.id)
     .single();
@@ -86,6 +105,11 @@ export async function getProductById(productId: string) {
 export async function createProduct(input: ProductInput) {
   const { supabase, store } = await getOwnedStore();
 
+  const semantic_data =
+    input.semantic_data && typeof input.semantic_data === "object"
+      ? input.semantic_data
+      : buildDemoSemanticFallback();
+
   const { data, error } = await supabase
     .from("products")
     .insert({
@@ -97,6 +121,7 @@ export async function createProduct(input: ProductInput) {
       currency: input.currency || "USD",
       inventory: input.inventory ?? 0,
       status: "active",
+      semantic_data,
     })
     .select()
     .single();

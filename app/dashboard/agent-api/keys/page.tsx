@@ -16,14 +16,14 @@ export default function ApiKeysPage() {
           className="rounded-md px-4 py-3.5 font-mono text-sm flex items-center gap-3"
           style={{
             background: 'rgba(59, 7, 100, 0.92)',
-            border: '1px solid rgba(139, 92, 246, 0.35)',
+            border: '1px solid rgba(59, 54, 134, 0.35)',
           }}
         >
-          <Lock size={14} className="text-violet-300 shrink-0" />
+          <Lock size={14} className="text-iris shrink-0" />
           <span className="tracking-wider text-white">
             omni_live_••••••••••••••••••••••••
           </span>
-          <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/15 text-violet-200 font-sans">
+          <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/15 text-iris font-sans">
             脱敏
           </span>
         </div>

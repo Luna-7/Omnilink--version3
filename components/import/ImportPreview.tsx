@@ -32,9 +32,9 @@ export function ImportPreview({ preview }: ImportPreviewProps) {
         </div>
 
         {preview.warnings.length > 0 && (
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h4 className="text-sm font-medium text-yellow-800 mb-2">警告</h4>
-            <ul className="text-sm text-yellow-700 space-y-1">
+          <div className="mb-4 p-4 bg-apricot border border-apricot rounded-lg">
+            <h4 className="text-sm font-medium text-apricot mb-2">警告</h4>
+            <ul className="text-sm text-apricot space-y-1">
               {preview.warnings.map((warning, index) => (
                 <li key={index}>• {warning}</li>
               ))}

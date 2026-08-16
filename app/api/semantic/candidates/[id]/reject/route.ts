@@ -1,15 +1,22 @@
+// DEFERRED (Demo #56 · P4/P9): legacy semantic / evidence / reasoning layer.
+// Depends on semantic_* tables that were NEVER created in the live DB
+// (12/14 missing → PGRST205). Not part of the Demo storefront/agent flow.
+// Semantic Source of Truth = products.semantic_data. Do not wire into Demo.
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/client'
+import { requireUser } from '@/lib/api/auth'
 
-// POST /api/semantic/candidates/[id]/reject - Reject candidate
+// POST /api/semantic/candidates/[id]/reject - Reject candidate (auth required).
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireUser()
+  if (!auth.ok) return auth.response
+
   try {
     const { id } = await params
 
-    // Get candidate
     const { data: candidate, error: candidateError } = await supabase
       .from('semantic_candidates')
       .select('*')
@@ -27,7 +34,6 @@ export async function POST(
       )
     }
 
-    // Update status to rejected
     const { error: updateError } = await supabase
       .from('semantic_candidates')
       .update({ status: 'rejected' })

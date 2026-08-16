@@ -33,29 +33,30 @@ export function LoginForm() {
 
   return (
     <form className="space-y-4">
-      <div>
+      <div className="form-group-design">
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="label-design"
         >
-          Email
+          User Identification
         </label>
         <input
           id="email"
           name="email"
           type="email"
           required
+          placeholder="Email Address"
           autoComplete="email"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="input-design"
         />
       </div>
 
-      <div>
+      <div className="form-group-design">
         <label
           htmlFor="password"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="label-design"
         >
-          Password
+          Security Protocol
         </label>
         <input
           id="password"
@@ -63,15 +64,16 @@ export function LoginForm() {
           type="password"
           required
           minLength={6}
+          placeholder="Password"
           autoComplete="current-password"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="input-design"
         />
       </div>
 
       {error ? (
         <div
           role="alert"
-          className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm"
+          className="bg-deep-orange/10 border border-deep-orange/20 text-deep-orange text-xs px-3 py-2 rounded font-mono"
         >
           {error}
         </div>
@@ -80,30 +82,31 @@ export function LoginForm() {
       {message ? (
         <div
           role="status"
-          className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-2 rounded text-sm"
+          className="bg-[#3b3686]/10 border border-[#3b3686]/20 text-[#3b3686] text-xs px-3 py-2 rounded font-mono"
         >
           {message}
         </div>
       ) : null}
 
-      <div className="flex gap-3 pt-2">
+      <div className="button-group-design">
         <button
           type="submit"
           formAction={signinDispatch}
           disabled={isPending}
-          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="btn-design-primary"
         >
-          {signinPending ? 'Signing in…' : 'Sign In'}
+          {signinPending ? 'Signing In…' : 'Sign In'}
         </button>
         <button
           type="submit"
           formAction={signupDispatch}
           disabled={isPending}
-          className="flex-1 bg-white text-gray-800 border border-gray-300 py-2 px-4 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+          className="btn-design-secondary"
         >
-          {signupPending ? 'Creating…' : 'Create Account'}
+          {signupPending ? 'Joining…' : 'Join'}
         </button>
       </div>
     </form>
   )
+
 }

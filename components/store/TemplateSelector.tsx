@@ -73,7 +73,7 @@ export function TemplateSelector({ storeId, onTemplateSelect }: TemplateSelector
         <div
           key={template.id}
           className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-            selectedTemplate === template.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+            selectedTemplate === template.id ? 'border-iris bg-iris' : 'border-gray-200'
           }`}
           onClick={() => handleSelect(template)}
         >

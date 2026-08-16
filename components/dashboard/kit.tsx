@@ -1,52 +1,112 @@
 import React from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { Sparkles, ArrowRight, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, Sparkles, ArrowRight, type LucideIcon } from 'lucide-react'
 
 /* ============================================================
-   Omnilink Dashboard Kit —— White Acrylic 共享组件
-   白色画布 · 锐利几何（radius ≤ 8px）· 轻阴影 · 受控强调色
-   Purple #8B5CF6 = AI · Green #10B981 = 商业 · Orange #F59E0B = 警示
-   仅 UI 层，零业务逻辑。所有文案中文。
+   Omnilink Dashboard Kit —— Rexora Design System
+   Clean Off-White Canvas · Rounded Pure White Cards · Vivid Lime & Ink Accents
    ============================================================ */
 
-/* 页面头部：模块标题 + 中文描述 + 右侧操作区 */
+/* 页面头部 */
 export function PageHeader({
   title,
+  subtitle,
   description,
   children,
 }: {
   title: string
+  subtitle?: string
   description?: string
   children?: React.ReactNode
 }) {
+  const desc = subtitle || description
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-gray-900">{title}</h1>
-        {description && (
-          <p className="text-sm text-gray-500 mt-1 max-w-xl leading-relaxed">{description}</p>
-        )}
+    <div className="flex flex-col gap-4 mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-[#111827]">
+            {title}
+          </h1>
+          {desc && (
+            <p className="text-xs sm:text-sm text-[#6B7280] mt-1 leading-relaxed">
+              {desc}
+            </p>
+          )}
+        </div>
+        {children && <div className="flex items-center gap-2">{children}</div>}
       </div>
-      {children && <div className="flex items-center gap-2.5">{children}</div>}
-    </header>
+    </div>
   )
 }
 
-/* 亚克力卡片（LEVEL 2） */
+/* 纯白圆角主卡片 (20px radius, subtle border & shadow) */
 export function GlassCard({
   className,
+  title,
+  actionHref,
   children,
 }: {
   className?: string
+  title?: string
+  actionHref?: string
   children: React.ReactNode
 }) {
   return (
-    <div className={cn('glass-panel rounded-lg p-5', className)}>{children}</div>
+    <div className={cn('crextio-card p-5 sm:p-6', className)}>
+      {title && (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-heading text-base font-bold tracking-tight text-[#111827]">
+            {title}
+          </h3>
+          {actionHref ? (
+            <Link href={actionHref} className="arrow-btn" aria-label="View more">
+              <ArrowUpRight size={14} />
+            </Link>
+          ) : null}
+        </div>
+      )}
+      {children}
+    </div>
   )
 }
 
-/* 强调亚克力卡片（LEVEL 3，重点/AI 相关） */
+/* 强调深色卡片 (Dark Card) */
+export function DarkCard({
+  className,
+  title,
+  actionHref,
+  children,
+}: {
+  className?: string
+  title?: string
+  actionHref?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn('crextio-dark-card p-5 sm:p-6', className)}>
+      {title && (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-heading text-base font-bold tracking-tight text-white">
+            {title}
+          </h3>
+          {actionHref && (
+            <Link
+              href={actionHref}
+              className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-all"
+              aria-label="View details"
+            >
+              <ArrowUpRight size={14} />
+            </Link>
+          )}
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+
+/* 兼容 FloatCard */
 export function FloatCard({
   className,
   children,
@@ -54,9 +114,7 @@ export function FloatCard({
   className?: string
   children: React.ReactNode
 }) {
-  return (
-    <div className={cn('glass-float rounded-lg p-5', className)}>{children}</div>
-  )
+  return <div className={cn('crextio-card p-5 sm:p-6', className)}>{children}</div>
 }
 
 /* 区块标题 */
@@ -69,13 +127,13 @@ export function SectionTitle({
 }) {
   return (
     <div className="mb-4">
-      <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-      {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+      <h2 className="font-heading text-base font-bold text-[#111827]">{title}</h2>
+      {description && <p className="text-xs text-[#6B7280] mt-0.5">{description}</p>}
     </div>
   )
 }
 
-/* 主按钮（电光紫实心） */
+/* 主药丸按钮 (Black primary button) */
 export function PrimaryLink({
   href,
   children,
@@ -89,7 +147,7 @@ export function PrimaryLink({
     <Link
       href={href}
       className={cn(
-        'btn-primary-omni inline-flex items-center gap-1.5 px-4 h-9 text-sm',
+        'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold text-white bg-[#111827] hover:bg-black shadow-sm transition-all',
         className
       )}
     >
@@ -98,7 +156,7 @@ export function PrimaryLink({
   )
 }
 
-/* 次级按钮（白底灰边） */
+/* 次级药丸按钮 */
 export function GhostLink({
   href,
   children,
@@ -112,9 +170,7 @@ export function GhostLink({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center gap-1.5 px-4 h-9 rounded-md text-sm font-medium',
-        'bg-white border border-gray-200 text-gray-700',
-        'hover:border-gray-300 hover:bg-gray-50 transition-colors duration-200',
+        'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold bg-white border border-[#E5E7EB] text-[#111827] hover:bg-[#F4F5F7] transition-all',
         className
       )}
     >
@@ -123,7 +179,115 @@ export function GhostLink({
   )
 }
 
-/* 空状态：说明「什么为空 / 为什么重要 / 下一步做什么」 */
+/* 进度条 */
+export function ReadinessBar({ percent }: { percent: number }) {
+  const clamped = Math.max(0, Math.min(100, percent))
+  return (
+    <div className="w-full h-2 rounded-full bg-[#F4F5F7] overflow-hidden">
+      <div
+        className="h-full rounded-full bg-[#111827] transition-all duration-500 ease-out"
+        style={{
+          width: `${clamped}%`,
+        }}
+      />
+    </div>
+  )
+}
+
+/* 指标卡片 */
+export function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string | number
+  hint?: string
+  accent?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'crextio-card p-5 transition-all flex flex-col justify-between h-[150px]',
+        accent ? 'bg-[#111827] text-white border-transparent' : 'bg-white'
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className={cn(
+            'text-xs font-medium',
+            accent ? 'text-white/80' : 'text-[#6B7280]'
+          )}
+        >
+          {label}
+        </span>
+        <span
+          className={cn(
+            'w-8 h-8 rounded-full flex items-center justify-center',
+            accent ? 'bg-white/15 text-white' : 'bg-[#F4F5F7] text-[#111827]'
+          )}
+        >
+          <Icon size={15} />
+        </span>
+      </div>
+      <div
+        className={cn(
+          'text-2xl sm:text-[28px] font-bold tracking-tight tnum',
+          accent ? 'text-white' : 'text-[#111827]'
+        )}
+      >
+        {value}
+      </div>
+      {hint && (
+        <div
+          className={cn(
+            'text-xs mt-1 pt-1 border-t',
+            accent ? 'text-white/70 border-white/10' : 'text-[#6B7280] border-[#F3F4F6]'
+          )}
+        >
+          {hint}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* 状态点指示器 */
+export function StatusDot({
+  tone,
+  label,
+}: {
+  tone: 'ok' | 'warn' | 'idle'
+  label: string
+}) {
+  const color =
+    tone === 'ok' ? 'bg-[#edbc40]' : tone === 'warn' ? 'bg-[#e0652b]' : 'bg-[#9CA3AF]'
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#111827]">
+      <span className={cn('w-2 h-2 rounded-full', color)} />
+      {label}
+    </span>
+  )
+}
+
+/* AI 状态徽章（亮绿药丸状） */
+export function AiBadge({ ready }: { ready: boolean }) {
+  return ready ? (
+    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#edbc40] text-[#111827] shadow-sm">
+      <Sparkles size={11} className="text-[#111827]" />
+      AI Ready
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#F4F5F7] text-[#6B7280] border border-[#E5E7EB]">
+      Pending
+    </span>
+  )
+}
+
+/* 空状态组件 */
 export function EmptyState({
   icon: Icon,
   title,
@@ -136,12 +300,12 @@ export function EmptyState({
   action?: React.ReactNode
 }) {
   return (
-    <div className="glass-panel rounded-lg px-8 py-14 flex flex-col items-center text-center">
-      <div className="w-11 h-11 rounded-md flex items-center justify-center mb-4 bg-[#8b5cf6]/[0.08] border border-[#8b5cf6]/15">
-        <Icon size={20} className="text-[#8b5cf6]" strokeWidth={1.75} />
+    <div className="crextio-card px-8 py-12 flex flex-col items-center text-center">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 bg-[#F4F5F7] text-[#111827]">
+        <Icon size={20} strokeWidth={1.75} />
       </div>
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      <p className="text-xs text-gray-500 mt-1.5 max-w-sm leading-relaxed">{description}</p>
+      <h3 className="text-sm font-bold text-[#111827]">{title}</h3>
+      <p className="text-xs text-[#6B7280] mt-1.5 max-w-sm leading-relaxed">{description}</p>
       {action && <div className="mt-5 flex items-center gap-2.5">{action}</div>}
     </div>
   )
@@ -158,161 +322,15 @@ export function ComingSoon({
   description: string
 }) {
   return (
-    <div className="glass-panel rounded-lg px-8 py-14 flex flex-col items-center text-center">
-      <div className="relative w-11 h-11 rounded-md flex items-center justify-center mb-4 bg-gray-50 border border-gray-200">
-        <Icon size={20} className="text-gray-400" strokeWidth={1.75} />
-        <span className="absolute -top-2 -right-2 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20">
-          即将推出
+    <div className="crextio-card px-8 py-12 flex flex-col items-center text-center">
+      <div className="relative w-12 h-12 rounded-full flex items-center justify-center mb-4 bg-[#F4F5F7] text-[#6B7280]">
+        <Icon size={20} strokeWidth={1.75} />
+        <span className="absolute -top-1 -right-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#edbc40] text-[#111827]">
+          Coming Soon
         </span>
       </div>
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      <p className="text-xs text-gray-500 mt-1.5 max-w-sm leading-relaxed">{description}</p>
-    </div>
-  )
-}
-
-/* 状态点 + 文案（tiny indicator，不滥用彩色标签） */
-export function StatusDot({
-  tone,
-  label,
-}: {
-  tone: 'ok' | 'warn' | 'idle'
-  label: string
-}) {
-  const color =
-    tone === 'ok' ? 'bg-[#10b981]' : tone === 'warn' ? 'bg-[#f59e0b]' : 'bg-gray-300'
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
-      <span className={cn('w-1.5 h-1.5 rounded-full', color)} />
-      {label}
-    </span>
-  )
-}
-
-/* AI 状态徽章 */
-export function AiBadge({ ready }: { ready: boolean }) {
-  return ready ? (
-    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-[#8b5cf6]/[0.08] text-[#8b5cf6] border border-[#8b5cf6]/15">
-      <Sparkles size={11} />
-      AI 就绪
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">
-      待完善
-    </span>
-  )
-}
-
-/* 进度条（紫 → 绿，细线条） */
-export function ReadinessBar({ percent }: { percent: number }) {
-  const clamped = Math.max(0, Math.min(100, percent))
-  return (
-    <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all duration-500 ease-out"
-        style={{
-          width: `${clamped}%`,
-          background: 'linear-gradient(90deg, #8b5cf6 0%, #10b981 100%)',
-        }}
-      />
-    </div>
-  )
-}
-
-/* AI 自动化率能量环：2D 矢量圆环（紫 → 绿），非 3D、非厚重渐变 */
-export function EnergyRing({
-  percent,
-  size = 150,
-  label,
-  sub,
-}: {
-  percent: number
-  size?: number
-  label: string
-  sub?: string
-}) {
-  const clamped = Math.max(0, Math.min(100, percent))
-  const stroke = 8
-  const r = (size - stroke) / 2 - 4
-  const c = 2 * Math.PI * r
-  const offset = c * (1 - clamped / 100)
-  return (
-    <div
-      className="relative inline-flex items-center justify-center"
-      style={{ width: size, height: size }}
-    >
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <defs>
-          <linearGradient id="energy-ring-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#10b981" />
-          </linearGradient>
-        </defs>
-        {/* 底环 */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke="#eef0f2"
-          strokeWidth={stroke}
-        />
-        {/* 进度环 */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke="url(#energy-ring-grad)"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ transition: 'stroke-dashoffset 0.6s ease-out' }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold tracking-tight text-gray-900 tnum">{label}</span>
-        {sub && <span className="text-[10px] text-gray-500 mt-0.5 font-medium">{sub}</span>}
-      </div>
-    </div>
-  )
-}
-
-/* 指标卡：Category / Main Metric / Delta / Metadata 四层结构 */
-export function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  accent,
-}: {
-  icon: LucideIcon
-  label: string
-  value: string | number
-  hint?: string
-  accent?: boolean
-}) {
-  return (
-    <div className={cn('rounded-lg p-4 glass-panel hover-lift', accent && 'circuit-purple relative overflow-hidden')}>
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-gray-500">
-          {label}
-        </span>
-        <span
-          className={cn(
-            'w-7 h-7 rounded-md flex items-center justify-center',
-            accent
-              ? 'bg-[#8b5cf6] text-white'
-              : 'bg-gray-100 text-gray-500'
-          )}
-        >
-          <Icon size={14} strokeWidth={1.75} />
-        </span>
-      </div>
-      <div className="mt-2.5 text-xl font-bold tracking-tight text-gray-900 tnum">{value}</div>
-      {hint && <div className="text-[11px] text-gray-400 mt-1">{hint}</div>}
+      <h3 className="text-sm font-bold text-[#111827]">{title}</h3>
+      <p className="text-xs text-[#6B7280] mt-1.5 max-w-sm leading-relaxed">{description}</p>
     </div>
   )
 }
@@ -322,7 +340,7 @@ export function RowLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1 text-xs font-medium text-[#8b5cf6] hover:text-[#7c3aed] transition-colors"
+      className="inline-flex items-center gap-1 text-xs font-semibold text-[#111827] hover:text-[#e0652b] transition-colors"
     >
       {label}
       <ArrowRight size={12} />

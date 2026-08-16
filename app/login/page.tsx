@@ -18,17 +18,24 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Omnilink</h1>
-          <p className="text-gray-600">
-            Sign in or create an account to get started
-          </p>
-        </div>
+    <div className="h-screen grid grid-rows-[1fr_auto] overflow-hidden bg-[#F9F9F8] text-[#111111]">
+      <main className="main-viewport">
+        <div className="auth-container">
+          <header className="auth-header">
+            <span className="label-meta">[ AUTH_MODULE_V1 ]</span>
+            <h1 className="title-display">Omnilink</h1>
+            <p className="tagline-design">面向 AI 时代的商家经营中枢</p>
+          </header>
 
-        <LoginForm />
-      </div>
+          <LoginForm />
+        </div>
+      </main>
+
+      <footer className="footer-design">
+        <div className="footer-logo-design">OMNILINK.AI</div>
+        <div className="footer-meta-design">AI-NATIVE INFRASTRUCTURE // CORE.BUILD_2024</div>
+      </footer>
     </div>
   )
 }
+

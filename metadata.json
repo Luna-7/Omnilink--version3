@@ -1,0 +1,6 @@
+{
+  "name": "Omnilink",
+  "description": "AI-native commerce infrastructure connecting merchant product data to AI agents and digital storefronts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

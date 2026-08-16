@@ -1,0 +1,27 @@
+-- ============================================================================
+-- Migration: 20260815_000002_public_read_rls.sql
+--
+-- STATUS: SUPERSEDED — INTENTIONAL NO-OP (retained for migration-chain history)
+--
+--   This file was authored in Phase 14 / #52 to add public-read RLS policies.
+--   It was NEVER applied to the live DB.
+--
+--   The canonical public-read + owner + service-role RLS matrix is now
+--   20260815_000003_rls_access_matrix.sql. That migration explicitly DROPs any
+--   policy names originally created here (templates_active_select,
+--   stores_public_active_select, store_settings_public_select,
+--   store_pages_public_published_select, products_public_active_select,
+--   product_assets_public_select) before recreating the canonical set, so
+--   applying both files is harmless.
+--
+--   To avoid duplicate / conflicting policy creation and source-of-truth
+--   confusion, this file is converted to a NO-OP: it performs no DDL.
+--   Do NOT add policies here — edit 20260815_000003_rls_access_matrix.sql.
+--
+--   Verified relationship (Task #54 P2):
+--     * 000002 never applied  → no live policies to reconcile.
+--     * 000003 supersedes 000002 and is self-cleaning w.r.t. 000002 names.
+--     * No policy-name collision remains; replay is safe.
+-- ============================================================================
+
+-- (intentionally empty — see 20260815_000003_rls_access_matrix.sql)

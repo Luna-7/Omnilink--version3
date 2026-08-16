@@ -74,7 +74,7 @@ export function ProductList({ products }: ProductListProps) {
               </span>
               <span className={`text-xs px-2 py-1 rounded ${
                 product.status === 'active' 
-                  ? 'bg-green-100 text-green-700' 
+                  ? 'bg-apricot text-apricot' 
                   : 'bg-gray-100 text-gray-600'
               }`}>
                 {product.status}
@@ -84,14 +84,14 @@ export function ProductList({ products }: ProductListProps) {
           <div className="flex gap-2">
             <a
               href={`/dashboard/products/${product.id}`}
-              className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+              className="px-4 py-2 text-sm bg-iris text-iris rounded-lg hover:bg-iris transition-colors"
             >
               Edit
             </a>
             <button
               onClick={() => handleDelete(product.id)}
               disabled={deletingId === product.id}
-              className="px-4 py-2 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm bg-deep-orange text-deep-orange rounded-lg hover:bg-deep-orange transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {deletingId === product.id ? 'Deleting...' : 'Delete'}
             </button>

@@ -6,18 +6,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    if (!body.query) {
-      return NextResponse.json(
-        {
-          error: 'query required',
-        },
-        {
-          status: 400,
-        },
-      )
-    }
+    // Empty/missing query => match all active products (Demo #56 robustness).
+    const query = typeof body?.query === 'string' ? body.query : ''
 
-    const result = await queryAgentProducts(body.query)
+    const result = await queryAgentProducts(query)
 
     return NextResponse.json(result)
   } catch (error) {

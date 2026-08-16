@@ -84,7 +84,7 @@ export function SemanticEditor({ productId, semanticData }: SemanticEditorProps)
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
           {saveMessage && (
-            <span className={`text-sm ${saveMessage.includes('successfully') ? 'text-green-500' : 'text-destructive'}`}>
+            <span className={`text-sm ${saveMessage.includes('successfully') ? 'text-apricot' : 'text-destructive'}`}>
               {saveMessage}
             </span>
           )}
