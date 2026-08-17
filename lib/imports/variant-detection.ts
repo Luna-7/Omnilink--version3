@@ -140,6 +140,16 @@ export function detectVariantCommercialFields(headers: string[]): {
 }
 
 /**
+ * Normalize a single option value
+ * Returns canonical form for comparison
+ */
+export function normalizeOptionValue(value: string): { canonical: string } {
+  return {
+    canonical: value.trim().toLowerCase()
+  }
+}
+
+/**
  * Detect product identity fields (Brand, Model, Product Key)
  */
 export function detectProductIdentityFields(headers: string[]): {
