@@ -325,7 +325,7 @@ export async function persistImportAnalysis(
     successRows: analysis.summary.totalRows - errors.length,
     failedRows: errors.length,
     errors,
-    mapping,
+    mapping: {}, // No mapping in variant-aware import
     productsCreated,
     variantsCreated,
     groupsProcessed,
@@ -383,14 +383,14 @@ async function persistProductGroup(
   for (const variant of group.variants) {
     try {
       await createProductVariant(product.id, {
-        sku: variant.sku || null,
-        price: variant.price || null,
-        currency: variant.currency || "USD",
-        inventory: variant.inventory ?? null,
+        sku: variant.sku ?? undefined,
+        price: variant.price ?? undefined,
+        currency: variant.currency ?? "USD",
+        inventory: variant.inventory ?? undefined,
         status: "draft", // Variants start as draft
         option_values: variant.optionValues,
-        raw_data: variant.sourceRows.map((rowIndex) => rows[rowIndex]?.raw || {}),
-        semantic_data: null, // No AI processing in this phase
+        raw_data: variant.sourceRows.map((rowIndex) => rows[rowIndex]?.raw) as unknown as Record<string, unknown>,
+        semantic_data: undefined, // No AI processing in this phase
       });
       variantsCreatedCount++;
     } catch (variantError) {

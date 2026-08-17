@@ -8,10 +8,11 @@ import type { UpdateProductVariantInput } from '@/lib/products/variants/types'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; variantId: string } }
+  { params }: { params: Promise<{ id: string; variantId: string }> }
 ) {
   try {
-    const variant = await getProductVariant(params.id, params.variantId)
+    const { id, variantId } = await params
+    const variant = await getProductVariant(id, variantId)
     return NextResponse.json({ variant })
   } catch (error) {
     console.error('Error fetching product variant:', error)
@@ -24,12 +25,13 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; variantId: string } }
+  { params }: { params: Promise<{ id: string; variantId: string }> }
 ) {
   try {
+    const { id, variantId } = await params
     const body = await request.json() as UpdateProductVariantInput
     
-    const variant = await updateProductVariant(params.id, params.variantId, body)
+    const variant = await updateProductVariant(id, variantId, body)
     return NextResponse.json({ variant })
   } catch (error) {
     console.error('Error updating product variant:', error)
@@ -42,10 +44,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; variantId: string } }
+  { params }: { params: Promise<{ id: string; variantId: string }> }
 ) {
   try {
-    await deleteProductVariant(params.id, params.variantId)
+    const { id, variantId } = await params
+    await deleteProductVariant(id, variantId)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting product variant:', error)

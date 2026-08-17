@@ -52,7 +52,7 @@ export function normalizeImportRow(
     rowIndex,
     raw: row,
     product: {
-      name: extractStringValue(row, mapping.name) || '',
+      name: mapping.name ? extractStringValue(row, mapping.name) : '',
     },
     options: {},
   }

@@ -4,10 +4,11 @@ import type { CreateProductVariantInput } from '@/lib/products/variants/types'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const variants = await getProductVariants(params.id)
+    const { id } = await params
+    const variants = await getProductVariants(id)
     return NextResponse.json({ variants })
   } catch (error) {
     console.error('Error fetching product variants:', error)
@@ -20,12 +21,13 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json() as CreateProductVariantInput
     
-    const variant = await createProductVariant(params.id, body)
+    const variant = await createProductVariant(id, body)
     return NextResponse.json({ variant }, { status: 201 })
   } catch (error) {
     console.error('Error creating product variant:', error)

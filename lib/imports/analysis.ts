@@ -28,7 +28,7 @@ export function analyzeImport(
   // Step 1: Detect variant-related columns
   const optionColumns = detectOptionColumns(headers)
   const variantCommercialFields = detectVariantCommercialFields(headers)
-  detectProductIdentityFields(headers) // Used for extended mapping
+  const productIdentityFields = detectProductIdentityFields(headers)
 
   // Step 2: Build extended mapping
   const extendedMapping: ExtendedFieldMapping = {
