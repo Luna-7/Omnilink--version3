@@ -2,6 +2,7 @@
 
 import { parseSpreadsheet, generateImportPreview, ParsedSheet, StableField } from "@/lib/imports/parser";
 import { importProducts } from "@/lib/imports/service";
+import { analyzeImport } from "@/lib/imports/analysis";
 
 export async function previewImportAction(formData: FormData) {
   const file = formData.get("file") as File;
@@ -59,6 +60,27 @@ export async function previewImportAction(formData: FormData) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to parse file",
+    };
+  }
+}
+
+export async function analyzeImportAction(
+  sheet: ParsedSheet,
+  mapping: Partial<Record<StableField, string>>,
+) {
+  try {
+    const analysis = analyzeImport(sheet.rows, sheet.headers, mapping);
+
+    return {
+      success: true,
+      data: {
+        analysis,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to analyze import",
     };
   }
 }
