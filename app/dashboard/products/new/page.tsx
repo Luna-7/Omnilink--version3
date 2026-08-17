@@ -1,10 +1,10 @@
-import { ProductForm } from '@/components/products/ProductForm'
+import { ProductWorkspace } from '@/components/products/ProductWorkspace'
 import Link from 'next/link'
 
 export default function NewProductPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <Link
             href="/dashboard/products"
@@ -17,7 +17,7 @@ export default function NewProductPage() {
         </div>
 
         <div className="bg-white rounded-md shadow-lg p-8">
-          <ProductForm />
+          <ProductWorkspace />
         </div>
       </div>
     </div>
