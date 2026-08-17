@@ -16,6 +16,9 @@ const STABLE_FIELDS: { key: StableField; label: string; required: boolean }[] = 
   { key: 'currency', label: '货币', required: false },
   { key: 'inventory', label: '库存', required: false },
   { key: 'description', label: '描述', required: false },
+  { key: 'brand', label: '品牌', required: false },
+  { key: 'model', label: '型号', required: false },
+  { key: 'productKey', label: '产品标识', required: false },
 ]
 
 export function FieldMapping({ headers, detectedMapping, onMappingChange }: FieldMappingProps) {

@@ -49,7 +49,10 @@ export type StableField =
   | "price"
   | "currency"
   | "inventory"
-  | "description";
+  | "description"
+  | "brand"
+  | "model"
+  | "productKey";
 
 const FIELD_ALIASES: Record<
   StableField,
@@ -106,6 +109,30 @@ const FIELD_ALIASES: Record<
     "描述",
     "商品描述",
     "产品描述",
+  ],
+
+  brand: [
+    "brand",
+    "brand name",
+    "品牌",
+    "商标",
+    "manufacturer",
+  ],
+
+  model: [
+    "model",
+    "product model",
+    "型号",
+    "产品型号",
+    "product number",
+  ],
+
+  productKey: [
+    "product key",
+    "product_key",
+    "handle",
+    "slug",
+    "product id",
   ],
 };
 

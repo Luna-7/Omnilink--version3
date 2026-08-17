@@ -1,7 +1,9 @@
 "use server";
 
 import { parseSpreadsheet, generateImportPreview, ParsedSheet, StableField } from "@/lib/imports/parser";
-import { importProducts } from "@/lib/imports/service";
+import { importProducts, persistImportAnalysis } from "@/lib/imports/service";
+import { analyzeImport } from "@/lib/imports/analysis";
+import type { ImportAnalysis } from "@/lib/imports/types";
 
 export async function previewImportAction(formData: FormData) {
   const file = formData.get("file") as File;
@@ -63,6 +65,27 @@ export async function previewImportAction(formData: FormData) {
   }
 }
 
+export async function analyzeImportAction(
+  sheet: ParsedSheet,
+  mapping: Partial<Record<StableField, string>>,
+) {
+  try {
+    const analysis = analyzeImport(sheet.rows, sheet.headers, mapping);
+
+    return {
+      success: true,
+      data: {
+        analysis,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to analyze import",
+    };
+  }
+}
+
 export async function confirmImportAction(
   sheet: ParsedSheet,
   mapping: Partial<Record<StableField, string>>,
@@ -82,6 +105,24 @@ export async function confirmImportAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to import products",
+    };
+  }
+}
+
+export async function persistImportAction(
+  analysis: ImportAnalysis,
+) {
+  try {
+    const result = await persistImportAnalysis(analysis);
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to persist import",
     };
   }
 }

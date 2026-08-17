@@ -15,9 +15,13 @@ interface ImportResultProps {
   errors?: ValidationError[]
   mapping?: Record<string, string>
   error?: string
+  productsCreated?: number
+  variantsCreated?: number
+  groupsProcessed?: number
+  groupsFailed?: number
 }
 
-export function ImportResult({ success, successRows, failedRows, errors, mapping, error }: ImportResultProps) {
+export function ImportResult({ success, successRows, failedRows, errors, mapping, error, productsCreated, variantsCreated, groupsProcessed, groupsFailed }: ImportResultProps) {
   const router = useRouter()
 
   if (!success) {
@@ -77,6 +81,32 @@ export function ImportResult({ success, successRows, failedRows, errors, mapping
           <p className="text-2xl font-bold text-deep-orange">{failedRows}</p>
         </div>
       </div>
+
+      {/* Variant-aware statistics */}
+      {(productsCreated !== undefined || variantsCreated !== undefined) && (
+        <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-white border border-apricot rounded-lg">
+          <div>
+            <p className="text-sm text-gray-500">创建产品</p>
+            <p className="text-2xl font-bold text-gray-900">{productsCreated || 0}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">创建变体</p>
+            <p className="text-2xl font-bold text-gray-900">{variantsCreated || 0}</p>
+          </div>
+          {groupsProcessed !== undefined && (
+            <div>
+              <p className="text-sm text-gray-500">处理组数</p>
+              <p className="text-2xl font-bold text-gray-900">{groupsProcessed}</p>
+            </div>
+          )}
+          {groupsFailed !== undefined && groupsFailed > 0 && (
+            <div>
+              <p className="text-sm text-deep-orange">失败组数</p>
+              <p className="text-2xl font-bold text-deep-orange">{groupsFailed}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {errors && errors.length > 0 && (
         <div className="mb-6">
