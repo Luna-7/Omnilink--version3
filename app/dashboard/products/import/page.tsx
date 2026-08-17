@@ -8,7 +8,7 @@ import { FieldMapping } from '@/components/import/FieldMapping'
 import { VariantAnalysisPreview } from '@/components/import/VariantAnalysisPreview'
 import { ImportPreview as ImportPreviewType, ParsedSheet, StableField } from '@/lib/imports/parser'
 import type { ImportAnalysis } from '@/lib/imports/types'
-import { previewImportAction, analyzeImportAction, confirmImportAction } from '@/app/actions/imports'
+import { previewImportAction, analyzeImportAction, persistImportAction, confirmImportAction } from '@/app/actions/imports'
 import Link from 'next/link'
 
 type Step = 'upload' | 'mapping' | 'analysis' | 'confirmation' | 'result'
@@ -26,6 +26,10 @@ export default function ImportPage() {
     errors?: Array<{ row: number; field: string; message: string }>
     mapping?: Record<string, string>
     error?: string
+    productsCreated?: number
+    variantsCreated?: number
+    groupsProcessed?: number
+    groupsFailed?: number
   } | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -80,17 +84,37 @@ export default function ImportPage() {
 
     setIsProcessing(true)
     try {
-      const result = await confirmImportAction(sheet, mapping)
-      setImportResult(result.success ? {
-        success: true,
-        successRows: result.data?.successRows,
-        failedRows: result.data?.failedRows,
-        errors: result.data?.errors,
-        mapping: result.data?.mapping,
-      } : {
-        success: false,
-        error: result.error,
-      })
+      // Use variant-aware persistence if analysis is available
+      if (analysis) {
+        const result = await persistImportAction(analysis)
+        setImportResult(result.success ? {
+          success: true,
+          successRows: result.data?.successRows,
+          failedRows: result.data?.failedRows,
+          errors: result.data?.errors,
+          mapping: result.data?.mapping,
+          productsCreated: result.data?.productsCreated,
+          variantsCreated: result.data?.variantsCreated,
+          groupsProcessed: result.data?.groupsProcessed,
+          groupsFailed: result.data?.groupsFailed,
+        } : {
+          success: false,
+          error: result.error,
+        })
+      } else {
+        // Fallback to legacy import for single SKU
+        const result = await confirmImportAction(sheet, mapping)
+        setImportResult(result.success ? {
+          success: true,
+          successRows: result.data?.successRows,
+          failedRows: result.data?.failedRows,
+          errors: result.data?.errors,
+          mapping: result.data?.mapping,
+        } : {
+          success: false,
+          error: result.error,
+        })
+      }
       setStep('result')
     } finally {
       setIsProcessing(false)
@@ -232,6 +256,10 @@ export default function ImportPage() {
                 errors={importResult.errors}
                 mapping={importResult.mapping}
                 error={importResult.error}
+                productsCreated={importResult.productsCreated}
+                variantsCreated={importResult.variantsCreated}
+                groupsProcessed={importResult.groupsProcessed}
+                groupsFailed={importResult.groupsFailed}
               />
               <button
                 onClick={handleReset}
