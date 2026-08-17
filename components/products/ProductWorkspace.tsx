@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProductForm } from './ProductForm'
 import type { ProductOption, ProductVariant } from '@/lib/products/variants/types'
@@ -30,13 +30,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const [success, setSuccess] = useState('')
 
   // Load existing options and variants if editing
-  useEffect(() => {
-    if (productId) {
-      loadProductData()
-    }
-  }, [productId])
-
-  const loadProductData = async () => {
+  const loadProductData = useCallback(async () => {
     setIsLoading(true)
     try {
       const [optionsRes, variantsRes] = await Promise.all([
@@ -61,7 +55,13 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [productId])
+
+  useEffect(() => {
+    if (productId) {
+      loadProductData()
+    }
+  }, [productId, loadProductData])
 
   const addOption = () => {
     const newOption: ProductOption = {
