@@ -92,7 +92,8 @@ ALTER TABLE product_variants ENABLE ROW LEVEL SECURITY;
 -- 6. RLS Policies for product_options
 -- ============================================================================
 -- Merchants can view their own product options
-CREATE POLICY IF NOT EXISTS "merchants_can_view_product_options"
+DROP POLICY IF EXISTS "merchants_can_view_product_options" ON product_options;
+CREATE POLICY "merchants_can_view_product_options"
   ON product_options
   FOR SELECT
   USING (
@@ -104,7 +105,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_view_product_options"
   );
 
 -- Merchants can insert their own product options
-CREATE POLICY IF NOT EXISTS "merchants_can_insert_product_options"
+DROP POLICY IF EXISTS "merchants_can_insert_product_options" ON product_options;
+CREATE POLICY "merchants_can_insert_product_options"
   ON product_options
   FOR INSERT
   WITH CHECK (
@@ -116,7 +118,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_insert_product_options"
   );
 
 -- Merchants can update their own product options
-CREATE POLICY IF NOT EXISTS "merchants_can_update_product_options"
+DROP POLICY IF EXISTS "merchants_can_update_product_options" ON product_options;
+CREATE POLICY "merchants_can_update_product_options"
   ON product_options
   FOR UPDATE
   USING (
@@ -135,7 +138,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_update_product_options"
   );
 
 -- Merchants can delete their own product options
-CREATE POLICY IF NOT EXISTS "merchants_can_delete_product_options"
+DROP POLICY IF EXISTS "merchants_can_delete_product_options" ON product_options;
+CREATE POLICY "merchants_can_delete_product_options"
   ON product_options
   FOR DELETE
   USING (
@@ -150,7 +154,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_delete_product_options"
 -- 7. RLS Policies for product_variants
 -- ============================================================================
 -- Merchants can view their own product variants
-CREATE POLICY IF NOT EXISTS "merchants_can_view_product_variants"
+DROP POLICY IF EXISTS "merchants_can_view_product_variants" ON product_variants;
+CREATE POLICY "merchants_can_view_product_variants"
   ON product_variants
   FOR SELECT
   USING (
@@ -162,7 +167,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_view_product_variants"
   );
 
 -- Merchants can insert their own product variants
-CREATE POLICY IF NOT EXISTS "merchants_can_insert_product_variants"
+DROP POLICY IF EXISTS "merchants_can_insert_product_variants" ON product_variants;
+CREATE POLICY "merchants_can_insert_product_variants"
   ON product_variants
   FOR INSERT
   WITH CHECK (
@@ -174,7 +180,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_insert_product_variants"
   );
 
 -- Merchants can update their own product variants
-CREATE POLICY IF NOT EXISTS "merchants_can_update_product_variants"
+DROP POLICY IF EXISTS "merchants_can_update_product_variants" ON product_variants;
+CREATE POLICY "merchants_can_update_product_variants"
   ON product_variants
   FOR UPDATE
   USING (
@@ -193,7 +200,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_update_product_variants"
   );
 
 -- Merchants can delete their own product variants
-CREATE POLICY IF NOT EXISTS "merchants_can_delete_product_variants"
+DROP POLICY IF EXISTS "merchants_can_delete_product_variants" ON product_variants;
+CREATE POLICY "merchants_can_delete_product_variants"
   ON product_variants
   FOR DELETE
   USING (
@@ -208,7 +216,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_delete_product_variants"
 -- 8. RLS Policies for product_assets (variant_id extension)
 -- ============================================================================
 -- Merchants can view their own product assets (including variant-specific)
-CREATE POLICY IF NOT EXISTS "merchants_can_view_product_assets_with_variants"
+DROP POLICY IF EXISTS "merchants_can_view_product_assets_with_variants" ON product_assets;
+CREATE POLICY "merchants_can_view_product_assets_with_variants"
   ON product_assets
   FOR SELECT
   USING (
@@ -228,7 +237,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_view_product_assets_with_variants"
   );
 
 -- Merchants can insert variant-specific assets
-CREATE POLICY IF NOT EXISTS "merchants_can_insert_product_assets_with_variants"
+DROP POLICY IF EXISTS "merchants_can_insert_product_assets_with_variants" ON product_assets;
+CREATE POLICY "merchants_can_insert_product_assets_with_variants"
   ON product_assets
   FOR INSERT
   WITH CHECK (
@@ -248,7 +258,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_insert_product_assets_with_variants"
   );
 
 -- Merchants can update variant-specific assets
-CREATE POLICY IF NOT EXISTS "merchants_can_update_product_assets_with_variants"
+DROP POLICY IF EXISTS "merchants_can_update_product_assets_with_variants" ON product_assets;
+CREATE POLICY "merchants_can_update_product_assets_with_variants"
   ON product_assets
   FOR UPDATE
   USING (
@@ -283,7 +294,8 @@ CREATE POLICY IF NOT EXISTS "merchants_can_update_product_assets_with_variants"
   );
 
 -- Merchants can delete variant-specific assets
-CREATE POLICY IF NOT EXISTS "merchants_can_delete_product_assets_with_variants"
+DROP POLICY IF EXISTS "merchants_can_delete_product_assets_with_variants" ON product_assets;
+CREATE POLICY "merchants_can_delete_product_assets_with_variants"
   ON product_assets
   FOR DELETE
   USING (
