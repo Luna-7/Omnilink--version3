@@ -36,7 +36,7 @@ export function LoginForm() {
     <div className="w-full flex flex-col justify-center">
       {/* 顶部图标 */}
       <div className="mb-4">
-        <AsteriskIcon className="w-7 h-7 text-[#4738eb]" color="#4738eb" />
+        <AsteriskIcon className="w-7 h-7 text-[#E11D48]" color="#E11D48" />
       </div>
 
       {/* 标题与描述 */}
@@ -60,9 +60,9 @@ export function LoginForm() {
             name="email"
             type="email"
             required
-            placeholder="farzahaidet786@gmail.com"
+            placeholder="merchant@example.com"
             autoComplete="email"
-            className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-[#e5e7eb] focus:border-[#4738eb] focus:ring-4 focus:ring-[#4738eb]/10 outline-none text-sm text-[#111827] placeholder-[#9ca3af] bg-[#fafafa] focus:bg-white transition-all"
+            className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-[#e5e7eb] focus:border-[#FB7185] focus:ring-4 focus:ring-[#FB7185]/15 outline-none text-sm text-[#111827] placeholder-[#9ca3af] bg-[#fafafa] focus:bg-white transition-all"
           />
         </div>
 
@@ -79,12 +79,12 @@ export function LoginForm() {
               minLength={6}
               placeholder="••••••••••••"
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-              className="w-full pl-4 pr-11 py-2.5 sm:py-3 rounded-xl border border-[#e5e7eb] focus:border-[#4738eb] focus:ring-4 focus:ring-[#4738eb]/10 outline-none text-sm text-[#111827] placeholder-[#9ca3af] bg-[#fafafa] focus:bg-white transition-all tracking-wider"
+              className="w-full pl-4 pr-11 py-2.5 sm:py-3 rounded-xl border border-[#e5e7eb] focus:border-[#FB7185] focus:ring-4 focus:ring-[#FB7185]/15 outline-none text-sm text-[#111827] placeholder-[#9ca3af] bg-[#fafafa] focus:bg-white transition-all tracking-wider"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1 cursor-pointer"
               aria-label={showPassword ? '隐藏密码' : '显示密码'}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -96,7 +96,7 @@ export function LoginForm() {
         {error ? (
           <div
             role="alert"
-            className="bg-red-50 border border-red-200 text-red-700 text-xs px-3.5 py-2.5 rounded-xl animate-in fade-in"
+            className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3.5 py-2.5 rounded-xl animate-in fade-in"
           >
             {error}
           </div>
@@ -106,7 +106,7 @@ export function LoginForm() {
         {message ? (
           <div
             role="status"
-            className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-3.5 py-2.5 rounded-xl animate-in fade-in"
+            className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-3.5 py-2.5 rounded-xl animate-in fade-in leading-relaxed"
           >
             {message}
           </div>
@@ -116,7 +116,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full mt-2 py-3 sm:py-3.5 px-5 rounded-xl bg-[#4335f2] hover:bg-[#392ad6] active:scale-[0.99] text-white text-sm font-semibold shadow-[0_12px_24px_-4px_rgba(67,53,242,0.45)] hover:shadow-[0_14px_28px_-3px_rgba(67,53,242,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full mt-2 py-3 sm:py-3.5 px-5 rounded-xl bg-gradient-to-r from-[#E11D48] to-[#FB7185] hover:from-[#BE123C] hover:to-[#E11D48] active:scale-[0.99] text-white text-sm font-semibold shadow-[0_12px_24px_-4px_rgba(225,29,72,0.35)] hover:shadow-[0_14px_28px_-3px_rgba(225,29,72,0.45)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isPending ? (
             <>
@@ -124,7 +124,7 @@ export function LoginForm() {
               <span>正在处理…</span>
             </>
           ) : (
-            <span>{mode === 'signup' ? '立即开始' : '立即登录'}</span>
+            <span>{mode === 'signup' ? '立即注册账号' : '立即登录'}</span>
           )}
         </button>
 
@@ -136,7 +136,7 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => setMode('signin')}
-                className="text-[#4335f2] hover:text-[#3223d6] font-semibold transition-colors cursor-pointer underline-offset-2 hover:underline"
+                className="text-[#E11D48] hover:text-[#BE123C] font-semibold transition-colors cursor-pointer underline-offset-2 hover:underline"
               >
                 立即登录
               </button>
@@ -147,7 +147,7 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => setMode('signup')}
-                className="text-[#4335f2] hover:text-[#3223d6] font-semibold transition-colors cursor-pointer underline-offset-2 hover:underline"
+                className="text-[#E11D48] hover:text-[#BE123C] font-semibold transition-colors cursor-pointer underline-offset-2 hover:underline"
               >
                 免费注册
               </button>

@@ -686,9 +686,9 @@ export function ProductDetailView({ product: initialProduct }: ProductDetailView
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Shopify */}
+              {/* 自营独立站 */}
               <ChannelCard
-                name="Shopify Store"
+                name={isZh ? '自营独立站' : 'Online Store'}
                 connected={product.channels.shopify}
                 logo="S"
                 color="#95BF47"

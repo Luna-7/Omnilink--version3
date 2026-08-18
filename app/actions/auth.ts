@@ -54,7 +54,8 @@ export async function loginAction(
   }
 
   // signInWithPassword sets the sb-*-auth-token cookie via the SSR adapter.
-  redirect('/onboarding')
+  // Existing users logging in are redirected directly to /dashboard as requested.
+  redirect('/dashboard')
 }
 
 export async function signupAction(
@@ -77,7 +78,7 @@ export async function signupAction(
 
   if (error) {
     if (error.message.includes('already registered')) {
-      return { error: '该邮箱已被注册，请直接切换至登录。' }
+      return { error: '该邮箱已被注册，请直接切换至「登录」模式。' }
     }
     return { error: error.message }
   }
@@ -87,7 +88,7 @@ export async function signupAction(
   if (!data.session) {
     return {
       message:
-        '账号创建成功！Supabase 已向您的邮箱发送了激活链接，请前往邮箱点击确认后再点击「Sign In」登录。',
+        '🎉 账号创建成功！激活邮件已发送至您的电子邮箱，请前往邮箱查收并点击激活链接。验证完成后系统将自动登录并引导您进入店铺初始化页面。',
     }
   }
 

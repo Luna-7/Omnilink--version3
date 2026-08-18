@@ -584,36 +584,65 @@
     color: var(--ink);
   }
 
-  /* Reference Image Style: Clean Off-White Canvas & Rounded Pure White Cards with Lime Accents */
+  /* Reference Image Style: Minimalist Translucent Frosted Glass & Iridescent Highlights */
   .crextio-canvas {
-    background-color: #F4F5F7;
+    background-color: #F3F4F8;
+    background-image: 
+      radial-gradient(at 10% 15%, rgba(254, 215, 170, 0.25) 0px, transparent 40%),
+      radial-gradient(at 90% 10%, rgba(244, 114, 182, 0.2) 0px, transparent 45%),
+      radial-gradient(at 50% 85%, rgba(167, 139, 250, 0.15) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 
   .crextio-card {
-    background-color: #FFFFFF;
-    border: 1px solid #E5E7EB;
-    border-radius: 20px;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+    background-color: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 28px;
+    box-shadow: 0 10px 32px -4px rgba(0, 0, 0, 0.035), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
   .crextio-card:hover {
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 14px 40px -4px rgba(0, 0, 0, 0.055);
   }
 
   .crextio-dark-card {
     background-color: #111827;
     color: #FFFFFF;
-    border-radius: 20px;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+    border-radius: 28px;
+    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.12);
     position: relative;
     overflow: hidden;
+  }
+
+  /* Iridescent Visa / Balance Holographic Card */
+  .holographic-card {
+    background: linear-gradient(135deg, #FED7AA 0%, #F472B6 48%, #A78BFA 100%);
+    border-radius: 24px;
+    box-shadow: 0 12px 32px -4px rgba(244, 114, 182, 0.25);
+    color: #FFFFFF;
+    position: relative;
+    overflow: hidden;
+  }
+  .holographic-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.15) 100%);
+    pointer-events: none;
+  }
+
+  /* Coral to Purple Multi-stop Gradient Bar */
+  .gradient-progress-coral {
+    background: linear-gradient(90deg, #FB7185 0%, #E879F9 52%, #818CF8 100%);
   }
 
   .arrow-btn {
     width: 32px;
     height: 32px;
     border-radius: 9999px;
-    background-color: #F4F5F7;
+    background-color: rgba(255, 255, 255, 0.9);
     color: #111827;
     display: flex;
     align-items: center;
@@ -621,6 +650,7 @@
     transition: all 0.2s ease;
     font-size: 14px;
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
   .arrow-btn:hover {
     background-color: #111827;
@@ -629,8 +659,8 @@
   }
 
   .pill-lime {
-    background-color: var(--accent-apricot);
-    color: var(--ink);
+    background-color: #FB7185;
+    color: #FFFFFF;
     font-weight: 600;
   }
 
@@ -648,8 +678,8 @@
     flex-shrink: 0;
   }
   .arrow-btn-dark:hover {
-    background-color: var(--accent-apricot);
-    color: #1C1E21;
+    background-color: #FB7185;
+    color: #FFFFFF;
     transform: scale(1.05);
   }
 

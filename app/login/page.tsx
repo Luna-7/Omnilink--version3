@@ -31,7 +31,7 @@ export default async function LoginPage() {
   }
 
   if (user) {
-    redirect('/onboarding')
+    redirect('/dashboard')
   }
 
   return (
@@ -50,7 +50,7 @@ export default async function LoginPage() {
               className="absolute inset-0 z-0"
               style={{
                 background:
-                  'linear-gradient(150deg, #5eb5fc 0%, #4335f2 38%, #3123b8 68%, #ba82f9 100%)',
+                  'linear-gradient(150deg, #38BDF8 0%, #A855F7 45%, #E11D48 78%, #FB7185 100%)',
               }}
             />
             {/* 局部高光叠加层 */}
@@ -58,7 +58,7 @@ export default async function LoginPage() {
               className="absolute inset-0 z-0 opacity-80 mix-blend-screen pointer-events-none"
               style={{
                 backgroundImage:
-                  'radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.8) 0%, rgba(94, 181, 252, 0.4) 30%, transparent 60%), radial-gradient(circle at 85% 45%, rgba(230, 195, 255, 0.7) 0%, transparent 50%)',
+                  'radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.85) 0%, rgba(56, 189, 248, 0.5) 30%, transparent 60%), radial-gradient(circle at 85% 45%, rgba(251, 113, 133, 0.7) 0%, transparent 50%)',
               }}
             />
 

@@ -10,8 +10,11 @@ export async function initializeMerchantStore(params: {
   store_name: string
   industry_id?: string | null
   industry_category?: string | null
+  logo_url?: string | null
+  description?: string | null
+  currency?: string | null
 }): Promise<string> {
-  const { owner_id, store_name, industry_id, industry_category } = params
+  const { owner_id, store_name, industry_id, industry_category, logo_url, description, currency } = params
   const supabase = await createClientServer()
 
   // Idempotency: in this MVP one merchant owns exactly one store.
@@ -29,6 +32,19 @@ export async function initializeMerchantStore(params: {
   }
 
   if (existingStore) {
+    // Optionally update existing store info with new avatar / category if provided
+    if (logo_url || industry_category || store_name) {
+      await supabase
+        .from('stores')
+        .update({
+          ...(store_name ? { store_name } : {}),
+          ...(logo_url ? { logo_url } : {}),
+          ...(industry_category ? { industry_category } : {}),
+          ...(description ? { description } : {}),
+        })
+        .eq('id', existingStore.id)
+    }
+
     // Recover store_settings for an existing store that is missing it.
     const { data: existingSettings, error: settingsLookupError } = await supabase
       .from('store_settings')
@@ -86,6 +102,9 @@ export async function initializeMerchantStore(params: {
       store_slug,
       industry_id: industry_id ?? null,
       industry_category: industry_category ?? null,
+      logo_url: logo_url ?? null,
+      description: description ?? null,
+      currency: currency ?? 'CNY',
     } as StoreInsert)
     .select('id')
     .single()

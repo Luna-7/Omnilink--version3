@@ -14,7 +14,6 @@ import {
   Bot,
   Brain,
   Globe,
-  Store,
   Blocks,
   User,
   Settings,
@@ -22,6 +21,7 @@ import {
   Search,
   Bell,
   ChevronDown,
+  Workflow,
 } from 'lucide-react'
 
 export type Profile = {
@@ -129,26 +129,25 @@ export default function OmnilinkLayout({
     .toUpperCase()
 
   return (
-    <div className="min-h-screen w-full bg-[#F4F5F7] text-[#111827] antialiased flex flex-col p-3 sm:p-5 lg:p-6 gap-5">
+    <div className="min-h-screen w-full crextio-canvas text-[#111827] antialiased flex flex-col p-3 sm:p-5 lg:p-6 gap-5">
       {/* ============================================================
-          顶部全局主导航栏 (Top Navbar as shown in reference design)
+          顶部全局主导航栏 (Minimalist Translucent Top Navbar)
           Logo + Center Pill Nav Items + Right Controls (Search, Bell, User Profile)
           ============================================================ */}
-      <header className="w-full bg-white rounded-2xl sm:rounded-full px-4 sm:px-6 py-3 border border-[#E5E7EB] shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-wrap items-center justify-between gap-3">
-        {/* 左侧：品牌 Logo (Black stripe brand symbol + Rexora/Omnilink) */}
+      <header className="w-full bg-white/85 backdrop-blur-2xl rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 border border-white/90 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex flex-wrap items-center justify-between gap-3 sticky top-3 z-40">
+        {/* 左侧：品牌 Logo (Omnilink Product Icon & Title) */}
         <Link href="/dashboard" className="flex items-center gap-2.5 group shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-[#111827] flex flex-col justify-center items-center gap-[3px] px-1.5 shadow-sm group-hover:scale-105 transition-transform">
-            <div className="w-full h-[2.5px] bg-[#edbc40] rounded-full" />
-            <div className="w-3/4 self-start h-[2.5px] bg-white rounded-full" />
-            <div className="w-full h-[2.5px] bg-white rounded-full" />
+          <div className="w-8.5 h-8.5 rounded-xl bg-[#111827] text-white border border-gray-800 flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#FB7185]/30 via-transparent to-[#38BDF8]/30" />
+            <Workflow size={17} className="text-[#FB7185] relative z-10" />
           </div>
-          <span className="font-heading font-bold text-lg tracking-tight text-[#111827]">
+          <span className="font-heading font-bold text-base sm:text-lg tracking-tight text-[#111827]">
             Omnilink
           </span>
         </Link>
 
-        {/* 中间：顶部胶囊式导航标签栏 (Top Navigation Pills with Neon Lime Active Pill) */}
-        <nav className="hidden md:flex items-center gap-1 bg-[#F4F5F7] p-1 rounded-full border border-[#E5E7EB]">
+        {/* 中间：顶部胶囊式导航标签栏 (Top Navigation Pills with Theme Color Active Pill) */}
+        <nav className="hidden md:flex items-center gap-1 bg-[#EBECEF]/60 p-1 rounded-full border border-gray-200/50 backdrop-blur-md">
           {NAV_ITEMS.map((item) => {
             const active = item.match(pathname)
             const label = t.nav[item.key]
@@ -159,7 +158,7 @@ export default function OmnilinkLayout({
                 className={cn(
                   'px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 whitespace-nowrap',
                   active
-                    ? 'bg-[#edbc40] text-[#111827] shadow-sm'
+                    ? 'bg-[#FB7185] text-white shadow-xs'
                     : 'text-[#6B7280] hover:text-[#111827] hover:bg-white/60'
                 )}
               >
@@ -176,29 +175,32 @@ export default function OmnilinkLayout({
             <input
               type="text"
               placeholder={t.nav.searchPlaceholder}
-              className="h-9 w-40 lg:w-48 pl-3.5 pr-8 rounded-full bg-[#F4F5F7] border border-[#E5E7EB] text-xs text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-1 focus:ring-[#111827] transition-all"
+              className="h-8.5 w-36 lg:w-44 pl-3.5 pr-8 rounded-full bg-[#F3F4F8] border border-gray-200/70 text-xs text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-1 focus:ring-[#111827] transition-all"
             />
             <Search size={13} className="absolute right-3 text-[#9CA3AF]" />
           </div>
 
           {/* 语言切换 */}
-          <LanguageToggle className="py-1 px-2.5 text-[11px] rounded-full border-[#E5E7EB]" />
+          <LanguageToggle className="py-1 px-2.5 text-[11px] rounded-full border-gray-200/80 bg-white/90" />
 
-          {/* 通知按钮 */}
+          {/* 通知按钮 (带有红/珊瑚色通知微标) */}
           <button
             type="button"
-            className="w-9 h-9 rounded-full bg-white border border-[#E5E7EB] hover:bg-[#F4F5F7] flex items-center justify-center text-[#111827] transition-all shadow-sm cursor-pointer"
+            className="w-8.5 h-8.5 rounded-full bg-white border border-gray-200/70 hover:bg-[#F3F4F8] flex items-center justify-center text-[#111827] transition-all shadow-xs relative cursor-pointer"
             aria-label="Notifications"
           >
-            <Bell size={15} />
+            <Bell size={14} />
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#FF4D6D] text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+              2
+            </span>
           </button>
 
-          {/* 用户信息胶囊 (Avatar + Name + Email + Dropdown Chevron) */}
+          {/* 用户信息胶囊 (Avatar + Name) */}
           <Link
             href="/dashboard/account"
-            className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-white border border-[#E5E7EB] hover:border-[#D1D5DB] transition-all shadow-sm cursor-pointer"
+            className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-white border border-gray-200/70 hover:border-gray-300 transition-all shadow-xs cursor-pointer"
           >
-            <div className="w-7 h-7 rounded-full overflow-hidden bg-[#E5E7EB] relative shrink-0 flex items-center justify-center text-[10px] font-semibold text-[#6B7280]">
+            <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-tr from-[#FED7AA] to-[#F472B6] relative shrink-0 flex items-center justify-center text-[10px] font-bold text-white shadow-xs">
               {profile.avatarUrl ? (
                 <Image
                   src={profile.avatarUrl}
@@ -216,23 +218,20 @@ export default function OmnilinkLayout({
               <span className="text-xs font-semibold text-[#111827] leading-none">
                 {displayName}
               </span>
-              <span className="text-[10px] text-[#9CA3AF] leading-tight font-medium truncate max-w-[140px]">
-                {profile.email}
-              </span>
             </div>
-            <ChevronDown size={12} className="text-[#9CA3AF]" />
+            <ChevronDown size={11} className="text-[#9CA3AF]" />
           </Link>
         </div>
       </header>
 
       {/* ============================================================
-          主工作区：左侧悬浮快捷侧边栏 + 右侧主内容卡片区
+          主工作区：左侧悬浮小巧侧边栏 + 右侧主内容卡片区
           ============================================================ */}
       <div className="flex-1 flex flex-col lg:flex-row gap-5">
-        {/* 左侧悬浮胶囊侧边栏 (保持侧边栏所有内容与链接完整，风格与新UI融合) */}
-        <aside className="hidden lg:flex flex-col items-center justify-between w-[64px] bg-white rounded-[24px] py-4 px-1.5 border border-[#E5E7EB] shadow-[0_1px_3px_rgba(0,0,0,0.02)] shrink-0 sticky top-5 h-[calc(100vh-100px)] z-30">
+        {/* 左侧悬浮胶囊侧边栏 (小巧玲珑极简设计) */}
+        <aside className="hidden lg:flex flex-col items-center justify-between w-[58px] bg-white/85 backdrop-blur-2xl rounded-[30px] py-4 px-1.5 border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.035)] shrink-0 sticky top-20 h-[calc(100vh-105px)] z-30">
           {/* 上半部分：各模块核心图标 */}
-          <div className="flex flex-col items-center gap-2 w-full">
+          <div className="flex flex-col items-center gap-2.5 w-full">
             {NAV_ITEMS.map((item) => {
               const active = item.match(pathname)
               const Icon = item.icon
@@ -243,17 +242,17 @@ export default function OmnilinkLayout({
                     href={item.href}
                     aria-label={label}
                     className={cn(
-                      'w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-150',
+                      'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150',
                       active
-                        ? 'bg-[#111827] text-[#edbc40] shadow-sm'
-                        : 'text-[#6B7280] hover:text-[#111827] hover:bg-[#F4F5F7]'
+                        ? 'bg-[#FB7185] text-white shadow-md scale-105'
+                        : 'text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F3F4F8]'
                     )}
                   >
-                    <Icon size={18} />
+                    <Icon size={17} />
                   </Link>
 
                   {/* 悬浮展示对应模块名 Tooltip */}
-                  <div className="absolute left-[54px] top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap px-2.5 py-1 rounded-md bg-[#111827] text-white text-[11px] font-medium shadow-md">
+                  <div className="absolute left-[52px] top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap px-2.5 py-1 rounded-full bg-[#FB7185] text-white text-[11px] font-medium shadow-md">
                     {label}
                   </div>
                 </div>
@@ -262,7 +261,7 @@ export default function OmnilinkLayout({
           </div>
 
           {/* 下半部分：账户、设置与退出 */}
-          <div className="flex flex-col items-center gap-2 w-full pt-2 border-t border-[#E5E7EB]">
+          <div className="flex flex-col items-center gap-2.5 w-full pt-2.5 border-t border-gray-100">
             {BOTTOM_ITEMS.map((item) => {
               const active = item.match(pathname)
               const Icon = item.icon
@@ -273,15 +272,15 @@ export default function OmnilinkLayout({
                     href={item.href}
                     aria-label={label}
                     className={cn(
-                      'w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-150',
+                      'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150',
                       active
-                        ? 'bg-[#111827] text-[#edbc40] shadow-sm'
-                        : 'text-[#6B7280] hover:text-[#111827] hover:bg-[#F4F5F7]'
+                        ? 'bg-[#FB7185] text-white shadow-md scale-105'
+                        : 'text-[#9CA3AF] hover:text-[#111827] hover:bg-[#F3F4F8]'
                     )}
                   >
-                    <Icon size={18} />
+                    <Icon size={17} />
                   </Link>
-                  <div className="absolute left-[54px] top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap px-2.5 py-1 rounded-md bg-[#111827] text-white text-[11px] font-medium shadow-md">
+                  <div className="absolute left-[52px] top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap px-2.5 py-1 rounded-full bg-[#FB7185] text-white text-[11px] font-medium shadow-md">
                     {label}
                   </div>
                 </div>
@@ -292,16 +291,16 @@ export default function OmnilinkLayout({
               <button
                 type="submit"
                 aria-label={t.nav.logout}
-                className="w-10 h-10 rounded-2xl flex items-center justify-center text-[#9CA3AF] hover:text-[#e28c33] hover:bg-[#FDF3D7] transition-all cursor-pointer"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-[#9CA3AF] hover:text-[#FF4D6D] hover:bg-rose-50 transition-all cursor-pointer"
               >
-                <LogOut size={17} />
+                <LogOut size={16} />
               </button>
             </form>
           </div>
         </aside>
 
         {/* 移动端导航抽屉 */}
-        <div className="flex md:hidden flex-wrap items-center justify-center gap-1.5 p-2 bg-white rounded-2xl border border-[#E5E7EB]">
+        <div className="flex md:hidden flex-wrap items-center justify-center gap-1.5 p-2 bg-white/90 backdrop-blur-xl rounded-2xl border border-white/80 shadow-xs">
           {NAV_ITEMS.map((item) => {
             const active = item.match(pathname)
             return (
@@ -310,7 +309,7 @@ export default function OmnilinkLayout({
                 href={item.href}
                 className={cn(
                   'px-3 py-1 rounded-full text-xs font-medium transition-all',
-                  active ? 'bg-[#edbc40] text-[#111827] font-semibold' : 'bg-[#F4F5F7] text-[#6B7280]'
+                  active ? 'bg-[#FB7185] text-white font-semibold' : 'bg-[#F3F4F8] text-[#6B7280]'
                 )}
               >
                 {t.nav[item.key]}
