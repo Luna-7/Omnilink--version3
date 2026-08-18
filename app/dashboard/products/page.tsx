@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { createClientServer } from '@/lib/supabase/server'
 import { getStoreByOwnerId } from '@/lib/stores/service'
 import { type ProductRow } from '@/components/product/ProductTable'
 import { ProductsView } from '@/components/product/ProductsView'
+import { ProductsSkeleton } from '@/components/product/ProductsSkeleton'
 import { DEMO_PRODUCTS } from '@/lib/products/demo-data'
 
 const PRODUCT_SELECT =
@@ -22,7 +24,7 @@ async function getRealProducts(storeId: string): Promise<ProductRow[]> {
   return (products ?? []) as unknown as ProductRow[]
 }
 
-export default async function ProductsPage() {
+async function ProductsListContent() {
   const supabase = await createClientServer()
   let user = null
   try {
@@ -57,4 +59,12 @@ export default async function ProductsPage() {
 
   const dbProducts = await getRealProducts(store.id)
   return <ProductsView products={dbProducts.length > 0 ? dbProducts : demoRows} />
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<ProductsSkeleton />}>
+      <ProductsListContent />
+    </Suspense>
+  )
 }

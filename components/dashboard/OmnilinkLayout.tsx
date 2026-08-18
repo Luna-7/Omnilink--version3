@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/context/LanguageContext'
 import { LanguageToggle } from '@/components/dashboard/LanguageToggle'
@@ -21,7 +22,6 @@ import {
   Search,
   Bell,
   ChevronDown,
-  Workflow,
 } from 'lucide-react'
 
 export type Profile = {
@@ -134,13 +134,9 @@ export default function OmnilinkLayout({
           顶部全局主导航栏 (Minimalist Translucent Top Navbar)
           Logo + Center Pill Nav Items + Right Controls (Search, Bell, User Profile)
           ============================================================ */}
-      <header className="w-full bg-white/85 backdrop-blur-2xl rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 border border-white/90 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex flex-wrap items-center justify-between gap-3 sticky top-3 z-40">
-        {/* 左侧：品牌 Logo (Omnilink Product Icon & Title) */}
+      <header className="w-full bg-white/75 backdrop-blur-md rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 border border-white/90 shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex flex-wrap items-center justify-between gap-3 sticky top-3 z-40 text-[#111827]">
+        {/* 左侧：品牌 Logo (Omnilink Title) */}
         <Link href="/dashboard" className="flex items-center gap-2.5 group shrink-0">
-          <div className="w-8.5 h-8.5 rounded-xl bg-[#111827] text-white border border-gray-800 flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#FB7185]/30 via-transparent to-[#38BDF8]/30" />
-            <Workflow size={17} className="text-[#FB7185] relative z-10" />
-          </div>
           <span className="font-heading font-bold text-base sm:text-lg tracking-tight text-[#111827]">
             Omnilink
           </span>
@@ -229,7 +225,7 @@ export default function OmnilinkLayout({
           ============================================================ */}
       <div className="flex-1 flex flex-col lg:flex-row gap-5">
         {/* 左侧悬浮胶囊侧边栏 (小巧玲珑极简设计) */}
-        <aside className="hidden lg:flex flex-col items-center justify-between w-[58px] bg-white/85 backdrop-blur-2xl rounded-[30px] py-4 px-1.5 border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.035)] shrink-0 sticky top-20 h-[calc(100vh-105px)] z-30">
+        <aside className="hidden lg:flex flex-col items-center justify-between w-[58px] bg-white/75 backdrop-blur-md rounded-[30px] py-4 px-1.5 border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.04)] shrink-0 sticky top-20 h-[calc(100vh-105px)] z-30">
           {/* 上半部分：各模块核心图标 */}
           <div className="flex flex-col items-center gap-2.5 w-full">
             {NAV_ITEMS.map((item) => {
@@ -319,10 +315,19 @@ export default function OmnilinkLayout({
         </div>
 
         {/* 右侧主视图区 */}
-        <main className="flex-1 w-full min-w-0">
-          <div key={pathname} className="animate-in fade-in duration-200">
-            {children}
-          </div>
+        <main className="flex-1 w-full min-w-0 overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
