@@ -1,22 +1,25 @@
 /**
  * 公开店铺首页 —— /store/[store_slug]
  *
- * 架构：Route → Storefront Service → Storefront DTO → ThemeRoot → Template → Core。
- * Route 只做：参数解包 → service 取数 → notFound 守卫 → ThemeRoot+Template 渲染。
- * 不访问 Supabase、不查表、不解析 semantic_data、不拼商品 URL、不做主题策略
- * （themeId 透传给 ThemeRoot，未知/空 id 由 registry 回退）。
+ * 架构（唯一渲染闭环，与编辑器预览共享同一渲染器）：
+ *   Route
+ *     → getPublicStorefront(slug)   // store_settings.theme_config → canonical StorefrontSchema
+ *     → notFound 守卫（未发布/店铺非 active）
+ *     → getStorefrontProducts(store) // 真实商品白名单 DTO
+ *     → ThemeRoot(theme.themeId)     // 现有 Theme System 注入 --th-*
+ *       → 内联 overrides（accent/radius）
+ *         → DynamicSectionRenderer × sections // 与 Editor Preview 共用
  *
- * Homepage 内容映射（最小可用，不伪造商业内容）：
- *   hero.title    ← store.name
- *   hero.subtitle ← store.description（缺省则省略）
- *   featured      ← getStorefrontProducts(store)
- *   collection/cta：当前无真实数据来源 → 不提供。
+ * Route 不访问 Supabase、不解析 semantic_data、不拼商品 URL、不做主题策略。
+ * store_pages 仅作 legacy 发布位兜底（service 层处理），不是内容事实源。
  */
 
+import type { CSSProperties } from 'react'
 import { notFound } from 'next/navigation'
 import ThemeRoot from '@/components/theme/ThemeRoot'
-import Homepage from '@/components/theme/templates/Homepage'
-import { getPublishedStore, getStorefrontProducts } from '@/lib/storefront/service'
+import DynamicSectionRenderer from '@/components/storefront/DynamicSectionRenderer'
+import { getPublicStorefront, getStorefrontProducts } from '@/lib/storefront/service'
+import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
 
 export default async function PublicStorePage({
   params,
@@ -25,23 +28,31 @@ export default async function PublicStorePage({
 }) {
   const { store_slug } = await params
 
-  const store = await getPublishedStore(store_slug)
-  if (!store) {
+  const data = await getPublicStorefront(store_slug)
+  if (!data) {
     notFound()
   }
 
+  const { store, schema } = data
   const products = await getStorefrontProducts(store)
+  const overrides = storefrontThemeOverrides(schema.theme)
+  const orderedSections = [...schema.sections].sort((a, b) => a.order - b.order)
 
   return (
-    <ThemeRoot themeId={store.themeId}>
-      <Homepage
-        store={store}
-        hero={{
-          title: store.name,
-          subtitle: store.description ?? undefined,
-        }}
-        featuredProducts={products}
-      />
+    <ThemeRoot themeId={schema.theme.themeId}>
+      <div
+        className="min-h-screen bg-[var(--th-color-background)] text-[var(--th-color-text)] [font-family:var(--th-font-body)]"
+        style={overrides as CSSProperties}
+      >
+        {orderedSections.map((section) => (
+          <DynamicSectionRenderer
+            key={section.id}
+            section={section}
+            storeSlug={store.slug}
+            products={products}
+          />
+        ))}
+      </div>
     </ThemeRoot>
   )
 }

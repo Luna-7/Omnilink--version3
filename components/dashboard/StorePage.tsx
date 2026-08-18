@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation'
 import { TemplateSelector } from '@/components/store/TemplateSelector'
 import { SectionTitle } from '@/components/dashboard/kit'
 import { useLanguage } from '@/context/LanguageContext'
-import { Store, Globe, ArrowUpRight, CheckCircle2, Sparkles, Send } from 'lucide-react'
+import { Store, Globe, ArrowUpRight, CheckCircle2, Sparkles, Send, Edit } from 'lucide-react'
+import StorefrontEditor from '@/components/storefront/StorefrontEditor'
+import { publishStorefrontAction } from '@/app/actions/store'
+import type { StorefrontSchema } from '@/lib/storefront/schema'
+import type { StorefrontProduct } from '@/lib/storefront/types'
 
 interface StorePageProps {
   store: { id: string; store_name: string; store_slug: string }
@@ -15,56 +19,29 @@ interface StorePageProps {
     template_id?: string | null
     sections?: unknown
   } | null
+  storefrontSchema?: StorefrontSchema | null
+  storefrontProducts?: StorefrontProduct[]
 }
 
-export default function StorePage({ store, storePage }: StorePageProps) {
+export default function StorePage({ store, storePage, storefrontSchema, storefrontProducts = [] }: StorePageProps) {
   const router = useRouter()
   const { t, isZh } = useLanguage()
-  const [published, setPublished] = useState(Boolean(storePage?.published))
+  const [published, setPublished] = useState(
+    storefrontSchema?.meta?.published || Boolean(storePage?.published)
+  )
   const [isPublishing, setIsPublishing] = useState(false)
+  const [showEditor, setShowEditor] = useState(false)
 
   const publishStore = async () => {
     setIsPublishing(true)
 
     try {
-      // Demo (#57 P6): a brand-new merchant has no store_page row yet, so the
-      // publish endpoint (which toggles an existing page) would no-op. Create a
-      // draft page first — zero developer intervention — then publish it.
-      let page = storePage
-      if (!page) {
-        const createRes = await fetch('/api/store-pages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            store_id: store.id,
-            template_id: 'electric-violet',
-            sections: [],
-            published: false,
-          }),
-        })
-        if (!createRes.ok) {
-          throw new Error('Failed to create store page')
-        }
-        const created = await createRes.json()
-        page = created.page
+      const result = await publishStorefrontAction(store.id)
+      if (result.success) {
+        setPublished(result.published)
+        // 刷新服务端数据，让控制台指标与「编辑店面」拿到最新 canonical schema
+        router.refresh()
       }
-
-      if (!page) {
-        throw new Error('No store page available')
-      }
-
-      const response = await fetch(`/api/store-pages/${page.id}/publish`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ published: true }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to publish store')
-      }
-
-      const result = await response.json()
-      setPublished(result.page.published)
     } catch (error) {
       console.error('Failed to publish store:', error)
     } finally {
@@ -74,6 +51,24 @@ export default function StorePage({ store, storePage }: StorePageProps) {
 
   if (!store) {
     return null
+  }
+
+  if (showEditor) {
+    return (
+      <div className="h-[calc(100vh-90px)]">
+        <StorefrontEditor
+          store={store}
+          initialSchema={storefrontSchema ?? undefined}
+          products={storefrontProducts}
+        />
+        <button
+          onClick={() => setShowEditor(false)}
+          className="fixed top-20 right-6 z-50 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-lg text-xs font-semibold hover:bg-gray-50 transition-colors"
+        >
+          {isZh ? '返回控制台' : 'Back to Console'}
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -151,8 +146,9 @@ export default function StorePage({ store, storePage }: StorePageProps) {
             <div className="mt-4">
               <TemplateSelector
                 storeId={store.id}
-                onTemplateSelect={(templateId) => {
-                  console.log('Template selected:', templateId)
+                onTemplateSelect={() => {
+                  // 模板已通过 PATCH 写入 canonical theme_config；刷新让编辑器预览拿到新主题
+                  router.refresh()
                 }}
               />
             </div>
@@ -197,7 +193,14 @@ export default function StorePage({ store, storePage }: StorePageProps) {
               )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-[#E5E2DA]">
+            <div className="mt-6 pt-4 border-t border-[#E5E2DA] space-y-3">
+              <button
+                onClick={() => setShowEditor(true)}
+                className="w-full py-2.5 px-4 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Edit size={14} />
+                <span>{isZh ? '编辑店面' : 'Edit Storefront'}</span>
+              </button>
               <button
                 onClick={publishStore}
                 disabled={isPublishing}

@@ -27,9 +27,11 @@ function formatPrice(price: number, currency: string): string {
 
 type ProductCardProps = {
   product: StorefrontProduct
+  /** 是否展示价格（编辑器 featured_products 的 showPrice 开关）。默认 true，向后兼容。 */
+  showPrice?: boolean
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, showPrice = true }: ProductCardProps) {
   const attributes = Object.entries(product.attributes)
   const badges = product.badges ?? []
 
@@ -105,9 +107,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        <p className="mt-1 [font-family:var(--th-font-heading)] text-sm font-semibold text-[var(--th-color-primary)]">
-          {formatPrice(product.price, product.currency)}
-        </p>
+        {showPrice && (
+          <p className="mt-1 [font-family:var(--th-font-heading)] text-sm font-semibold text-[var(--th-color-primary)]">
+            {formatPrice(product.price, product.currency)}
+          </p>
+        )}
       </div>
     </Link>
   )

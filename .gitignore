@@ -31,3 +31,20 @@ coverage/
 *.swp
 *.swo
 *~
+
+# WorkBuddy runtime data (not source)
+.workbuddy/
+.workbuddy-ai/
+
+# Local test credentials (contains test password, never commit)
+.diag-test-user.json
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+
+# Redundant lockfile (this project uses npm + package-lock.json)
+bun.lock
+
+# Local-only artifacts (unused asset, audit reports, one-off diagnostic scripts)
+src/
+deliverables/

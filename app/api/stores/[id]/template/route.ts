@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClientServer } from "@/lib/supabase/server";
+import { normalizeStorefrontSchema } from "@/lib/storefront/schema";
 
 /**
  * PATCH /api/stores/[id]/template —— 商家主题选择写入口。
@@ -100,7 +101,9 @@ export async function PATCH(
       ? layoutConfig.theme_id
       : template.id;
 
-  // 6. 持久化：store_settings.theme_config merge theme_id（不覆盖其他键）
+  // 6. 持久化：统一为 canonical StorefrontSchema。
+  //    既有 theme_config（canonical 或 legacy）经归一化后仅替换 theme.themeId，
+  //    sections / meta.published 等既有内容一律保留；无既有配置时以默认骨架起步。
   const { data: settings, error: settingsError } = await supabase
     .from("store_settings")
     .select("id,theme_config")
@@ -115,12 +118,22 @@ export async function PATCH(
     );
   }
 
-  const existingThemeConfig =
-    settings?.theme_config && typeof settings.theme_config === "object"
-      ? (settings.theme_config as Record<string, unknown>)
-      : {};
+  const existing =
+    normalizeStorefrontSchema(settings?.theme_config) ??
+    normalizeStorefrontSchema({ theme_id: themeId });
 
-  const nextThemeConfig = { ...existingThemeConfig, theme_id: themeId };
+  if (!existing) {
+    return NextResponse.json(
+      { error: "Failed to update store theme" },
+      { status: 500 }
+    );
+  }
+
+  const nextThemeConfig = {
+    ...existing,
+    theme: { ...existing.theme, themeId },
+    meta: { ...existing.meta, lastModified: new Date().toISOString() },
+  };
   const now = new Date().toISOString();
 
   if (settings) {

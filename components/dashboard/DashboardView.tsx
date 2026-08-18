@@ -599,14 +599,14 @@ export function DashboardView({
                 </div>
 
                 {/* 峰值浅紫色垂直投影柱 */}
-                <div className="absolute left-[64%] top-2 bottom-0 w-8 -translate-x-1/2 bg-[#3b3686]/15 rounded-t-lg pointer-events-none" />
+                <div className="absolute left-[64%] top-2 bottom-0 w-8 -translate-x-1/2 bg-[#8B5CF6]/15 rounded-t-lg pointer-events-none" />
 
                 {/* SVG 柔和波浪曲线 */}
                 <svg viewBox="0 0 300 120" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                   <defs>
                     <linearGradient id="orderGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b3686" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#3b3686" stopOpacity="0.0" />
+                      <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
                   {/* 面积渐变填充 */}
@@ -618,12 +618,12 @@ export function DashboardView({
                   <path
                     d="M 0 95 C 40 90, 70 105, 110 85 C 150 65, 180 90, 210 30 C 240 70, 270 50, 300 75"
                     fill="none"
-                    stroke="#3b3686"
+                    stroke="#8B5CF6"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                   />
                   {/* 峰值节点圆圈 */}
-                  <circle cx="210" cy="30" r="4.5" fill="#FFFFFF" stroke="#3b3686" strokeWidth="2.5" />
+                  <circle cx="210" cy="30" r="4.5" fill="#FFFFFF" stroke="#8B5CF6" strokeWidth="2.5" />
                 </svg>
               </div>
 
@@ -771,8 +771,8 @@ export function DashboardView({
                       if (!c) return null
                       return (
                         <g key={n.code} pointerEvents="none">
-                          <circle cx={c.cx} cy={c.cy} r="20" fill="#3b3686" opacity="0.18" className="animate-ping" />
-                          <circle cx={c.cx} cy={c.cy} r="5.5" fill="#3b3686" stroke="#FFFFFF" strokeWidth="2.5" />
+                          <circle cx={c.cx} cy={c.cy} r="20" fill="#8B5CF6" opacity="0.18" className="animate-ping" />
+                          <circle cx={c.cx} cy={c.cy} r="5.5" fill="#8B5CF6" stroke="#FFFFFF" strokeWidth="2.5" />
                         </g>
                       )
                     })}
@@ -783,7 +783,7 @@ export function DashboardView({
                     c.ready ? (
                       <div
                         key={c.code}
-                        className="geo-card bg-[#111827] text-white rounded-xl px-2.5 sm:px-3 py-1.5 shadow-[0_8px_20px_rgba(0,0,0,0.18)] border border-white/10"
+                        className="geo-card bg-[#8B5CF6] text-white rounded-xl px-2.5 sm:px-3 py-1.5 shadow-[0_8px_20px_rgba(139,92,246,0.3)] border border-white/10"
                         style={{
                           left: c.pixelX,
                           top: c.pixelY,
@@ -793,7 +793,7 @@ export function DashboardView({
                       >
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm">{c.flag}</span>
-                          <span className="text-[9px] text-[#9CA3AF] font-medium leading-none">{c.name}</span>
+                          <span className="text-[9px] text-white/80 font-medium leading-none">{c.name}</span>
                           <span className="pulse-dot" />
                         </div>
                         <div className="font-bold text-white text-xs tnum mt-0.5">${c.formatted}</div>
