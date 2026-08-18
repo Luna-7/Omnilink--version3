@@ -556,6 +556,16 @@ export default function StorefrontEditor({
       {/* 顶部工具栏 */}
       <div className="h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center gap-3">
+          <a
+            href={`/store/${store.store_slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
+          >
+            <span>{isZh ? '访问店铺' : 'Visit Store'}</span>
+            <ExternalLink size={12} />
+          </a>
+
           {mode === 'template' ? (
             <>
               <a
@@ -576,17 +586,7 @@ export default function StorefrontEditor({
                 </a>
               )}
             </>
-          ) : (
-            <a
-              href={`/store/${store.store_slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
-            >
-              <span>{isZh ? '访问店铺' : 'Visit Store'}</span>
-              <ExternalLink size={12} />
-            </a>
-          )}
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
@@ -602,7 +602,7 @@ export default function StorefrontEditor({
             <button
               onClick={handleSaveDraft}
               disabled={isSaving}
-              className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+              className="px-4 py-1.5 rounded-lg bg-[#FB7185] hover:bg-[#E11D48] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
             >
               {isSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
               <span>{isZh ? '保存模板' : 'Save Template'}</span>
@@ -621,7 +621,7 @@ export default function StorefrontEditor({
               <button
                 onClick={handlePublish}
                 disabled={isPublishing}
-                className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                className="px-4 py-1.5 rounded-lg bg-[#FB7185] hover:bg-[#E11D48] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
               >
                 {isPublishing ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
                 <span>
@@ -645,8 +645,8 @@ export default function StorefrontEditor({
 
       {/* 三栏工作台 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* 左侧：Section Tree（缩减宽度至字符尾部大小） */}
-        <div className="w-52 sm:w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
+        {/* 左侧：Section Tree (Optimized Width) */}
+        <div className="w-56 sm:w-60 bg-white border-r border-gray-200 flex flex-col shrink-0">
           <div className="p-3 border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Layers size={15} className="text-gray-700" />
@@ -668,7 +668,7 @@ export default function StorefrontEditor({
                   onClick={() => selectSection(section.id)}
                   className={`group px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
                     isSelected
-                      ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                      ? 'bg-[#FB7185] text-white border-[#FB7185] shadow-sm'
                       : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -742,26 +742,34 @@ export default function StorefrontEditor({
             })}
           </div>
 
-          {/* 新增分区 */}
-          <div className="p-3 border-t border-gray-200 flex items-center gap-2">
-            <select
-              value={newSectionType}
-              onChange={(e) => setNewSectionType(e.target.value as SectionType)}
-              className="flex-1 px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-            >
-              {SECTION_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.type} value={opt.type}>
-                  {isZh ? SECTION_LABELS[opt.type].zh : opt.label}
+          {/* 新增分区 (Optimized UI) */}
+          <div className="p-3 border-t border-gray-200">
+            <div className="relative group">
+              <select
+                value={newSectionType}
+                onChange={(e) => {
+                  const type = e.target.value as SectionType
+                  setNewSectionType(type)
+                  addSection(type)
+                }}
+                className="w-full pl-9 pr-8 py-2.5 text-xs font-bold border-2 border-dashed border-gray-200 rounded-xl appearance-none focus:outline-none focus:border-[#FB7185] focus:ring-4 focus:ring-[#FB7185]/10 bg-gray-50 hover:bg-white hover:border-[#FB7185]/50 transition-all cursor-pointer text-gray-600 hover:text-[#FB7185]"
+              >
+                <option value="" disabled>
+                  {isZh ? '选择并添加模块...' : 'Select to Add Section...'}
                 </option>
-              ))}
-            </select>
-            <button
-              onClick={() => addSection(newSectionType)}
-              className="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1 transition-colors"
-            >
-              <Plus size={13} />
-              <span>{isZh ? '添加' : 'Add'}</span>
-            </button>
+                {SECTION_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.type} value={opt.type} className="text-gray-900 font-medium">
+                    {isZh ? SECTION_LABELS[opt.type].zh : opt.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-[#FB7185] transition-colors">
+                <Plus size={14} />
+              </div>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <ChevronDown size={12} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -776,8 +784,8 @@ export default function StorefrontEditor({
           />
         </div>
 
-        {/* 右侧：Property Panel */}
-        <div className="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
+        {/* 右侧：Property Panel (Optimized Width) */}
+        <div className="w-80 sm:w-96 bg-white border-l border-gray-200 flex flex-col shrink-0">
           <div className="p-3.5 border-b border-gray-200">
             <div className="flex items-center gap-2">
               <Palette size={16} className="text-gray-700" />
@@ -790,7 +798,7 @@ export default function StorefrontEditor({
                 onClick={() => setActiveTab('section')}
                 className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   activeTab === 'section'
-                    ? 'bg-white text-purple-600 shadow-sm'
+                    ? 'bg-white text-[#FB7185] shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -800,7 +808,7 @@ export default function StorefrontEditor({
                 onClick={() => setActiveTab('theme')}
                 className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   activeTab === 'theme'
-                    ? 'bg-white text-purple-600 shadow-sm'
+                    ? 'bg-white text-[#FB7185] shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -810,7 +818,7 @@ export default function StorefrontEditor({
                 onClick={() => setActiveTab('global')}
                 className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   activeTab === 'global'
-                    ? 'bg-white text-purple-600 shadow-sm'
+                    ? 'bg-white text-[#FB7185] shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -943,7 +951,7 @@ function SectionProperties({
             onClick={() => onSubTabChange(tab.key)}
             className={`pb-2 px-3 border-b-2 transition-colors ${
               activeSubTab === tab.key
-                ? 'border-purple-600 text-purple-600'
+                ? 'border-[#FB7185] text-[#FB7185]'
                 : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
@@ -1020,14 +1028,14 @@ function SectionProperties({
                 placeholder={isZh ? '按钮文字' : 'Button label'}
                 value={c.buttonText || ''}
                 onChange={(e) => onUpdateContent({ buttonText: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
               />
               <input
                 type="text"
                 placeholder={isZh ? '跳转链接 (/products)' : 'Button URL (/products)'}
                 value={c.buttonLink || ''}
                 onChange={(e) => onUpdateContent({ buttonLink: e.target.value })}
-                className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
               />
             </div>
           )}
@@ -1042,14 +1050,14 @@ function SectionProperties({
                 placeholder={isZh ? '按钮文字' : 'Button label'}
                 value={c.secondaryButtonText || ''}
                 onChange={(e) => onUpdateContent({ secondaryButtonText: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
               />
               <input
                 type="text"
                 placeholder={isZh ? '跳转链接 (/about)' : 'Button URL (/about)'}
                 value={c.secondaryButtonLink || ''}
                 onChange={(e) => onUpdateContent({ secondaryButtonLink: e.target.value })}
-                className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
               />
             </div>
           )}
@@ -1065,7 +1073,7 @@ function SectionProperties({
                 value={c.imageUrl || ''}
                 onChange={(e) => onUpdateContent({ imageUrl: e.target.value })}
                 placeholder="https://..."
-                className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
               />
               <div className="space-y-1">
                 <span className="text-[10px] text-gray-500 font-bold">
@@ -1245,14 +1253,14 @@ function ThemePanel({
       {/* 模板选择 */}
       <div className="space-y-3">
         <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-          <Palette size={14} className="text-purple-600" />
+          <Palette size={14} className="text-[#FB7185]" />
           <span>{isZh ? '当前视觉风格 (Style Library)' : 'Active Visual Style'}</span>
         </label>
         <div className="relative">
           <select
             value={schema.theme.themeId}
             onChange={(e) => onUpdateTheme({ themeId: e.target.value })}
-            className="w-full px-3 py-2.5 pr-8 text-xs font-bold border border-gray-200 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-50 cursor-pointer"
+            className="w-full px-3 py-2.5 pr-8 text-xs font-bold border border-gray-200 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-[#FB7185] bg-gray-50 cursor-pointer"
           >
             {AVAILABLE_THEMES.map((t) => (
               <option key={t.id} value={t.id}>
@@ -1289,7 +1297,7 @@ function ThemePanel({
                 key={col.value}
                 onClick={() => onUpdateTheme({ accent: col.value })}
                 className={`h-7 rounded-lg transition-transform flex items-center justify-center relative cursor-pointer border border-gray-200 ${
-                  isSelected ? 'scale-110 ring-2 ring-offset-2 ring-purple-600' : 'hover:scale-105'
+                  isSelected ? 'scale-110 ring-2 ring-offset-2 ring-[#FB7185]' : 'hover:scale-105'
                 }`}
                 style={{ backgroundColor: col.value }}
                 title={col.name}
@@ -1313,7 +1321,7 @@ function ThemePanel({
             type="text"
             value={accent}
             onChange={(e) => onUpdateTheme({ accent: e.target.value })}
-            className="flex-1 px-2.5 py-1.5 text-xs font-mono font-bold uppercase border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-50"
+            className="flex-1 px-2.5 py-1.5 text-xs font-mono font-bold uppercase border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185] bg-gray-50"
           />
         </div>
       </div>
@@ -1339,8 +1347,8 @@ function ThemePanel({
                 onClick={() => onUpdateTheme({ radius: rad.value })}
                 className={`px-1 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-purple-600 text-white border-purple-600'
-                    : 'bg-gray-50 text-gray-900 border-gray-200 hover:border-purple-600'
+                    ? 'bg-[#FB7185] text-white border-[#FB7185]'
+                    : 'bg-gray-50 text-gray-900 border-gray-200 hover:border-[#FB7185]'
                 }`}
               >
                 {rad.label}
@@ -1358,7 +1366,7 @@ function ThemePanel({
             step="2"
             value={radius}
             onChange={(e) => onUpdateTheme({ radius: parseInt(e.target.value) })}
-            className="w-full accent-purple-600 cursor-pointer"
+            className="w-full accent-[#FB7185] cursor-pointer"
           />
           <div className="flex justify-between text-[10px] text-gray-500 mt-1">
             <span>0px</span>
@@ -1405,8 +1413,8 @@ function SegmentedControl({
               onClick={() => onChange(opt.value)}
               className={`py-2 px-1 rounded-lg text-xs font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
                 isSelected
-                  ? 'bg-purple-600 text-white border-purple-600'
-                  : 'bg-gray-50 text-gray-900 border-gray-200 hover:border-purple-600'
+                  ? 'bg-[#FB7185] text-white border-[#FB7185]'
+                  : 'bg-gray-50 text-gray-900 border-gray-200 hover:border-[#FB7185]'
               }`}
             >
               {opt.icon}
@@ -1433,12 +1441,12 @@ function ToggleField({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-200 hover:border-purple-300 transition-colors"
+      className="w-full flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-200 hover:border-[#FECDD3] transition-colors"
     >
       <span className="text-xs font-medium text-gray-900">{label}</span>
       <span
         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-          checked ? 'bg-purple-600' : 'bg-gray-300'
+          checked ? 'bg-[#FB7185]' : 'bg-gray-300'
         }`}
       >
         <span
@@ -1478,7 +1486,7 @@ function NumberField({
           const n = parseInt(e.target.value)
           onChange(Number.isFinite(n) && n >= min ? Math.min(n, max) : min)
         }}
-        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
       />
     </div>
   )
@@ -1502,7 +1510,7 @@ function TextField({
         type="text"
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
       />
     </div>
   )
@@ -1525,7 +1533,7 @@ function TextArea({
       <textarea
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 h-24 resize-none"
+        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185] h-24 resize-none"
       />
     </div>
   )

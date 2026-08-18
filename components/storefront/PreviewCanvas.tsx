@@ -185,7 +185,7 @@ export default function PreviewCanvas({
               onClick={() => setDeviceMode('desktop')}
               className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
                 deviceMode === 'desktop'
-                  ? 'bg-white text-purple-700 shadow-xs'
+                  ? 'bg-white text-[#FB7185] shadow-xs'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
               title={isZh ? '桌面端 (1440x900)' : 'Desktop (1440x900)'}
@@ -198,7 +198,7 @@ export default function PreviewCanvas({
               onClick={() => setDeviceMode('tablet')}
               className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
                 deviceMode === 'tablet'
-                  ? 'bg-white text-purple-700 shadow-xs'
+                  ? 'bg-white text-[#FB7185] shadow-xs'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
               title={isZh ? '平板 (768x1024)' : 'Tablet (768x1024)'}
@@ -211,7 +211,7 @@ export default function PreviewCanvas({
               onClick={() => setDeviceMode('mobile')}
               className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
                 deviceMode === 'mobile'
-                  ? 'bg-white text-purple-700 shadow-xs'
+                  ? 'bg-white text-[#FB7185] shadow-xs'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
               title={isZh ? '手机 (390x844)' : 'Mobile (390x844)'}
@@ -245,7 +245,7 @@ export default function PreviewCanvas({
                   setZoomPercent(Number(e.target.value))
                   setIsAutoFit(false)
                 }}
-                className="w-20 sm:w-28 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-20 sm:w-28 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-[#FB7185]"
               />
 
               <button
@@ -260,7 +260,7 @@ export default function PreviewCanvas({
                 <ZoomIn size={13} />
               </button>
 
-              <span className="font-mono text-[11px] font-extrabold text-purple-700 w-10 text-right select-none">
+              <span className="font-mono text-[11px] font-extrabold text-[#FB7185] w-10 text-right select-none">
                 {zoomPercent}%
               </span>
             </div>
@@ -270,7 +270,7 @@ export default function PreviewCanvas({
               onClick={handleFit}
               className={`p-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
                 isAutoFit
-                  ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-2xs'
+                  ? 'bg-[#FFF1F2] text-[#FB7185] border-[#FECDD3] shadow-2xs'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
               }`}
               title={isZh ? '自适应当前屏幕' : 'Fit to screen'}
