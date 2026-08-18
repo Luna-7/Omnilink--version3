@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+
+# Testing
+coverage/
+
+# Misc
+*.swp
+*.swo
+*~
+
+# WorkBuddy runtime data (not source)
+.workbuddy/
+.workbuddy-ai/
+
+# Local test credentials (contains test password, never commit)
+.diag-test-user.json
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+
+# Redundant lockfile (this project uses npm + package-lock.json)
+bun.lock
+
+# Local-only artifacts (unused asset, audit reports, one-off diagnostic scripts)
+src/
+deliverables/
