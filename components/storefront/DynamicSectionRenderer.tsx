@@ -16,21 +16,36 @@
  */
 
 import Link from 'next/link'
-import type { StorefrontSection } from '@/lib/storefront/schema'
+import type { StorefrontSection, GlobalStoreInfo, StoreContactConfig, StoreSocialConfig } from '@/lib/storefront/schema'
 import type { StorefrontProduct } from '@/lib/storefront/types'
 import ProductCard from '@/components/theme/core/ProductCard'
+import {
+  Mail,
+  Phone,
+  MapPin,
+  MessageCircle,
+  Globe,
+  Share2,
+} from 'lucide-react'
 
 interface DynamicSectionRendererProps {
   section: StorefrontSection
   storeSlug?: string
   /** 真实商品（白名单 DTO）。featured_products 使用；其它 section 忽略。 */
   products?: StorefrontProduct[]
+  /** 全局店铺及联系方式信息 */
+  globalInfo?: GlobalStoreInfo
+  contact?: StoreContactConfig
+  social?: StoreSocialConfig
 }
 
 export default function DynamicSectionRenderer({
   section,
   storeSlug,
   products = [],
+  globalInfo,
+  contact,
+  social,
 }: DynamicSectionRendererProps) {
   const { type, content, style, visible } = section
 
@@ -39,9 +54,12 @@ export default function DynamicSectionRenderer({
   const paddingClass = getPaddingClass(style?.padding)
   const bgClass = getBgClass(style?.bgStyle)
 
+  const activeContact = contact || globalInfo?.contact
+  const activeSocial = social || globalInfo?.social
+
   switch (type) {
     case 'header':
-      return <HeaderSection content={content} storeSlug={storeSlug} />
+      return <HeaderSection content={content} storeSlug={storeSlug} contact={activeContact} />
     case 'hero':
       return (
         <section className={`${paddingClass} ${bgClass}`}>
@@ -75,11 +93,11 @@ export default function DynamicSectionRenderer({
     case 'cta':
       return (
         <section className={`${paddingClass} ${bgClass}`}>
-          <CTASection content={content} />
+          <CTASection content={content} contact={activeContact} />
         </section>
       )
     case 'footer':
-      return <FooterSection content={content} />
+      return <FooterSection content={content} contact={activeContact} social={activeSocial} />
     case 'testimonials':
       return (
         <section className={`${paddingClass} ${bgClass}`}>
@@ -152,9 +170,11 @@ const TAG_CHIP =
 function HeaderSection({
   content,
   storeSlug,
+  contact,
 }: {
   content: StorefrontSection['content']
   storeSlug?: string
+  contact?: StoreContactConfig
 }) {
   return (
     <header className="sticky top-0 z-40 bg-[var(--th-color-background)]/95 backdrop-blur-md border-b border-[var(--th-color-border)]">
@@ -179,6 +199,14 @@ function HeaderSection({
           <a href="#products" className="hover:text-[var(--th-color-primary)]">
             Products
           </a>
+          {(contact?.contactUrl || contact?.email) && (
+            <a
+              href={contact.contactUrl || `mailto:${contact.email}`}
+              className="hover:text-[var(--th-color-primary)]"
+            >
+              Contact
+            </a>
+          )}
         </nav>
       </div>
     </header>
@@ -410,48 +438,55 @@ function RichTextSection({
 
 function CTASection({
   content,
+  contact,
 }: {
   content: StorefrontSection['content']
   style?: StorefrontSection['style']
+  contact?: StoreContactConfig
 }) {
-  // CTA 通常置于 contrast 深色背景上，文字保持白色系。
+  const targetLink = content.buttonLink && content.buttonLink !== '#' ? content.buttonLink : (contact?.contactUrl || '#products')
+
   return (
-    <div className="max-w-4xl mx-auto px-5 sm:px-8 lg:px-10 text-center">
-      {content.tag && (
-        <span className="inline-block text-xs font-bold px-3 py-1 bg-white/20 rounded-full uppercase tracking-wider text-white">
-          {content.tag}
-        </span>
-      )}
-      <h2 className="[font-family:var(--th-font-heading)] text-3xl sm:text-4xl font-black tracking-tight leading-tight mt-4">
-        {content.title || 'Call to Action'}
-      </h2>
-      {content.subtitle && (
-        <p className="text-base sm:text-lg text-white/90 font-medium mt-3">
-          {content.subtitle}
-        </p>
-      )}
-      {content.description && (
-        <p className="text-sm sm:text-base text-white/80 max-w-xl mx-auto leading-relaxed mt-4">
-          {content.description}
-        </p>
-      )}
-      {content.buttonText && (
-        <Link
-          href={content.buttonLink || '#'}
-          className="mt-6 inline-block px-8 py-3.5 rounded-[var(--th-radius-button)] bg-white text-gray-900 text-sm font-bold hover:bg-gray-100 transition-colors [transition-duration:var(--th-motion-duration)]"
-        >
-          {content.buttonText}
-        </Link>
-      )}
+    <div className="max-w-4xl mx-auto px-5 sm:px-8 lg:px-10">
+      <div className="rounded-[var(--th-radius-card)] border border-[var(--th-color-border)] bg-[var(--th-color-surface)] p-10 sm:p-14 text-center shadow-[var(--th-shadow-card)]">
+        {content.tag && <span className={TAG_CHIP}>{content.tag}</span>}
+        <h2 className="[font-family:var(--th-font-heading)] [font-weight:var(--th-font-heading-weight)] text-2xl sm:text-3xl lg:text-4xl tracking-tight text-[var(--th-color-text)] mt-3">
+          {content.title || 'Call to Action'}
+        </h2>
+        {content.subtitle && (
+          <p className="text-base sm:text-lg text-[var(--th-color-text)]/80 font-medium mt-3 max-w-xl mx-auto">
+            {content.subtitle}
+          </p>
+        )}
+        {content.description && (
+          <p className="text-sm sm:text-base text-[var(--th-color-muted)] max-w-xl mx-auto leading-relaxed mt-3">
+            {content.description}
+          </p>
+        )}
+        {content.buttonText && (
+          <div className="mt-6">
+            <Link
+              href={targetLink}
+              className={PRIMARY_BUTTON}
+            >
+              {content.buttonText}
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 function FooterSection({
   content,
+  contact,
+  social,
 }: {
   content: StorefrontSection['content']
   style?: StorefrontSection['style']
+  contact?: StoreContactConfig
+  social?: StoreSocialConfig
 }) {
   const trustBadges = [
     content.trustBadge1,
@@ -462,15 +497,28 @@ function FooterSection({
   const copyright =
     content.copyright || `© ${new Date().getFullYear()} ${content.title || 'Store'}. All rights reserved.`
 
+  const hasContact = Boolean(
+    contact && (contact.email || contact.phone || contact.whatsapp || contact.address)
+  )
+
+  const socialLinks = [
+    { key: 'instagram', url: social?.instagram, icon: Share2, label: 'Instagram' },
+    { key: 'facebook', url: social?.facebook, icon: Share2, label: 'Facebook' },
+    { key: 'youtube', url: social?.youtube, icon: Share2, label: 'YouTube' },
+    { key: 'tiktok', url: social?.tiktok, icon: Globe, label: 'TikTok' },
+    { key: 'x', url: social?.x, icon: Share2, label: 'X' },
+    { key: 'linkedin', url: social?.linkedin, icon: Share2, label: 'LinkedIn' },
+  ].filter((item) => typeof item.url === 'string' && item.url.trim().length > 0)
+
   return (
-    <footer className="bg-gray-950 text-gray-400 pt-14 pb-12 px-4 sm:px-6 lg:px-8 mt-auto">
+    <footer className="bg-[var(--th-color-surface)] text-[var(--th-color-muted)] border-t border-[var(--th-color-border)] pt-14 pb-12 px-4 sm:px-6 lg:px-8 mt-auto">
       <div className="max-w-7xl mx-auto space-y-10">
         {showTrustBadges && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {trustBadges.map((badge, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-center gap-2 rounded-[var(--th-radius-card)] border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold text-gray-200"
+                className="flex items-center justify-center gap-2 rounded-[var(--th-radius-card)] border border-[var(--th-color-border)] bg-[var(--th-color-background)]/50 px-4 py-3 text-xs font-semibold text-[var(--th-color-text)]"
               >
                 <span className="text-[var(--th-color-primary)]">✓</span>
                 <span>{badge}</span>
@@ -478,14 +526,89 @@ function FooterSection({
             ))}
           </div>
         )}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs border-t border-white/10 pt-8">
+
+        {(hasContact || socialLinks.length > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-[var(--th-color-border)] pt-8">
+            {hasContact && (
+              <div className="space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wider text-[var(--th-color-primary)]">
+                  Contact Us
+                </div>
+                <div className="space-y-2 text-xs sm:text-sm text-[var(--th-color-text)]/90">
+                  {contact?.address && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 shrink-0 text-[var(--th-color-muted)]" />
+                      <span>{contact.address}</span>
+                    </div>
+                  )}
+                  {contact?.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 shrink-0 text-[var(--th-color-muted)]" />
+                      <a href={`mailto:${contact.email}`} className="hover:text-[var(--th-color-primary)] underline-offset-2 hover:underline">
+                        {contact.email}
+                      </a>
+                    </div>
+                  )}
+                  {contact?.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 shrink-0 text-[var(--th-color-muted)]" />
+                      <a href={`tel:${contact.phone}`} className="hover:text-[var(--th-color-primary)]">
+                        {contact.phone}
+                      </a>
+                    </div>
+                  )}
+                  {contact?.whatsapp && (
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 shrink-0 text-emerald-500" />
+                      <a
+                        href={`https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-[var(--th-color-primary)]"
+                      >
+                        WhatsApp: {contact.whatsapp}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {socialLinks.length > 0 && (
+              <div className="space-y-3 md:text-right">
+                <div className="text-xs font-bold uppercase tracking-wider text-[var(--th-color-primary)]">
+                  Connect
+                </div>
+                <div className="flex items-center gap-3 md:justify-end flex-wrap">
+                  {socialLinks.map((item) => {
+                    const IconComponent = item.icon
+                    return (
+                      <a
+                        key={item.key}
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={item.label}
+                        className="w-9 h-9 rounded-full border border-[var(--th-color-border)] bg-[var(--th-color-background)] hover:bg-[var(--th-color-primary)] hover:text-white hover:border-[var(--th-color-primary)] flex items-center justify-center transition-all text-[var(--th-color-text)]"
+                      >
+                        <IconComponent className="w-4 h-4" />
+                      </a>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs border-t border-[var(--th-color-border)] pt-8">
           <div className="flex items-center gap-3">
-            <span className="[font-family:var(--th-font-heading)] font-bold text-white text-sm tracking-tight">
+            <span className="[font-family:var(--th-font-heading)] font-bold text-[var(--th-color-text)] text-sm tracking-tight">
               {content.title || 'Store'}
             </span>
             <span>{copyright}</span>
           </div>
-          <div className="text-gray-500">Powered by Omnilink Commerce Engine</div>
+          <div className="text-[var(--th-color-muted)]">Powered by Omnilink Commerce Engine</div>
         </div>
       </div>
     </footer>

@@ -168,15 +168,27 @@ export async function PATCH(
   }
 
   // 7. Legacy 兼容：store_pages.template_id best-effort（无该行不阻塞主题写入）
-  const sections = Array.isArray(layoutConfig.sections)
+  // 核心原则：如果既有页面或 Schema 中已存在编排好的 sections，一律保留既有 sections，不被模板默认配置覆盖。
+  const templateSections = Array.isArray(layoutConfig.sections)
     ? layoutConfig.sections
     : [];
+
+  const { data: existingPage } = await supabase
+    .from("store_pages")
+    .select("id, sections")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  const pageSections =
+    Array.isArray(existingPage?.sections) && existingPage.sections.length > 0
+      ? existingPage.sections
+      : (existing.sections.length > 0 ? existing.sections : templateSections);
 
   const { data: page } = await supabase
     .from("store_pages")
     .update({
       template_id: template.id,
-      sections,
+      sections: pageSections,
       updated_at: now,
     })
     .eq("store_id", storeId)

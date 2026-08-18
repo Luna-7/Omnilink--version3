@@ -42,7 +42,7 @@ export default function ProductCard({ product, showPrice = true }: ProductCardPr
         'group block overflow-hidden',
         'rounded-[var(--th-radius-card)]',
         'border border-[var(--th-color-border)]',
-        'bg-[var(--th-color-surface)]/80 backdrop-blur-sm',
+        'bg-[var(--th-color-surface)]',
         'shadow-[var(--th-shadow-card)]',
         'transition-all [transition-duration:var(--th-motion-duration)] [transition-timing-function:var(--th-motion-easing)]',
         'hover:-translate-y-0.5 hover:border-[var(--th-color-primary)]/40 hover:shadow-[var(--th-shadow-floating)]'

@@ -21,38 +21,41 @@
 
 'use client'
 
-import { useState, useEffect, useId, type CSSProperties } from 'react'
+import { useState, useEffect, useId } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import type {
   SectionStyle,
   SectionType,
   StorefrontSchema,
   StorefrontSection,
+  StoreContactConfig,
+  StoreSocialConfig,
 } from '@/lib/storefront/schema'
 import { createDefaultSchema } from '@/lib/storefront/schema'
 import type { StorefrontProduct } from '@/lib/storefront/types'
-import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
-import ThemeRoot from '@/components/theme/ThemeRoot'
-import { getTheme, DEFAULT_THEME_ID } from '@/lib/themes/registry'
-import DynamicSectionRenderer from './DynamicSectionRenderer'
+import { getTheme, DEFAULT_THEME_ID, ALL_STYLES } from '@/lib/themes/registry'
+import PreviewCanvas from './PreviewCanvas'
 import {
   saveStorefrontSchemaAction,
   loadStorefrontSchemaAction,
   publishStorefrontAction,
 } from '@/app/actions/store'
 import {
+  saveTemplateSchemaAction,
+  loadTemplateSchemaAction,
+} from '@/app/actions/template'
+import {
+  ArrowLeft,
+  Eye,
+  Save,
   Layers,
   Palette,
   EyeOff,
-  Monitor,
-  Tablet,
-  Smartphone,
   Maximize2,
   Minimize2,
   RefreshCw,
   Send,
   ExternalLink,
-  LayoutTemplate,
   AlertCircle,
   Plus,
   Trash2,
@@ -95,8 +98,8 @@ const SECTION_LABELS: Record<SectionType, { zh: string; en: string }> = {
   footer: { zh: '页脚', en: 'Footer' },
 }
 
-/** 主题选项只来自真实 ThemeRegistry，杜绝假 ID。 */
-const AVAILABLE_THEMES = [getTheme(DEFAULT_THEME_ID)].map((t) => ({
+/** 主题/视觉风格选项来自 ThemeRegistry 的 ALL_STYLES 官方列表。 */
+const AVAILABLE_THEMES = ALL_STYLES.map((t) => ({
   id: t.id,
   name: t.name,
   description: t.description,
@@ -158,41 +161,85 @@ function generateSectionId(type: SectionType): string {
   return `sec-${type}-${Date.now().toString(36)}${sectionIdCounter.toString(36)}`
 }
 
-/** 新增 section 的默认内容（按类型给最小可用骨架）。 */
+/** 新增 section 的默认内容（按类型给精良的品牌骨架）。 */
 function defaultContentFor(type: SectionType): StorefrontSection['content'] {
   switch (type) {
     case 'header':
-      return { title: 'Store', announcement: 'Welcome to our store', showAnnouncement: true }
+      return { title: 'KURA OBJECTS', announcement: 'COMPLIMENTARY WORLDWIDE INSURED SHIPPING OVER $250', showAnnouncement: true }
     case 'hero':
       return {
-        tag: 'NEW',
-        title: 'Your headline here',
-        subtitle: '',
-        description: 'Describe your store or campaign',
-        buttonText: 'Shop Now',
+        tag: 'NEW RELEASE',
+        title: 'Tactile Objects for Intentional Living',
+        subtitle: 'Sculptural acoustics and hand-finished stoneware.',
+        description: 'Crafted in small-batch editions by master artisans. Every piece balances tactile materiality with timeless precision.',
+        buttonText: 'Explore Collection',
         buttonLink: '#products',
+        secondaryButtonText: 'Read Manifesto',
+        secondaryButtonLink: '#sec-rich-text',
+        imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=1200&auto=format&fit=crop',
       }
     case 'featured_products':
-      return { tag: 'FEATURED', title: 'Featured Products', subtitle: '', columns: 3, count: 6, showPrice: true, showBuyButton: true }
+      return { tag: 'CURATED SELECTION', title: 'Featured Editions', subtitle: 'Limited release objects designed for modern sanctuaries.', columns: 3, count: 6, showPrice: true, showBuyButton: true }
     case 'collection':
     case 'image_text':
-      return { title: 'Section title', subtitle: '', description: 'Section description', imagePosition: 'right' }
+      return {
+        tag: 'SPECIAL EDITION',
+        title: 'The Ceramic Acoustic Vessel',
+        subtitle: 'Where ancient stoneware meets sound resonance.',
+        description: 'Engineered with high-density stoneware clay and tuned acoustic chambers.',
+        buttonText: 'Discover Series',
+        buttonLink: '#products',
+        imagePosition: 'right',
+        imageUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1200&auto=format&fit=crop',
+      }
     case 'rich_text':
-      return { title: 'About Us', subtitle: '', description: 'Tell your story' }
+      return {
+        tag: 'OUR MANIFESTO',
+        title: 'Designed for Quiet Moments',
+        subtitle: 'We believe objects should enrich everyday rituals without demanding visual noise.',
+        description: 'In a culture defined by rapid obsolescence, KURA creates durable, tactile goods designed to age gracefully.',
+      }
     case 'cta':
-      return { title: 'Call to Action', subtitle: '', description: 'Give visitors a reason', buttonText: 'Shop Now', buttonLink: '#products' }
+      return {
+        tag: 'PRIVATE ACCESS',
+        title: 'Join the KURA Atelier Circle',
+        subtitle: 'Receive private invitations to limited-run artisan drops and acoustic exhibitions.',
+        description: 'Subscribers gain early access 24 hours prior to public collection releases.',
+        buttonText: 'Request Access',
+        buttonLink: '#products',
+      }
     case 'testimonials':
-      return { tag: 'TESTIMONIALS', title: 'What customers say' }
+      return {
+        tag: 'PRESS & REVIEWS',
+        title: 'Critical Reflection',
+        testimonialsList: [
+          {
+            name: 'Monocle Design Review',
+            role: 'Architecture & Objects Issue',
+            quote: 'KURA has accomplished the rare feat of fusing acoustic purity with museum-grade ceramic art.',
+            rating: 5,
+          },
+        ],
+      }
     case 'faq':
-      return { tag: 'FAQ', title: 'Frequently asked questions' }
+      return {
+        tag: 'ASSISTANCE',
+        title: 'Frequently Asked Questions',
+        faqList: [
+          {
+            question: 'Where are KURA objects crafted?',
+            answer: 'Each piece is hand-finished in small studios across Kyoto and Zurich.',
+          },
+        ],
+      }
     case 'footer':
       return {
-        title: 'Store',
+        title: 'KURA OBJECTS',
         showTrustBadges: true,
-        trustBadge1: '7天无理由退换',
-        trustBadge2: '极速包邮',
-        trustBadge3: '正品官方保障',
-        copyright: '',
+        trustBadge1: 'Ethically Hand-Crafted',
+        trustBadge2: 'Insured Global Shipping',
+        trustBadge3: '5-Year Limited Warranty',
+        copyright: '© 2026 KURA OBJECTS. All rights reserved.',
       }
     default:
       return { title: 'Section title' }
@@ -216,12 +263,18 @@ interface StorefrontEditorProps {
   initialSchema?: StorefrontSchema
   /** 真实商品（服务端预取的白名单 DTO），用于预览 featured_products。 */
   products?: StorefrontProduct[]
+  /** 编辑器模式：store (默认，编辑真实店铺) 或 template (编辑模板 Draft) */
+  mode?: 'store' | 'template'
+  /** 当 mode === 'template' 时传入的模板 ID */
+  templateId?: string
 }
 
 export default function StorefrontEditor({
   store,
   initialSchema,
   products = [],
+  mode = 'store',
+  templateId,
 }: StorefrontEditorProps) {
   const { isZh } = useLanguage()
   const colorPickerId = useId()
@@ -233,7 +286,50 @@ export default function StorefrontEditor({
   const [isSaving, setIsSaving] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
-  const [activeTab, setActiveTab] = useState<'section' | 'theme'>('section')
+  const [activeTab, setActiveTab] = useState<'section' | 'theme' | 'global'>('section')
+
+  function updateGlobalInfo(
+    contactPartial: Partial<StoreContactConfig>,
+    socialPartial: Partial<StoreSocialConfig>,
+    brandName?: string
+  ) {
+    setSchema((prev) => {
+      const currentGlobal = prev.globalInfo || {}
+      const currentContact = prev.contact || currentGlobal.contact || {}
+      const currentSocial = prev.social || currentGlobal.social || {}
+
+      const newContact = { ...currentContact, ...contactPartial }
+      const newSocial = { ...currentSocial, ...socialPartial }
+      const newBrandName = brandName !== undefined ? brandName : currentGlobal.brandName
+
+      const newGlobal = {
+        ...currentGlobal,
+        brandName: newBrandName,
+        contact: newContact,
+        social: newSocial,
+      }
+
+      return {
+        ...prev,
+        globalInfo: newGlobal,
+        contact: newContact,
+        social: newSocial,
+        sections: prev.sections.map((sec) => {
+          if (sec.type === 'footer' && brandName !== undefined && brandName.trim()) {
+            return {
+              ...sec,
+              content: {
+                ...sec.content,
+                title: brandName,
+              },
+            }
+          }
+          return sec
+        }),
+      }
+    })
+    setIsDirty(true)
+  }
   const [activeSubTab, setActiveSubTab] = useState<'content' | 'layout' | 'style'>('content')
   const [isDirty, setIsDirty] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
@@ -242,17 +338,29 @@ export default function StorefrontEditor({
   // Load schema from server on mount if no initial schema
   useEffect(() => {
     if (!initialSchema) {
-      loadStorefrontSchemaAction(store.id)
-        .then((loadedSchema) => {
-          if (loadedSchema) {
-            setSchema(loadedSchema)
-          }
-        })
-        .catch((error) => {
-          console.error('Failed to load storefront schema:', error)
-        })
+      if (mode === 'template' && templateId) {
+        loadTemplateSchemaAction(templateId)
+          .then((loadedSchema) => {
+            if (loadedSchema) {
+              setSchema(loadedSchema)
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to load template schema:', error)
+          })
+      } else {
+        loadStorefrontSchemaAction(store.id)
+          .then((loadedSchema) => {
+            if (loadedSchema) {
+              setSchema(loadedSchema)
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to load storefront schema:', error)
+          })
+      }
     }
-  }, [store.id, initialSchema])
+  }, [store.id, initialSchema, mode, templateId])
 
   const orderedSections = [...schema.sections].sort((a, b) => a.order - b.order)
   const selectedSection = schema.sections.find((s) => s.id === selectedSectionId)
@@ -380,9 +488,19 @@ export default function StorefrontEditor({
     setIsSaving(true)
 
     try {
-      await saveStorefrontSchemaAction(store.id, schema)
-      setIsDirty(false)
-      showToast(isZh ? '草稿已保存' : 'Draft saved')
+      if (mode === 'template' && templateId) {
+        const res = await saveTemplateSchemaAction(templateId, schema)
+        if (res.success) {
+          setIsDirty(false)
+          showToast(isZh ? '模板已成功保存' : 'Template saved successfully')
+        } else {
+          showToast(res.error || (isZh ? '保存失败' : 'Save failed'), 'err')
+        }
+      } else {
+        await saveStorefrontSchemaAction(store.id, schema)
+        setIsDirty(false)
+        showToast(isZh ? '草稿已保存' : 'Draft saved')
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to save'
       showToast(msg, 'err')
@@ -392,6 +510,8 @@ export default function StorefrontEditor({
   }
 
   const handlePublish = async () => {
+    if (mode === 'template') return // 模板模式禁止直接全网发布店铺
+
     setIsPublishing(true)
 
     try {
@@ -412,9 +532,6 @@ export default function StorefrontEditor({
       setIsPublishing(false)
     }
   }
-
-  const previewMaxWidth =
-    deviceMode === 'mobile' ? 390 : deviceMode === 'tablet' ? 768 : '100%'
 
   return (
     <div
@@ -439,56 +556,37 @@ export default function StorefrontEditor({
       {/* 顶部工具栏 */}
       <div className="h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs">
-            <LayoutTemplate size={16} />
-          </div>
-          <div>
-            <div className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
-              <span>{isZh ? '网页装修' : 'Theme Editor'}</span>
-              <span className="text-[10px] font-medium text-gray-500">
-                • {store.store_name}
-              </span>
-              {isDirty && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
-                  {isZh ? '未保存' : 'Unsaved'}
-                </span>
-              )}
-            </div>
-            <div className="text-[10px] text-gray-400">
-              {schema.meta.published ? (isZh ? '已发布' : 'Published') : isZh ? '草稿' : 'Draft'}
-            </div>
-          </div>
-        </div>
+          {mode === 'template' ? (
+            <>
+              <a
+                href="/dashboard/storefront?tab=templates"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
+              >
+                <ArrowLeft size={12} />
+                <span>{isZh ? '返回模板库' : 'Back to Templates'}</span>
+              </a>
 
-        {/* 设备切换 */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setDeviceMode('desktop')}
-            className={`p-1.5 rounded ${
-              deviceMode === 'desktop' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'
-            }`}
-            title={isZh ? '桌面端' : 'Desktop'}
-          >
-            <Monitor size={16} />
-          </button>
-          <button
-            onClick={() => setDeviceMode('tablet')}
-            className={`p-1.5 rounded ${
-              deviceMode === 'tablet' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'
-            }`}
-            title={isZh ? '平板' : 'Tablet'}
-          >
-            <Tablet size={16} />
-          </button>
-          <button
-            onClick={() => setDeviceMode('mobile')}
-            className={`p-1.5 rounded ${
-              deviceMode === 'mobile' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'
-            }`}
-            title={isZh ? '手机' : 'Mobile'}
-          >
-            <Smartphone size={16} />
-          </button>
+              {templateId && (
+                <a
+                  href={`/dashboard/storefront/templates/${templateId}/preview`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
+                >
+                  <Eye size={12} />
+                  <span>{isZh ? '预览模板' : 'Preview Template'}</span>
+                </a>
+              )}
+            </>
+          ) : (
+            <a
+              href={`/store/${store.store_slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
+            >
+              <span>{isZh ? '访问店铺' : 'Visit Store'}</span>
+              <ExternalLink size={12} />
+            </a>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -500,61 +598,64 @@ export default function StorefrontEditor({
             {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
 
-          <a
-            href={`/store/${store.store_slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
-          >
-            <span>{isZh ? '访问店铺' : 'Visit Store'}</span>
-            <ExternalLink size={12} />
-          </a>
+          {mode === 'template' ? (
+            <button
+              onClick={handleSaveDraft}
+              disabled={isSaving}
+              className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+            >
+              {isSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+              <span>{isZh ? '保存模板' : 'Save Template'}</span>
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleSaveDraft}
+                disabled={isSaving}
+                className="px-3.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all disabled:opacity-50"
+              >
+                {isSaving ? <RefreshCw size={12} className="animate-spin inline mr-1" /> : null}
+                <span>{isZh ? '保存草稿' : 'Save Draft'}</span>
+              </button>
 
-          <button
-            onClick={handleSaveDraft}
-            disabled={isSaving}
-            className="px-3.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all disabled:opacity-50"
-          >
-            {isSaving ? <RefreshCw size={12} className="animate-spin inline mr-1" /> : null}
-            <span>{isZh ? '保存草稿' : 'Save Draft'}</span>
-          </button>
-
-          <button
-            onClick={handlePublish}
-            disabled={isPublishing}
-            className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
-          >
-            {isPublishing ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
-            <span>
-              {isPublishing
-                ? isZh
-                  ? '发布中…'
-                  : 'Publishing...'
-                : schema.meta.published
-                ? isZh
-                  ? '更新发布'
-                  : 'Update Live'
-                : isZh
-                ? '全网发布'
-                : 'Publish Live'}
-            </span>
-          </button>
+              <button
+                onClick={handlePublish}
+                disabled={isPublishing}
+                className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+              >
+                {isPublishing ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                <span>
+                  {isPublishing
+                    ? isZh
+                      ? '发布中…'
+                      : 'Publishing...'
+                    : schema.meta.published
+                    ? isZh
+                      ? '更新发布'
+                      : 'Update Live'
+                    : isZh
+                    ? '全网发布'
+                    : 'Publish Live'}
+                </span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* 三栏工作台 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* 左侧：Section Tree */}
-        <div className="w-72 sm:w-80 bg-white border-r border-gray-200 flex flex-col shrink-0">
-          <div className="p-3.5 border-b border-gray-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers size={16} className="text-gray-700" />
+        {/* 左侧：Section Tree（缩减宽度至字符尾部大小） */}
+        <div className="w-52 sm:w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
+          <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Layers size={15} className="text-gray-700" />
               <span className="text-xs font-extrabold text-gray-900">
                 {isZh ? '页面分区' : 'Sections'}
               </span>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-              {schema.sections.length} {isZh ? '个分区' : 'Sections'}
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+              {schema.sections.length}
             </span>
           </div>
 
@@ -664,25 +765,15 @@ export default function StorefrontEditor({
           </div>
         </div>
 
-        {/* 中间：Live Preview（与公开店面共享渲染器 + 主题） */}
-        <div className="flex-1 bg-gray-100 overflow-auto">
-          <ThemeRoot themeId={schema.theme.themeId}>
-            <div style={storefrontThemeOverrides(schema.theme) as CSSProperties}>
-              <div
-                className="min-h-full mx-auto bg-[var(--th-color-background)] transition-all"
-                style={{ maxWidth: previewMaxWidth }}
-              >
-                {orderedSections.map((section) => (
-                  <DynamicSectionRenderer
-                    key={section.id}
-                    section={section}
-                    storeSlug={store.store_slug}
-                    products={products}
-                  />
-                ))}
-              </div>
-            </div>
-          </ThemeRoot>
+        {/* 中间：Live Preview（使用 Scaled Canvas + Device Presets + Zoom Slider） */}
+        <div className="flex-1 bg-slate-100 overflow-hidden relative">
+          <PreviewCanvas
+            schema={schema}
+            storeSlug={store.store_slug}
+            products={products}
+            deviceMode={deviceMode}
+            onDeviceModeChange={setDeviceMode}
+          />
         </div>
 
         {/* 右侧：Property Panel */}
@@ -697,7 +788,7 @@ export default function StorefrontEditor({
             <div className="flex gap-1 mt-3 bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setActiveTab('section')}
-                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   activeTab === 'section'
                     ? 'bg-white text-purple-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
@@ -707,13 +798,23 @@ export default function StorefrontEditor({
               </button>
               <button
                 onClick={() => setActiveTab('theme')}
-                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   activeTab === 'theme'
                     ? 'bg-white text-purple-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 {isZh ? '主题' : 'Theme'}
+              </button>
+              <button
+                onClick={() => setActiveTab('global')}
+                className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  activeTab === 'global'
+                    ? 'bg-white text-purple-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {isZh ? '全店信息' : 'Global'}
               </button>
             </div>
           </div>
@@ -737,12 +838,18 @@ export default function StorefrontEditor({
                   {isZh ? '选择一个分区以编辑属性' : 'Select a section to edit properties'}
                 </div>
               )
-            ) : (
+            ) : activeTab === 'theme' ? (
               <ThemePanel
                 schema={schema}
                 isZh={isZh}
                 colorPickerId={colorPickerId}
                 onUpdateTheme={updateThemeConfig}
+              />
+            ) : (
+              <GlobalInfoPanel
+                schema={schema}
+                isZh={isZh}
+                onUpdateGlobalInfo={updateGlobalInfo}
               />
             )}
           </div>
@@ -1139,7 +1246,7 @@ function ThemePanel({
       <div className="space-y-3">
         <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
           <Palette size={14} className="text-purple-600" />
-          <span>{isZh ? '当前主题模板' : 'Active Template'}</span>
+          <span>{isZh ? '当前视觉风格 (Style Library)' : 'Active Visual Style'}</span>
         </label>
         <div className="relative">
           <select
@@ -1420,6 +1527,106 @@ function TextArea({
         onChange={(e) => onChange(e.target.value)}
         className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 h-24 resize-none"
       />
+    </div>
+  )
+}
+
+function GlobalInfoPanel({
+  schema,
+  isZh,
+  onUpdateGlobalInfo,
+}: {
+  schema: StorefrontSchema
+  isZh: boolean
+  onUpdateGlobalInfo: (
+    contact: Partial<StoreContactConfig>,
+    social: Partial<StoreSocialConfig>,
+    brandName?: string
+  ) => void
+}) {
+  const contact = schema.contact || schema.globalInfo?.contact || {}
+  const social = schema.social || schema.globalInfo?.social || {}
+  const brandName = schema.globalInfo?.brandName || ''
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <div className="text-xs font-extrabold text-gray-900">
+          {isZh ? '品牌标识' : 'Brand Identity'}
+        </div>
+        <TextField
+          label={isZh ? '品牌/店铺名称' : 'Brand Name'}
+          value={brandName}
+          onChange={(v) => onUpdateGlobalInfo({}, {}, v)}
+        />
+      </div>
+
+      <div className="space-y-3 border-t border-gray-200 pt-4">
+        <div className="text-xs font-extrabold text-gray-900">
+          {isZh ? '联系方式 (Contact)' : 'Contact Details'}
+        </div>
+        <TextField
+          label={isZh ? '客服邮箱' : 'Contact Email'}
+          value={contact.email || ''}
+          onChange={(v) => onUpdateGlobalInfo({ email: v }, {})}
+        />
+        <TextField
+          label={isZh ? '服务电话' : 'Phone Number'}
+          value={contact.phone || ''}
+          onChange={(v) => onUpdateGlobalInfo({ phone: v }, {})}
+        />
+        <TextField
+          label={isZh ? 'WhatsApp 号码' : 'WhatsApp Number'}
+          value={contact.whatsapp || ''}
+          onChange={(v) => onUpdateGlobalInfo({ whatsapp: v }, {})}
+        />
+        <TextField
+          label={isZh ? '工作室 / 地址' : 'Store Address'}
+          value={contact.address || ''}
+          onChange={(v) => onUpdateGlobalInfo({ address: v }, {})}
+        />
+        <TextField
+          label={isZh ? '专属咨询链接' : 'Contact URL'}
+          value={contact.contactUrl || ''}
+          onChange={(v) => onUpdateGlobalInfo({ contactUrl: v }, {})}
+        />
+      </div>
+
+      <div className="space-y-3 border-t border-gray-200 pt-4">
+        <div className="text-xs font-extrabold text-gray-900">
+          {isZh ? '社交媒体 (Social Channels)' : 'Social Channels'}
+        </div>
+        <TextField
+          label="Instagram"
+          value={social.instagram || ''}
+          onChange={(v) => onUpdateGlobalInfo({}, { instagram: v })}
+        />
+        <TextField
+          label="Facebook"
+          value={social.facebook || ''}
+          onChange={(v) => onUpdateGlobalInfo({}, { facebook: v })}
+        />
+        <TextField
+          label="YouTube"
+          value={social.youtube || ''}
+          onChange={(v) => onUpdateGlobalInfo({}, { youtube: v })}
+        />
+        <TextField
+          label="TikTok"
+          value={social.tiktok || ''}
+          onChange={(v) => onUpdateGlobalInfo({}, { tiktok: v })}
+        />
+        <TextField
+          label="X (Twitter)"
+          value={social.x || ''}
+          onChange={(v) => onUpdateGlobalInfo({}, { x: v })}
+        />
+        <TextField
+          label="LinkedIn"
+          value={social.linkedin || ''}
+          onChange={(v) => onUpdateGlobalInfo({}, { linkedin: v })}
+        />
+      </div>
     </div>
   )
 }

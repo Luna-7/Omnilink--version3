@@ -285,7 +285,7 @@ export function StorefrontHub({
           }`}
         >
           <Layout size={14} />
-          <span>{isZh ? '行业模板库' : 'Templates Gallery'}</span>
+          <span>{isZh ? '视觉风格库' : 'Templates Gallery'}</span>
         </button>
 
         <button

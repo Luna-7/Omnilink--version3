@@ -11,7 +11,7 @@ import { StorefrontHub } from '@/components/storefront/StorefrontHub'
  * 整合「店铺装修」和「店铺控制台」的全部逻辑：
  * 1. 真实店铺与发布态（实时直连 Supabase 与 Cookie Auth 会话）
  * 2. 所见即所得视觉装修工作台 (StorefrontEditor + DynamicSectionRenderer)
- * 3. 行业模板预设库 (TemplateSelector)
+ * 3. 视觉风格库 (TemplateSelector)
  * 4. 页面管理、多渠道分发与 AI SEO 策略
  */
 export default async function StorefrontDashboardPage() {

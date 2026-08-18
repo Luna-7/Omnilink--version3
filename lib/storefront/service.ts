@@ -128,7 +128,7 @@ export async function getPublicStorefront(
 
     if (!store) {
       if (storeSlug === 'omnilink-flagship') {
-        const demoSchema = normalizeStorefrontSchema({ theme_id: 'electric-violet' })!
+        const demoSchema = normalizeStorefrontSchema({ theme_id: 'minimal' })!
         return {
           store: {
             id: 'demo-store',
