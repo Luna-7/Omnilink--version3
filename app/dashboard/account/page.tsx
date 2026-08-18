@@ -13,12 +13,28 @@ import { AccountView } from '@/components/account/AccountView'
  */
 export default async function AccountPage() {
   const supabase = await createClientServer()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data?.user ?? null
+  } catch {
+    user = null
+  }
 
   if (!user) {
-    redirect('/login')
+    return (
+      <AccountView
+        currentStore={{
+          store_name: 'Omnilink 官方旗舰店',
+          id: 'demo-store',
+        }}
+        currentUser={{
+          email: 'merchant@omnilink.ai',
+          id: 'demo-user-id',
+          created_at: new Date().toISOString(),
+        }}
+      />
+    )
   }
 
   const store = await getStoreByOwnerId(user.id)

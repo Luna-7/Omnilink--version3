@@ -73,7 +73,7 @@ export default async function StorePagesPage() {
                     )}
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <RowLink href="/dashboard/store" label="前往管理" />
+                    <RowLink href="/dashboard/storefront" label="前往管理" />
                   </td>
                 </tr>
               ))}

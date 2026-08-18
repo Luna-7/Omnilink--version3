@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import {
   TrendingUp,
@@ -13,6 +14,11 @@ import {
   Download,
   ChevronDown,
   ExternalLink,
+  Store,
+  Sparkles,
+  ShoppingBag,
+  Globe,
+  Bot,
 } from 'lucide-react'
 
 // ===== 演示节点数据（mock，仅演示用）。真实坐标由前端 getBBox() 从 public/world.svg 动态计算，不写死 =====
@@ -26,6 +32,13 @@ const DEMO_NODES = [
 
 type WorldPath = { d: string; name: string }
 type Pt = { cx: number; cy: number }
+
+const COUNTRY_ZH_NAMES: Record<string, string> = {
+  us: '美国',
+  fi: '芬兰',
+  br: '巴西',
+  bd: '孟加拉',
+}
 
 export function DashboardView({
   displayName,
@@ -162,18 +175,18 @@ export function DashboardView({
 
   // 12 个月份的柱状图数据
   const monthlyData = [
-    { month: 'Jan', value: 45, sales: '42,120', rev: '$345,120' },
-    { month: 'Feb', value: 68, sales: '58,400', rev: '$480,900' },
-    { month: 'Mar', value: 38, sales: '35,800', rev: '$290,140' },
-    { month: 'Apr', value: 82, sales: '69,200', rev: '$570,300' },
-    { month: 'May', value: 92, sales: '78,400', rev: '$642,800' },
-    { month: 'Jun', value: 55, sales: '49,100', rev: '$410,200' },
-    { month: 'Jul', value: 70, sales: '61,300', rev: '$512,000' },
-    { month: 'Aug', value: 88, sales: '73,940', rev: '$637,73.83' },
-    { month: 'Sep', value: 40, sales: '38,200', rev: '$310,400' },
-    { month: 'Oct', value: 76, sales: '64,800', rev: '$540,100' },
-    { month: 'Nov', value: 32, sales: '29,500', rev: '$240,600' },
-    { month: 'Dec', value: 65, sales: '56,200', rev: '$470,800' },
+    { month: 'Jan', zhMonth: '1月', value: 45, sales: '42,120', rev: '$345,120' },
+    { month: 'Feb', zhMonth: '2月', value: 68, sales: '58,400', rev: '$480,900' },
+    { month: 'Mar', zhMonth: '3月', value: 38, sales: '35,800', rev: '$290,140' },
+    { month: 'Apr', zhMonth: '4月', value: 82, sales: '69,200', rev: '$570,300' },
+    { month: 'May', zhMonth: '5月', value: 92, sales: '78,400', rev: '$642,800' },
+    { month: 'Jun', zhMonth: '6月', value: 55, sales: '49,100', rev: '$410,200' },
+    { month: 'Jul', zhMonth: '7月', value: 70, sales: '61,300', rev: '$512,000' },
+    { month: 'Aug', zhMonth: '8月', value: 88, sales: '73,940', rev: '$637,73.83' },
+    { month: 'Sep', zhMonth: '9月', value: 40, sales: '38,200', rev: '$310,400' },
+    { month: 'Oct', zhMonth: '10月', value: 76, sales: '64,800', rev: '$540,100' },
+    { month: 'Nov', zhMonth: '11月', value: 32, sales: '29,500', rev: '$240,600' },
+    { month: 'Dec', zhMonth: '12月', value: 65, sales: '56,200', rev: '$470,800' },
   ]
 
   // Top Products 数据 (如 reference image 中所示)
@@ -234,6 +247,95 @@ export function DashboardView({
           <Download size={14} className="text-[#111827]" />
           <span>{isZh ? '导出报表' : 'Export Report'}</span>
         </button>
+      </div>
+
+      {/* ============================================================
+          0. 迁移整合的店铺运营与 AI 推荐流量概览 (Storefront & AI Agent Insights)
+          ============================================================ */}
+      <div className="crextio-card p-5 sm:p-6 bg-gradient-to-r from-white via-[#F9FAFB] to-[#F4F5F7] border border-[#E5E7EB] shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#E5E7EB]/80">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#111827] text-[#edbc40] flex items-center justify-center shrink-0 shadow-xs">
+              <Store size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-heading text-base font-bold text-[#111827]">
+                  {isZh ? 'Omnilink 旗舰店 · 动态装修与 AI 流量' : 'Storefront & AI Traffic Realtime Hub'}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-bold border border-green-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span>{isZh ? '在线发布中' : 'LIVE ONLINE'}</span>
+                </span>
+              </div>
+              <p className="text-xs text-[#6B7280] mt-0.5">
+                {isZh
+                  ? '已接入全渠道自适应渲染与 GPT/Claude AI Agent 语义推荐网络'
+                  : 'Multi-theme responsive store synced with AI Agent discovery channels.'}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/dashboard/storefront"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0 self-start md:self-auto"
+          >
+            <Sparkles size={13} className="text-[#edbc40]" />
+            <span>{isZh ? '进入店铺装修工作台' : 'Go to Storefront Builder'}</span>
+            <ArrowUpRight size={13} />
+          </Link>
+        </div>
+
+        {/* 4 联店铺指标卡 */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-4">
+          <div className="p-3.5 rounded-2xl bg-white border border-[#E5E7EB] flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[11px] text-[#6B7280] font-medium block">
+                {isZh ? '今日店铺访问 (PV)' : 'Today Pageviews'}
+              </span>
+              <div className="text-lg font-bold text-[#111827] mt-0.5 tnum">2,840</div>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-[#F4F5F7] flex items-center justify-center text-[#111827]">
+              <Globe size={14} />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white border border-[#E5E7EB] flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[11px] text-[#6B7280] font-medium block">
+                {isZh ? '独立访客 (UV)' : 'Unique Visitors'}
+              </span>
+              <div className="text-lg font-bold text-[#111827] mt-0.5 tnum">1,120</div>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-[#F4F5F7] flex items-center justify-center text-[#111827]">
+              <Users size={14} />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white border border-[#E5E7EB] flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[11px] text-[#6B7280] font-medium block">
+                {isZh ? 'AI 推荐转化率' : 'AI Agent Conversion'}
+              </span>
+              <div className="text-lg font-bold text-[#111827] mt-0.5 tnum">4.6%</div>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#edbc40] shadow-xs border border-[#E5E7EB]">
+              <Bot size={14} />
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white border border-[#E5E7EB] flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[11px] text-[#6B7280] font-medium block">
+                {isZh ? '在售精选商品' : 'Active Products'}
+              </span>
+              <div className="text-lg font-bold text-[#111827] mt-0.5 tnum">4 件</div>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-[#F4F5F7] flex items-center justify-center text-[#111827]">
+              <ShoppingBag size={14} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ============================================================
@@ -395,7 +497,9 @@ export function DashboardView({
                     </div>
                     <div>
                       <span className="text-[10px] text-[#9CA3AF] block leading-none">Shopify</span>
-                      <span className="font-semibold text-[#111827]">206 Payment</span>
+                      <span className="font-semibold text-[#111827]">
+                        {isZh ? '206 笔交易' : '206 Payment'}
+                      </span>
                     </div>
                   </div>
 
@@ -406,7 +510,9 @@ export function DashboardView({
                     </div>
                     <div>
                       <span className="text-[10px] text-[#9CA3AF] block leading-none">Amazon</span>
-                      <span className="font-semibold text-[#111827]">400 Payment</span>
+                      <span className="font-semibold text-[#111827]">
+                        {isZh ? '400 笔交易' : '400 Payment'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -440,7 +546,7 @@ export function DashboardView({
                       {isSelected && (
                         <div className="absolute -top-12 z-20 whitespace-nowrap bg-white border border-[#E5E7EB] rounded-xl px-3 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.08)] text-left animate-in fade-in zoom-in-95 duration-150">
                           <div className="text-[10px] font-bold text-[#111827]">
-                            {item.month} 2026
+                            {isZh ? `2026年${item.zhMonth}` : `${item.month} 2026`}
                           </div>
                           <div className="flex items-center gap-1.5 text-[10px] text-[#6B7280]">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF]" />
@@ -471,7 +577,7 @@ export function DashboardView({
                           isSelected ? 'font-bold text-[#111827]' : 'text-[#9CA3AF]'
                         }`}
                       >
-                        {item.month}
+                        {isZh ? item.zhMonth : item.month}
                       </span>
                     </div>
                   )
@@ -562,7 +668,7 @@ export function DashboardView({
                     {isZh ? '客户订单量' : 'Customer Orders'}
                   </h3>
                   <span className="text-[11px] text-[#9CA3AF]">
-                    1 Jan - 12 Dec 2026
+                    {isZh ? '2026年1月1日 - 12月12日' : '1 Jan - 12 Dec 2026'}
                   </span>
                 </div>
                 <button
@@ -629,14 +735,14 @@ export function DashboardView({
 
               {/* 月份轴 */}
               <div className="flex justify-between text-[10px] text-[#9CA3AF] mt-2 px-1">
-                <span>May</span>
-                <span>Jun</span>
-                <span>Jul</span>
-                <span>Aug</span>
-                <span>Sep</span>
-                <span className="font-bold text-[#111827]">Oct</span>
-                <span>Nov</span>
-                <span>Dec</span>
+                <span>{isZh ? '5月' : 'May'}</span>
+                <span>{isZh ? '6月' : 'Jun'}</span>
+                <span>{isZh ? '7月' : 'Jul'}</span>
+                <span>{isZh ? '8月' : 'Aug'}</span>
+                <span>{isZh ? '9月' : 'Sep'}</span>
+                <span className="font-bold text-[#111827]">{isZh ? '10月' : 'Oct'}</span>
+                <span>{isZh ? '11月' : 'Nov'}</span>
+                <span>{isZh ? '12月' : 'Dec'}</span>
               </div>
             </div>
           </div>
@@ -645,21 +751,78 @@ export function DashboardView({
         {/* 右侧卡片: Sales by Countries (8 cols) */}
         <div className="lg:col-span-8">
           <div className="crextio-card p-5 sm:p-6 h-full flex flex-col justify-between">
-            {/* 顶部标题与筛选标签 */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            {/* 1. 顶部标题 */}
+            <div className="flex items-center justify-between gap-3 mb-2">
               <div>
                 <h3 className="font-heading text-base font-bold text-[#111827] flex items-center gap-2">
                   {isZh ? '全球市场与节点分布' : 'Sales by Countries'}
-                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#E5E7EB] text-[#9CA3AF] tracking-wider">
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#E5E7EB] text-[#6B7280] tracking-wider">
                     {isZh ? '演示' : 'DEMO'}
                   </span>
                 </h3>
-                <p className="text-[11px] text-[#9CA3AF]">
-                  {isZh ? '在此监控所有海外与多渠道订单分布' : 'Keep track of all orders here'}
+                <p className="text-[11px] text-[#9CA3AF] mt-0.5">
+                  {isZh ? '在此监控所有海外与多渠道订单实时分布' : 'Keep track of all global orders here'}
                 </p>
               </div>
+            </div>
 
-              {/* 顶部下拉胶囊筛选 */}
+            {/* 2. 顶部文本与核心指标栏 (横向排布置于顶部) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-3 p-3.5 bg-[#F9FAFB] rounded-2xl border border-[#E5E7EB]/70">
+              {/* 指标 1: 销售表现最优国家 */}
+              <div className="space-y-0.5">
+                <span className="text-[10px] text-[#9CA3AF] block font-medium">
+                  {isZh ? '销售表现最优地区' : 'Top Performing Region'}
+                </span>
+                <div className="text-lg font-bold text-[#111827] tnum">
+                  $120,000
+                </div>
+                <span className="text-[11px] font-medium text-[#4B5563] block">
+                  {isZh ? '美国' : 'United States'}
+                </span>
+              </div>
+
+              {/* 指标 2: 营收增速 */}
+              <div className="space-y-0.5 sm:border-l sm:border-[#E5E7EB] sm:pl-3">
+                <span className="text-[10px] text-[#9CA3AF] block font-medium">
+                  {isZh ? '营收增速' : 'Revenue Growth'}
+                </span>
+                <div className="text-lg font-bold text-[#e0652b] tnum">
+                  +34%
+                </div>
+                <span className="text-[11px] font-medium text-[#4B5563] block">
+                  {isZh ? '美国与加拿大' : 'United States and Canada'}
+                </span>
+              </div>
+
+              {/* 指标 3: 统计周期 */}
+              <div className="space-y-0.5 sm:border-l sm:border-[#E5E7EB] sm:pl-3">
+                <span className="text-[10px] text-[#9CA3AF] block font-medium">
+                  {isZh ? '统计周期' : 'Period'}
+                </span>
+                <div className="text-lg font-bold text-[#111827] tnum">
+                  {isZh ? '近 12 个月' : '12 Months'}
+                </div>
+                <span className="text-[11px] font-medium text-[#4B5563] block">
+                  {isZh ? '年度累计数据' : 'Annual Aggregated'}
+                </span>
+              </div>
+            </div>
+
+            {/* 3. 筛选胶囊与地图操作控制条 (位于文字下方，地图上方) */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 mb-2.5 mt-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#8B5CF6] animate-pulse" />
+                <span className="text-[11px] font-medium text-[#6B7280]">
+                  {isZh ? '实时订单节点热力' : 'Live Order Node Heatmap'}
+                </span>
+                <span className="text-[10px] text-[#9CA3AF] bg-[#F3F4F6] px-2 py-0.5 rounded-md">
+                  {zoomOrigin
+                    ? isZh ? '再次点击还原' : 'Click to reset'
+                    : isZh ? '可点击高亮国家缩放' : 'Click country to zoom'}
+                </span>
+              </div>
+
+              {/* 全部产品 / 热门地区 筛选按钮 */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -688,119 +851,74 @@ export function DashboardView({
               </div>
             </div>
 
-            {/* 内容区：左侧关键数据指标 + 右侧矢量世界地图 */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1">
-              {/* 左侧核心指标 (4 cols) */}
-              <div className="md:col-span-4 space-y-4">
-                <div>
-                  <span className="text-[11px] text-[#9CA3AF] block font-medium">
-                    {isZh ? '销售表现最优国家' : 'Top Performing Country'}
-                  </span>
-                  <div className="text-xl font-bold text-[#111827] mt-0.5 tnum">
-                    $120,000
-                  </div>
-                  <span className="text-[11px] text-[#6B7280] block">
-                    United States
-                  </span>
-                </div>
-
-                <div className="pt-2 border-t border-[#F3F4F6]">
-                  <span className="text-[11px] text-[#9CA3AF] block font-medium">
-                    {isZh ? '营收增速' : 'Revenue Growth'}
-                  </span>
-                  <div className="text-xl font-bold text-[#e28c33] mt-0.5 tnum">
-                    +34%
-                  </div>
-                  <span className="text-[11px] text-[#6B7280] block">
-                    United States and Canada
-                  </span>
-                </div>
-
-                <div className="pt-2 border-t border-[#F3F4F6]">
-                  <span className="text-[11px] text-[#9CA3AF] block font-medium">
-                    {isZh ? '统计周期' : 'Period'}
-                  </span>
-                  <div className="text-sm font-bold text-[#111827] mt-0.5">
-                    12 Months
-                  </div>
-                </div>
-              </div>
-
-              {/* 右侧矢量世界地图 (8 cols) */}
-              <div className="md:col-span-8 relative w-full aspect-[2000/857] bg-[#F9FAFB]/70 rounded-2xl border border-[#E5E7EB]/60 p-2 overflow-hidden select-none">
-                {/* zoom 下钻提示 */}
-                <div className="absolute right-3 top-3 z-20 text-[9px] font-medium text-[#9CA3AF] bg-white/85 backdrop-blur px-2 py-1 rounded-full border border-[#E5E7EB]">
-                  {zoomOrigin
-                    ? isZh ? '再次点击地图还原' : 'Click again to reset'
-                    : isZh ? '点击高亮国家下钻' : 'Click a highlighted country'}
-                </div>
-
-                {/* 地图 + 浮动卡片 整体容器（zoom 时一并缩放，保持相对位置） */}
-                <div
-                  ref={mapWrapRef}
-                  className="relative w-full h-full"
-                  style={{
-                    transformOrigin: zoomOrigin || 'center',
-                    transform: zoomOrigin ? 'scale(2.4)' : 'scale(1)',
-                    transition: 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1)',
-                  }}
+            {/* 4. 矢量世界地图 SVG 容器 (放在文字与筛选按钮下方) */}
+            <div className="relative w-full aspect-[2000/857] bg-[#F9FAFB]/70 rounded-2xl border border-[#E5E7EB]/60 p-2 overflow-hidden select-none">
+              {/* 地图 + 浮动长椭圆卡片 整体容器 */}
+              <div
+                ref={mapWrapRef}
+                className="relative w-full h-full"
+                style={{
+                  transformOrigin: zoomOrigin || 'center',
+                  transform: zoomOrigin ? 'scale(2.4)' : 'scale(1)',
+                  transition: 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1)',
+                }}
+              >
+                {/* 真实世界地图 */}
+                <svg
+                  ref={mapSvgRef}
+                  viewBox={`0 0 ${WORLD_VIEWBOX.w} ${WORLD_VIEWBOX.h}`}
+                  className="geo-world w-full h-full"
+                  preserveAspectRatio="xMidYMid meet"
                 >
-                  {/* 真实世界地图（simplemaps，React 渲染全部国家 path） */}
-                  <svg
-                    ref={mapSvgRef}
-                    viewBox={`0 0 ${WORLD_VIEWBOX.w} ${WORLD_VIEWBOX.h}`}
-                    className="geo-world w-full h-full"
-                    preserveAspectRatio="xMidYMid meet"
-                  >
-                    {worldPaths.map((p, i) => {
-                      const active = activeNames.has(p.name)
-                      return (
-                        <path
-                          key={i}
-                          d={p.d}
-                          data-name={p.name}
-                          className={active ? 'geo-active' : undefined}
-                          onClick={active ? () => handleCountryZoom(nameToCode[p.name]) : undefined}
-                        />
-                      )
-                    })}
+                  {worldPaths.map((p, i) => {
+                    const active = activeNames.has(p.name)
+                    return (
+                      <path
+                        key={i}
+                        d={p.d}
+                        data-name={p.name}
+                        className={active ? 'geo-active' : undefined}
+                        onClick={active ? () => handleCountryZoom(nameToCode[p.name]) : undefined}
+                      />
+                    )
+                  })}
 
-                    {/* 脉冲雷达点（实时节点，随 SVG viewBox 缩放始终对齐国家） */}
-                    {DEMO_NODES.map((n) => {
-                      const c = radarCenters[n.code]
-                      if (!c) return null
-                      return (
-                        <g key={n.code} pointerEvents="none">
-                          <circle cx={c.cx} cy={c.cy} r="20" fill="#8B5CF6" opacity="0.18" className="animate-ping" />
-                          <circle cx={c.cx} cy={c.cy} r="5.5" fill="#8B5CF6" stroke="#FFFFFF" strokeWidth="2.5" />
-                        </g>
-                      )
-                    })}
-                  </svg>
+                  {/* 脉冲雷达点 */}
+                  {DEMO_NODES.map((n) => {
+                    const c = radarCenters[n.code]
+                    if (!c) return null
+                    return (
+                      <g key={n.code} pointerEvents="none">
+                        <circle cx={c.cx} cy={c.cy} r="18" fill="#8B5CF6" opacity="0.18" className="animate-ping" />
+                        <circle cx={c.cx} cy={c.cy} r="5" fill="#8B5CF6" stroke="#FFFFFF" strokeWidth="2" />
+                      </g>
+                    )
+                  })}
+                </svg>
 
-                  {/* 浮动数据卡片（防碰撞避让 + 进场 fade + 呼吸点，getBBox 就绪后才渲染） */}
-                  {processedCards.map((c, i) =>
-                    c.ready ? (
-                      <div
-                        key={c.code}
-                        className="geo-card bg-[#8B5CF6] text-white rounded-xl px-2.5 sm:px-3 py-1.5 shadow-[0_8px_20px_rgba(139,92,246,0.3)] border border-white/10"
-                        style={{
-                          left: c.pixelX,
-                          top: c.pixelY,
-                          animationDelay: `${0.3 + i * 0.12}s`,
-                          ...({ '--card-tx': `${c.offsetX}%`, '--card-ty': `${c.offsetY}%` } as React.CSSProperties),
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm">{c.flag}</span>
-                          <span className="text-[9px] text-white/80 font-medium leading-none">{c.name}</span>
-                          <span className="pulse-dot" />
-                        </div>
-                        <div className="font-bold text-white text-xs tnum mt-0.5">${c.formatted}</div>
-                      </div>
-                    ) : null
-                  )}
-                </div>
+                {/* 浮动长椭圆数据气泡（更小字体、长椭圆微型胶囊、中英随语言切换） */}
+                {processedCards.map((c, i) => {
+                  if (!c.ready) return null
+                  const localizedName = isZh ? (COUNTRY_ZH_NAMES[c.code] ?? c.name) : c.name
+                  return (
+                    <div
+                      key={c.code}
+                      className="geo-card bg-[#8B5CF6]/95 hover:bg-[#7C3AED] text-white rounded-full px-2.5 py-1 shadow-[0_4px_12px_rgba(139,92,246,0.35)] border border-white/20 backdrop-blur-xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-transform hover:scale-105"
+                      style={{
+                        left: c.pixelX,
+                        top: c.pixelY,
+                        animationDelay: `${0.3 + i * 0.12}s`,
+                        ...({ '--card-tx': `${c.offsetX}%`, '--card-ty': `${c.offsetY}%` } as React.CSSProperties),
+                      }}
+                    >
+                      <span className="text-[11px] leading-none">{c.flag}</span>
+                      <span className="text-[9px] text-white/90 font-medium leading-none">{localizedName}</span>
+                      <span className="w-0.5 h-2 bg-white/30 rounded-full" />
+                      <span className="font-bold text-white text-[10px] tnum leading-none">${c.formatted}</span>
+                      <span className="pulse-dot shrink-0" />
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>

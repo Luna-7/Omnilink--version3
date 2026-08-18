@@ -37,7 +37,6 @@ type NavItemKey =
   | 'agentApi'
   | 'knowledge'
   | 'storefront'
-  | 'store'
   | 'plugins'
   | 'account'
   | 'settings'
@@ -79,13 +78,7 @@ const NAV_ITEMS: NavItem[] = [
     key: 'storefront',
     href: '/dashboard/storefront',
     icon: Globe,
-    match: (p) => p.startsWith('/dashboard/storefront'),
-  },
-  {
-    key: 'store',
-    href: '/dashboard/store',
-    icon: Store,
-    match: (p) => p.startsWith('/dashboard/store') && !p.startsWith('/dashboard/storefront'),
+    match: (p) => p.startsWith('/dashboard/storefront') || p.startsWith('/dashboard/store'),
   },
   {
     key: 'plugins',

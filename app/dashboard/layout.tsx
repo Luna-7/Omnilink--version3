@@ -28,26 +28,27 @@ export default async function DashboardLayout({
     user = null
   }
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Best-effort profile info for the layout chrome. The real authoritative
-  // data is loaded by each page server component; this is only for the
-  // user chip + avatar.
-  const profile = {
-    id: user.id,
-    email: user.email ?? '',
-    name:
-      (user.user_metadata?.full_name as string | undefined) ||
-      (user.user_metadata?.name as string | undefined) ||
-      user.email ||
-      '',
-    avatarUrl:
-      (user.user_metadata?.avatar_url as string | undefined) ||
-      (user.user_metadata?.picture as string | undefined) ||
-      null,
-  }
+  // Profile info for the layout chrome (with preview fallback if not logged in)
+  const profile = user
+    ? {
+        id: user.id,
+        email: user.email ?? '',
+        name:
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.user_metadata?.name as string | undefined) ||
+          user.email ||
+          '商家',
+        avatarUrl:
+          (user.user_metadata?.avatar_url as string | undefined) ||
+          (user.user_metadata?.picture as string | undefined) ||
+          null,
+      }
+    : {
+        id: 'preview-user',
+        email: 'demo@omnilink.ai',
+        name: '演示商家',
+        avatarUrl: null,
+      }
 
   return (
     <OmnilinkLiquidLayout profile={profile}>

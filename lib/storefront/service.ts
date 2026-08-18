@@ -112,17 +112,41 @@ export async function getPublishedStore(
 export async function getPublicStorefront(
   storeSlug: string
 ): Promise<{ store: StorefrontStore; schema: StorefrontSchema } | null> {
-  const supabase = await createClientServer()
+  try {
+    const supabase = await createClientServer()
 
-  const { data: store, error: storeError } = await supabase
-    .from('stores')
-    .select('id, store_name, store_slug, description, logo_url, currency')
-    .eq('store_slug', storeSlug)
-    .eq('status', 'active')
-    .maybeSingle()
+    const { data: store, error: storeError } = await supabase
+      .from('stores')
+      .select('id, store_name, store_slug, description, logo_url, currency')
+      .eq('store_slug', storeSlug)
+      .eq('status', 'active')
+      .maybeSingle()
 
-  if (storeError) throw new Error(storeError.message)
-  if (!store) return null
+    if (storeError) {
+      console.error('getPublicStorefront store error:', storeError.message)
+    }
+
+    if (!store) {
+      if (storeSlug === 'omnilink-flagship') {
+        const demoSchema = normalizeStorefrontSchema({ theme_id: 'electric-violet' })!
+        return {
+          store: {
+            id: 'demo-store',
+            name: 'Omnilink 旗舰店',
+            slug: 'omnilink-flagship',
+            description: 'AI 原生智能电商示范旗舰店',
+            logoUrl: null,
+            currency: 'CNY',
+            themeId: demoSchema.theme.themeId,
+          },
+          schema: {
+            ...demoSchema,
+            meta: { ...demoSchema.meta, published: true },
+          },
+        }
+      }
+      return null
+    }
 
   const { data: settings, error: settingsError } = await supabase
     .from('store_settings')
@@ -212,6 +236,28 @@ export async function getPublicStorefront(
     },
     schema,
   }
+  } catch (err) {
+    console.error('getPublicStorefront error:', err)
+    if (storeSlug === 'omnilink-flagship') {
+      const demoSchema = normalizeStorefrontSchema({ theme_id: 'electric-violet' })!
+      return {
+        store: {
+          id: 'demo-store',
+          name: 'Omnilink 旗舰店',
+          slug: 'omnilink-flagship',
+          description: 'AI 原生智能电商示范旗舰店',
+          logoUrl: null,
+          currency: 'CNY',
+          themeId: demoSchema.theme.themeId,
+        },
+        schema: {
+          ...demoSchema,
+          meta: { ...demoSchema.meta, published: true },
+        },
+      }
+    }
+    return null
+  }
 }
 
 /** 店铺公开商品列表（active、按创建时间倒序、限量）。 */
@@ -219,22 +265,34 @@ export async function getStorefrontProducts(
   store: StoreRef,
   limit = 24
 ): Promise<StorefrontProduct[]> {
-  const supabase = await createClientServer()
+  if (store.id === 'demo-store') {
+    return []
+  }
 
-  const { data, error } = await supabase
-    .from('products')
-    .select(PRODUCT_SELECT)
-    .eq('store_id', store.id)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  try {
+    const supabase = await createClientServer()
 
-  if (error) throw new Error(error.message)
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .eq('store_id', store.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(limit)
 
-  return normalizeProducts(
-    (data ?? []) as unknown as StorefrontProductRow[],
-    { storeSlug: store.slug, storeCurrency: store.currency }
-  )
+    if (error) {
+      console.error('getStorefrontProducts error:', error.message)
+      return []
+    }
+
+    return normalizeProducts(
+      (data ?? []) as unknown as StorefrontProductRow[],
+      { storeSlug: store.slug, storeCurrency: store.currency }
+    )
+  } catch (err) {
+    console.error('getStorefrontProducts exception:', err)
+    return []
+  }
 }
 
 /**

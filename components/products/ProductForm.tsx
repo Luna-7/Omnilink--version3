@@ -3,9 +3,10 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  createProductAction,
   updateProductAction,
 } from '@/app/actions/products'
+import { Sparkles, DollarSign, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface ProductFormProps {
   productId?: string
@@ -19,53 +20,60 @@ interface ProductFormProps {
   }
 }
 
-/**
- * ProductForm (#59 B1 fix)
- *
- * The previous `<form action={handleSubmit}>` did not actually trigger the
- * server action `createProductAction` from this client form (confirmed by
- * dev server log in #57). Per the #59 spec we route the submission through
- * the already-validated POST /api/merchant/products endpoint instead of
- * duplicating server-action logic.
- *
- * UX:
- *   - clicking "Create Product" shows a "Creating..." state and disables
- *     re-submission while the request is in flight.
- *   - on 201, the form resets to a brief success state and then navigates
- *     to /dashboard/products.
- *   - on 400/401/403/500, the user gets a visible error message and may
- *     retry. No silent failure.
- *
- * Server-side semantic_data fallback is provided by /api/merchant/products
- * (see lib/products/service.ts buildDemoSemanticFallback); we do NOT send
- * semantic_data from the form so the server remains the source of truth.
- */
 export function ProductForm({ productId, initialData }: ProductFormProps) {
   const router = useRouter()
+  const { isZh } = useLanguage()
   const [isPending, startTransition] = useTransition()
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const submit = async (formData: FormData) => {
+  // Form state
+  const [sku, setSku] = useState(initialData?.sku || '')
+  const [name, setName] = useState(initialData?.name || '')
+  const [description, setDescription] = useState(initialData?.description || '')
+  const [price, setPrice] = useState<string | number>(initialData?.price || '')
+  const [currency, setCurrency] = useState(initialData?.currency || 'CNY')
+  const [inventory, setInventory] = useState<string | number>(initialData?.inventory ?? 100)
+
+  const handleAIFill = () => {
+    setSku(`OMNI-AI-${Math.floor(1000 + Math.random() * 9000)}`)
+    setName(isZh ? 'OmniVibe Max 空间音频降噪耳麦' : 'OmniVibe Max Spatial ANC Headset')
+    setDescription(
+      isZh
+        ? '搭载自主研发的空间音频声学引擎，内置自适应主动降噪算法与高通低延迟音频芯片，支持多设备秒级智能流转与 50 小时超长续航。'
+        : 'Engineered with spatial acoustic processors, adaptive ANC algorithms, and 50-hour ultra battery life.'
+    )
+    setPrice(1599)
+    setInventory(200)
+  }
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError('')
     setSuccess('')
     setIsCreating(true)
 
-    // Edit path: keep the existing server action (it has full edit coverage
-    // and we did not reproduce it on the API).
+    const formData = new FormData()
+    formData.append('sku', String(sku || '').trim())
+    formData.append('name', String(name || '').trim())
+    formData.append('description', String(description || '').trim())
+    formData.append('price', String(price || 0))
+    formData.append('currency', String(currency || 'CNY'))
+    formData.append('inventory', String(inventory || 0))
+
     if (productId) {
       startTransition(async () => {
         try {
           const result = await updateProductAction(productId, formData)
           if (result.success) {
-            setSuccess('Product updated')
+            setSuccess(isZh ? '商品信息已更新' : 'Product updated')
             router.refresh()
           } else {
-            setError(result.error || 'Unable to update product')
+            setError(result.error || (isZh ? '更新失败，请重试' : 'Unable to update product'))
           }
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Unable to update product')
+          setError(err instanceof Error ? err.message : (isZh ? '更新失败' : 'Unable to update product'))
         } finally {
           setIsCreating(false)
         }
@@ -73,14 +81,14 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       return
     }
 
-    // Create path: POST to the API endpoint we already verified (#57).
+    // Create path
     const payload = {
-      name: String(formData.get('name') || '').trim(),
-      sku: String(formData.get('sku') || '').trim() || null,
-      description: String(formData.get('description') || '').trim() || null,
-      price: Number(formData.get('price') || 0),
-      currency: String(formData.get('currency') || 'USD'),
-      inventory: Number(formData.get('inventory') || 0),
+      name: String(name || '').trim(),
+      sku: String(sku || '').trim() || null,
+      description: String(description || '').trim() || null,
+      price: Number(price || 0),
+      currency: String(currency || 'CNY'),
+      inventory: Number(inventory || 0),
     }
 
     try {
@@ -90,38 +98,23 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         body: JSON.stringify(payload),
       })
 
-      if (res.status === 201) {
-        setSuccess('Product created')
+      if (res.status === 201 || res.ok) {
+        setSuccess(isZh ? '商品创建成功！正在跳转...' : 'Product created! Redirecting...')
         router.refresh()
-        // Navigate after a brief moment so the success message is visible.
-        setTimeout(() => router.push('/dashboard/products'), 400)
+        setTimeout(() => router.push('/dashboard/products'), 600)
         return
       }
 
-      let message = 'Unable to create product'
+      let message = isZh ? '创建商品失败' : 'Unable to create product'
       try {
         const body = await res.json()
-        if (body?.error) message = `Unable to create product: ${body.error}`
+        if (body?.error) message = body.error
       } catch {
-        // ignore JSON parse errors and keep the default message
-      }
-
-      if (res.status === 400) {
-        message = 'Please check the required fields and try again.'
-      } else if (res.status === 401) {
-        message = 'Your session has expired. Please sign in again.'
-      } else if (res.status === 403) {
-        message = 'You do not have permission to add products to this store.'
-      } else if (res.status >= 500) {
-        message = 'Our server hit an unexpected error. Please try again in a moment.'
+        // ignore
       }
       setError(message)
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? `Network error: ${err.message}`
-          : 'Network error while creating the product'
-      )
+      setError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setIsCreating(false)
     }
@@ -130,138 +123,168 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
   const busy = isPending || isCreating
 
   return (
-    <form action={submit} className="space-y-6">
-      <div>
-        <label htmlFor="sku" className="block text-sm font-medium text-gray-700 mb-2">
-          SKU
-        </label>
-        <input
-          type="text"
-          id="sku"
-          name="sku"
-          defaultValue={initialData?.sku || ''}
-          placeholder="e.g., PROD-001"
-          disabled={busy}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-iris focus:border-iris disabled:bg-gray-100"
-        />
+    <form onSubmit={submit} className="space-y-5">
+      {/* 顶部 AI 快速生成提示 */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+        <span className="text-xs text-[#6B7280]">
+          {isZh ? '支持人工录入或点击右侧按钮进行 AI 智能范例预填：' : 'Fill fields manually or use AI Pre-fill:'}
+        </span>
+        <button
+          type="button"
+          onClick={handleAIFill}
+          className="px-3 py-1.5 rounded-full bg-[#8B5CF6]/10 hover:bg-[#8B5CF6]/20 text-[#8B5CF6] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <Sparkles size={13} />
+          <span>{isZh ? '✨ AI 智能填充范例' : '✨ AI Pre-fill Demo'}</span>
+        </button>
       </div>
 
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-          Product Name *
-        </label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          defaultValue={initialData?.name || ''}
-          required
-          placeholder="e.g., Wireless Headphones"
-          disabled={busy}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-iris focus:border-iris disabled:bg-gray-100"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-          Description
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          defaultValue={initialData?.description || ''}
-          rows={4}
-          placeholder="Product description..."
-          disabled={busy}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-iris focus:border-iris disabled:bg-gray-100"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-            Price *
+          <label htmlFor="sku" className="block text-xs font-semibold text-[#111827] mb-1.5">
+            {isZh ? '商品货号 (SKU)' : 'Product SKU'}
           </label>
           <input
-            type="number"
-            id="price"
-            name="price"
-            defaultValue={initialData?.price || ''}
-            required
-            min="0"
-            step="0.01"
-            placeholder="0.00"
+            type="text"
+            id="sku"
+            name="sku"
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
+            placeholder="例如：PROD-OMNI-001"
             disabled={busy}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-iris focus:border-iris disabled:bg-gray-100"
+            className="w-full h-10 px-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs font-mono text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
           />
         </div>
 
         <div>
-          <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
-            Currency
+          <label htmlFor="name" className="block text-xs font-semibold text-[#111827] mb-1.5">
+            {isZh ? '商品名称 *' : 'Product Name *'}
           </label>
-          <select
-            id="currency"
-            name="currency"
-            defaultValue={initialData?.currency || 'USD'}
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder={isZh ? '例如：OmniFlow 智能降噪耳机' : 'e.g. OmniFlow ANC Headphones'}
             disabled={busy}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-iris focus:border-iris disabled:bg-gray-100"
-          >
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-            <option value="CNY">CNY</option>
-            <option value="JPY">JPY</option>
-          </select>
+            className="w-full h-10 px-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs font-semibold text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
+          />
         </div>
       </div>
 
       <div>
-        <label htmlFor="inventory" className="block text-sm font-medium text-gray-700 mb-2">
-          Inventory
+        <label htmlFor="description" className="block text-xs font-semibold text-[#111827] mb-1.5">
+          {isZh ? '商品描述与核心功能' : 'Description & Selling Points'}
         </label>
-        <input
-          type="number"
-          id="inventory"
-          name="inventory"
-          defaultValue={initialData?.inventory ?? 0}
-          min="0"
-          step="1"
-          placeholder="0"
+        <textarea
+          id="description"
+          name="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder={isZh ? '填写该商品的规格、适用人群及核心卖点...' : 'Enter product specs and key benefits...'}
           disabled={busy}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-iris focus:border-iris disabled:bg-gray-100"
+          className="w-full p-3 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] leading-relaxed disabled:opacity-50"
         />
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label htmlFor="price" className="block text-xs font-semibold text-[#111827] mb-1.5">
+            {isZh ? '基础售价 *' : 'Price *'}
+          </label>
+          <div className="relative">
+            <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+            <input
+              type="number"
+              id="price"
+              name="price"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              required
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              disabled={busy}
+              className="w-full h-10 pl-8 pr-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs font-bold text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="currency" className="block text-xs font-semibold text-[#111827] mb-1.5">
+            {isZh ? '结算币种' : 'Currency'}
+          </label>
+          <select
+            id="currency"
+            name="currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            disabled={busy}
+            className="w-full h-10 px-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs font-medium text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
+          >
+            <option value="CNY">CNY (人民币 ¥)</option>
+            <option value="USD">USD (美元 $)</option>
+            <option value="EUR">EUR (欧元 €)</option>
+            <option value="GBP">GBP (英镑 £)</option>
+            <option value="JPY">JPY (日元 ¥)</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="inventory" className="block text-xs font-semibold text-[#111827] mb-1.5">
+            {isZh ? '库存数量' : 'Inventory'}
+          </label>
+          <input
+            type="number"
+            id="inventory"
+            name="inventory"
+            value={inventory}
+            onChange={(e) => setInventory(e.target.value)}
+            min="0"
+            step="1"
+            placeholder="100"
+            disabled={busy}
+            className="w-full h-10 px-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs font-bold text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
+          />
+        </div>
+      </div>
+
       {error && (
-        <div
-          role="alert"
-          className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"
-        >
-          {error}
+        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+          <AlertCircle size={14} className="shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {success && !error && (
-        <div
-          role="status"
-          className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm"
-        >
-          {success}
+      {success && (
+        <div className="p-3.5 rounded-xl bg-green-50 border border-green-200 text-green-700 text-xs flex items-center gap-2">
+          <CheckCircle2 size={14} className="shrink-0" />
+          <span>{success}</span>
         </div>
       )}
 
       <button
         type="submit"
         disabled={busy}
-        className="w-full bg-iris text-white py-3 px-4 rounded-lg hover:bg-iris disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        className="w-full h-11 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {isCreating
-          ? 'Creating…'
+          ? isZh
+            ? '正在创建商品...'
+            : 'Creating…'
           : productId
           ? isPending
-            ? 'Saving…'
+            ? isZh
+              ? '正在保存...'
+              : 'Saving…'
+            : isZh
+            ? '保存修改'
             : 'Update Product'
+          : isZh
+          ? '立即创建商品'
           : 'Create Product'}
       </button>
     </form>

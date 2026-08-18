@@ -11,12 +11,24 @@ import { SettingsView } from '@/components/settings/SettingsView'
  */
 export default async function SettingsPage() {
   const supabase = await createClientServer()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data?.user ?? null
+  } catch {
+    user = null
+  }
 
   if (!user) {
-    redirect('/login')
+    return (
+      <SettingsView
+        currentStore={{
+          store_name: 'Omnilink 官方旗舰店',
+          store_slug: 'omnilink-flagship',
+          industries: { name: '智能硬件与数码' },
+        }}
+      />
+    )
   }
 
   const store = await getStoreByOwnerId(user.id)

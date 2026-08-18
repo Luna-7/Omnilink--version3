@@ -12,19 +12,20 @@ import { DashboardView } from '@/components/dashboard/DashboardView'
  */
 export default async function DashboardPage() {
   const supabase = await createClientServer()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data?.user ?? null
+  } catch {
+    user = null
   }
 
-  const displayName =
-    (user.user_metadata?.full_name as string | undefined) ||
-    (user.user_metadata?.name as string | undefined) ||
-    user.email ||
-    ''
+  const displayName = user
+    ? (user.user_metadata?.full_name as string | undefined) ||
+      (user.user_metadata?.name as string | undefined) ||
+      user.email ||
+      '商家'
+    : '商家'
 
   return <DashboardView displayName={displayName} />
 }
