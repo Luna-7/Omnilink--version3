@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -12,7 +12,6 @@ import { logoutAction } from '@/app/actions/auth'
 import {
   LayoutGrid,
   Package,
-  Bot,
   Brain,
   Globe,
   Blocks,
@@ -34,7 +33,6 @@ export type Profile = {
 type NavItemKey =
   | 'dashboard'
   | 'products'
-  | 'agentApi'
   | 'knowledge'
   | 'storefront'
   | 'plugins'
@@ -48,7 +46,7 @@ type NavItem = {
   match: (pathname: string) => boolean
 }
 
-/* 严格对应 app/dashboard 目录下的同名模块，内容与链接完全保留 */
+/* 严格对应 app/dashboard 目录下的同名模块，由侧边栏承载 */
 const NAV_ITEMS: NavItem[] = [
   {
     key: 'dashboard',
@@ -61,12 +59,6 @@ const NAV_ITEMS: NavItem[] = [
     href: '/dashboard/products',
     icon: Package,
     match: (p) => p.startsWith('/dashboard/products'),
-  },
-  {
-    key: 'agentApi',
-    href: '/dashboard/agent-api',
-    icon: Bot,
-    match: (p) => p.startsWith('/dashboard/agent-api'),
   },
   {
     key: 'knowledge',
@@ -112,14 +104,36 @@ export default function OmnilinkLayout({
 }) {
   const pathname = usePathname()
   const { t, isZh } = useLanguage()
+  const [currentTime, setCurrentTime] = useState<string>('')
+  const [isScrolled, setIsScrolled] = useState<boolean>(false)
 
-  const currentItem =
-    NAV_ITEMS.find((item) => item.match(pathname)) ||
-    BOTTOM_ITEMS.find((item) => item.match(pathname)) ||
-    NAV_ITEMS[0]
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 15)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
-  // Real user from the auth session — no fake names or mock avatars.
-  const displayName = profile.name || profile.email || 'Merchant'
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date()
+      setCurrentTime(
+        now.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      )
+    }
+    updateTime()
+    const timer = setInterval(updateTime, 1000 * 20)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Real user from the auth session
+  const displayName = profile.name || profile.email?.split('@')[0] || 'Thomas'
   const initials = displayName
     .split(/\s+/)
     .map((s) => s[0])
@@ -131,78 +145,95 @@ export default function OmnilinkLayout({
   return (
     <div className="min-h-screen w-full crextio-canvas text-[#111827] antialiased flex flex-col p-3 sm:p-5 lg:p-6 gap-5">
       {/* ============================================================
-          顶部全局主导航栏 (Minimalist Translucent Top Navbar)
-          Logo + Center Pill Nav Items + Right Controls (Search, Bell, User Profile)
+          顶部全局主导航栏 (Scroll-responsive Glassmorphism Top Bar)
+          Top: Transparent and floating
+          Scrolled: Frosted glass capsule card container with border & shadow
           ============================================================ */}
-      <header className="w-full bg-white/75 backdrop-blur-md rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 border border-white/90 shadow-[0_8px_30px_rgba(0,0,0,0.04)] flex flex-wrap items-center justify-between gap-3 sticky top-3 z-40 text-[#111827]">
-        {/* 左侧：品牌 Logo (Omnilink Title) */}
-        <Link href="/dashboard" className="flex items-center gap-2.5 group shrink-0">
-          <span className="font-heading font-bold text-base sm:text-lg tracking-tight text-[#111827]">
-            Omnilink
-          </span>
-        </Link>
+      <header
+        className={cn(
+          'w-full flex flex-wrap items-center justify-between gap-3 sticky top-3 z-40 text-[#111827] transition-all duration-300 ease-out',
+          isScrolled
+            ? 'bg-white/85 backdrop-blur-md rounded-2xl sm:rounded-full px-4 sm:px-6 py-2.5 border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.05)]'
+            : 'bg-transparent border border-transparent px-1 py-1.5 shadow-none'
+        )}
+      >
+        {/* 左侧：你好商家与欢迎文案 */}
+        <div className="flex flex-col justify-center shrink-0">
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-heading font-extrabold text-lg sm:text-xl tracking-tight text-[#111827] leading-none">
+              {isZh ? `你好，${displayName}` : `Hi ${displayName}`}
+            </h2>
+            <span className="text-lg sm:text-xl select-none leading-none">👋</span>
+          </div>
+          <p className="text-xs text-[#6B7280] font-normal leading-tight mt-1">
+            {isZh ? '很高兴再次见到你！' : 'Glad to see you again!'}
+          </p>
+        </div>
 
-        {/* 中间：顶部胶囊式导航标签栏 (Top Navigation Pills with Theme Color Active Pill) */}
-        <nav className="hidden md:flex items-center gap-1 bg-[#EBECEF]/60 p-1 rounded-full border border-gray-200/50 backdrop-blur-md">
-          {NAV_ITEMS.map((item) => {
-            const active = item.match(pathname)
-            const label = t.nav[item.key]
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={cn(
-                  'px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 whitespace-nowrap',
-                  active
-                    ? 'bg-[#FB7185] text-white shadow-xs'
-                    : 'text-[#6B7280] hover:text-[#111827] hover:bg-white/60'
-                )}
-              >
-                {label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* 右侧：操作区 (Search + Language + Notifications + User Avatar Pill) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* 搜索框 */}
-          <div className="relative hidden xl:flex items-center">
+        {/* 右侧：胶囊、文字交替的交互功能群 */}
+        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
+          {/* 胶囊 1: 搜索框胶囊 (Search Capsule) */}
+          <div className="relative hidden md:flex items-center">
             <input
               type="text"
-              placeholder={t.nav.searchPlaceholder}
-              className="h-8.5 w-36 lg:w-44 pl-3.5 pr-8 rounded-full bg-[#F3F4F8] border border-gray-200/70 text-xs text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-1 focus:ring-[#111827] transition-all"
+              placeholder={isZh ? '搜索商品与数据…' : 'Search'}
+              className={cn(
+                'h-9 w-36 sm:w-48 pl-9 pr-3 rounded-full border text-xs text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#FB7185] transition-all',
+                isScrolled
+                  ? 'bg-[#F4F5F7]/90 border-gray-200/70 shadow-2xs'
+                  : 'bg-white/90 backdrop-blur-md border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
+              )}
             />
-            <Search size={13} className="absolute right-3 text-[#9CA3AF]" />
+            <Search size={13} className="absolute left-3.5 text-[#9CA3AF] pointer-events-none" />
           </div>
 
-          {/* 语言切换 */}
-          <LanguageToggle className="py-1 px-2.5 text-[11px] rounded-full border-gray-200/80 bg-white/90" />
-
-          {/* 通知按钮 (带有红/珊瑚色通知微标) */}
+          {/* 胶囊 2: 通知铃铛按钮 (Bell Icon with Notification Dot) */}
           <button
             type="button"
-            className="w-8.5 h-8.5 rounded-full bg-white border border-gray-200/70 hover:bg-[#F3F4F8] flex items-center justify-center text-[#111827] transition-all shadow-xs relative cursor-pointer"
+            className={cn(
+              'w-9 h-9 rounded-full hover:bg-white flex items-center justify-center text-[#111827] transition-all relative cursor-pointer',
+              isScrolled
+                ? 'bg-white border border-gray-200/70 shadow-2xs'
+                : 'bg-white/90 backdrop-blur-md border border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
+            )}
             aria-label="Notifications"
           >
             <Bell size={14} />
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#FF4D6D] text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-              2
-            </span>
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#F97316] ring-2 ring-white" />
           </button>
 
-          {/* 用户信息胶囊 (Avatar + Name) */}
+          {/* 文字 1: 实时本地时间 (10:37 AM) */}
+          <div className="hidden sm:flex items-center text-xs font-bold text-[#111827] px-1.5 select-none whitespace-nowrap tracking-tight font-mono">
+            {currentTime || '10:37 AM'}
+          </div>
+
+          {/* 胶囊 3: 语言切换胶囊 */}
+          <LanguageToggle
+            className={cn(
+              'py-1.5 px-3 text-[11px] rounded-full transition-all',
+              isScrolled
+                ? 'bg-white border-gray-200/70 shadow-2xs hover:bg-[#F4F5F7]'
+                : 'bg-white/90 backdrop-blur-md border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:bg-white'
+            )}
+          />
+
+          {/* 胶囊 4: 用户信息胶囊 */}
           <Link
             href="/dashboard/account"
-            className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-white border border-gray-200/70 hover:border-gray-300 transition-all shadow-xs cursor-pointer"
+            className={cn(
+              'flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-white transition-all cursor-pointer',
+              isScrolled
+                ? 'bg-white border border-gray-200/70 shadow-2xs'
+                : 'bg-white/90 backdrop-blur-md border border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
+            )}
           >
-            <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-tr from-[#FED7AA] to-[#F472B6] relative shrink-0 flex items-center justify-center text-[10px] font-bold text-white shadow-xs">
+            <div className="w-6.5 h-6.5 rounded-full overflow-hidden bg-gradient-to-tr from-[#FED7AA] to-[#FB7185] relative shrink-0 flex items-center justify-center text-[10px] font-bold text-white shadow-2xs">
               {profile.avatarUrl ? (
                 <Image
                   src={profile.avatarUrl}
                   alt={displayName}
-                  width={28}
-                  height={28}
+                  width={26}
+                  height={26}
                   className="object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -210,11 +241,9 @@ export default function OmnilinkLayout({
                 <span aria-hidden>{initials || 'M'}</span>
               )}
             </div>
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-semibold text-[#111827] leading-none">
-                {displayName}
-              </span>
-            </div>
+            <span className="hidden md:inline text-xs font-semibold text-[#111827] max-w-[80px] truncate">
+              {displayName}
+            </span>
             <ChevronDown size={11} className="text-[#9CA3AF]" />
           </Link>
         </div>

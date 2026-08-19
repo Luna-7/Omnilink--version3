@@ -10,7 +10,6 @@ import {
   Receipt,
   ArrowUpRight,
   MoreHorizontal,
-  Download,
   ChevronDown,
   ExternalLink,
   Store,
@@ -406,35 +405,6 @@ export function DashboardView({
 
   return (
     <div className="space-y-6">
-      {/* ============================================================
-          顶部欢迎子头部 (Sub-header)
-          Back Button + Dashboard Title + Greeting + Action Pills
-          ============================================================ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-[#111827]">
-            {isZh ? '店铺仪表盘' : 'Store Analytics'}
-          </h1>
-          <p className="text-xs text-[#6B7280] font-medium flex items-center gap-1.5 mt-0.5">
-            <span>{isZh ? `你好，${displayName ?? 'Aya'}` : `Hello ${displayName ?? 'Aya'}`}</span>
-            <span className="text-amber-500">👋</span>
-          </p>
-        </div>
-
-        {/* 顶部右侧操作胶囊群 */}
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          {/* 导出报表 */}
-          <button
-            type="button"
-            onClick={() => setActiveModal('export')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-gray-200/70 text-xs font-semibold text-[#111827] shadow-2xs hover:bg-white transition-all cursor-pointer"
-          >
-            <Download size={13} className="text-[#111827]" />
-            <span>{isZh ? '导出' : 'Export'}</span>
-          </button>
-        </div>
-      </div>
-
       {/* ============================================================
           Row 1: 左侧 2*2 卡片矩阵 (6 cols) + 右侧客户订单量数据图 (6 cols)
           ============================================================ */}

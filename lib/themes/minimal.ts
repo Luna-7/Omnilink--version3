@@ -1,23 +1,24 @@
 /**
- * Minimal (简约) — 极简白底 + 克制留白 + 高级排版韵律。
+ * Minimal (简约) — 高端商业独立站极简模板（Editorial Eyewear & Optics）。
  *
  * 视觉特征：
- * - 白底 / 冷白 surface
- * - 6px 小圆角
- * - 微弱优雅阴影
- * - 锌黑 (Zinc-900) 品牌强调
+ * - 纯净暖白背景 (#FAFAFA) + 顶级骨白/纯白 Surface (#FFFFFF)
+ * - 4px (0.25rem) 建筑感微圆角，克制且锋利
+ * - 极轻微的自然漫反射阴影，层次由高反差排版与精准留白驱动
+ * - 纯黑/深曜石 (Onyx #121214) 品牌色彩系统
+ * - 严格的 10-Module 商业转化节拍
  */
 
 import type { ThemeDefinition, ThemeTokens } from './types'
 
 export const minimalTokens: ThemeTokens = {
   colors: {
-    primary: '#18181B',
-    background: '#FFFFFF',
-    surface: '#FAFAFA',
-    text: '#09090B',
+    primary: '#121214',
+    background: '#FAFAFA',
+    surface: '#FFFFFF',
+    text: '#121214',
     muted: '#71717A',
-    border: '#E4E4E7',
+    border: '#E5E5E7',
     accent: '#27272A',
   },
   typography: {
@@ -27,9 +28,9 @@ export const minimalTokens: ThemeTokens = {
     bodyWeight: 400,
   },
   radius: {
-    card: '0.375rem',  // 6px
-    button: '0.375rem',
-    input: '0.375rem',
+    card: '0.25rem',  // 4px - 锋利而优雅的商业排版形态
+    button: '0.25rem',
+    input: '0.25rem',
   },
   spacing: {
     section: '6rem',
@@ -37,18 +38,18 @@ export const minimalTokens: ThemeTokens = {
     grid: '1.5rem',
   },
   shadows: {
-    card: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-    floating: '0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+    card: '0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02)',
+    floating: '0 12px 30px -8px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
   },
   motion: {
-    duration: '200ms',
+    duration: '220ms',
     easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
   },
 }
 
 export const minimalTheme: ThemeDefinition = {
   id: 'minimal',
-  name: 'Minimal / 简约',
+  name: 'Minimal / 极简',
   description: '极致留白与精细排版，注重内容高效传达与高定质感',
   tokens: minimalTokens,
   variants: {
@@ -57,3 +58,4 @@ export const minimalTheme: ThemeDefinition = {
   },
   templates: ['home', 'product', 'collection'],
 }
+

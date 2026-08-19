@@ -3,10 +3,18 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import type { StorefrontSchema } from '@/lib/storefront/schema'
-import type { StorefrontProduct } from '@/lib/storefront/types'
+import type { StorefrontProduct, StorefrontStore, OrderConfirmationDTO } from '@/lib/storefront/types'
 import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
 import ThemeRoot from '@/components/theme/ThemeRoot'
 import DynamicSectionRenderer from '@/components/storefront/DynamicSectionRenderer'
+import Navbar from '@/components/theme/core/Navbar'
+import Footer from '@/components/theme/core/Footer'
+import ProductHero from '@/components/theme/core/ProductHero'
+import ProductGrid from '@/components/theme/core/ProductGrid'
+import CartPageView from '@/components/cart/CartPageView'
+import CheckoutPageView from '@/components/checkout/CheckoutPageView'
+import OrderConfirmationPageView from '@/components/checkout/OrderConfirmationPageView'
+import { CartProvider } from '@/components/cart/CartContext'
 import {
   Monitor,
   Tablet,
@@ -14,9 +22,21 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Home,
+  ShoppingBag,
+  ShoppingCart,
+  CreditCard,
+  CheckCircle2,
 } from 'lucide-react'
 
 export type DeviceMode = 'desktop' | 'tablet' | 'mobile'
+
+export type StorefrontEditorPage =
+  | 'homepage'
+  | 'product'
+  | 'cart'
+  | 'checkout'
+  | 'confirmation'
 
 export interface DevicePreset {
   id: DeviceMode
@@ -58,10 +78,175 @@ export const DEVICE_PRESETS: Record<DeviceMode, DevicePreset> = {
   },
 }
 
+/** 默认预览商品列表（当店铺尚未录入商品时使用） */
+export const DEFAULT_PREVIEW_PRODUCTS: StorefrontProduct[] = [
+  {
+    id: 'prod-preview-1',
+    name: 'KURA Akari Acoustic Ceramic Luminaire',
+    slug: 'kura-akari-luminaire',
+    description:
+      'Hand-thrown textured stoneware housing a dimmable warm-spectrum OLED light engine and precision acoustic dampening chamber.',
+    price: 480,
+    currency: 'USD',
+    imageUrl:
+      'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1540932239986-30128078f3c5?auto=format&fit=crop&w=1200&q=80',
+    ],
+    badges: ['Limited Edition', 'Artisan Drop'],
+    attributes: {
+      Material: 'High-fire Stoneware & Brass',
+      Dimensions: '280 × 160 × 340 mm',
+      Finish: 'Matte Obsidian Glaze',
+      Origin: 'Kyoto Atelier, Japan',
+    },
+    options: [
+      {
+        id: 'opt-finish',
+        name: 'Finish',
+        code: 'finish',
+        values: ['Matte Obsidian', 'Glacier White', 'Raw Terracotta'],
+      },
+      {
+        id: 'opt-size',
+        name: 'Dimension',
+        code: 'size',
+        values: ['Standard 280mm', 'Grand 380mm'],
+      },
+    ],
+    variants: [
+      {
+        id: 'var-1',
+        price: 480,
+        currency: 'USD',
+        sku: 'KURA-AKR-OBS-STD',
+        optionValues: {
+          Finish: 'Matte Obsidian',
+          Dimension: 'Standard 280mm',
+        },
+      },
+      {
+        id: 'var-2',
+        price: 640,
+        currency: 'USD',
+        sku: 'KURA-AKR-OBS-GRD',
+        optionValues: {
+          Finish: 'Matte Obsidian',
+          Dimension: 'Grand 380mm',
+        },
+      },
+      {
+        id: 'var-3',
+        price: 495,
+        currency: 'USD',
+        sku: 'KURA-AKR-WHT-STD',
+        optionValues: {
+          Finish: 'Glacier White',
+          Dimension: 'Standard 280mm',
+        },
+      },
+    ],
+    href: '#',
+  },
+  {
+    id: 'prod-preview-2',
+    name: 'Borosilicate Glacier Vessel No. 04',
+    slug: 'glacier-vessel-04',
+    description:
+      'Double-walled hand-blown borosilicate vessel engineered with subtle internal refraction optics.',
+    price: 195,
+    currency: 'USD',
+    imageUrl:
+      'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=1200&q=80',
+    badges: ['Bespoke Run'],
+    attributes: {
+      Material: 'German Schott Glass',
+      Capacity: '750 ml',
+      Weight: '420 g',
+    },
+    href: '#',
+  },
+  {
+    id: 'prod-preview-3',
+    name: 'Architectural Cast Iron Tea Kettle',
+    slug: 'cast-iron-kettle',
+    description:
+      'Traditional Nanbu ironware reimagined through clean geometric silhouettes and ergonomic solid walnut handle.',
+    price: 320,
+    currency: 'USD',
+    imageUrl:
+      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1200&q=80',
+    badges: ['Heritage'],
+    attributes: {
+      Material: 'Cast Iron & Walnut',
+      Capacity: '1.2 L',
+    },
+    href: '#',
+  },
+]
+
+/** 默认预览订单详情 */
+const DEFAULT_PREVIEW_ORDER: OrderConfirmationDTO = {
+  id: 'ord-preview-1',
+  orderNumber: 'ORD-2026-8892',
+  storeId: 'demo-store',
+  storeSlug: 'demo',
+  storeName: 'KURA OBJECTS',
+  status: 'inquiry_pending',
+  customer: {
+    name: 'Eleanor Vance',
+    email: 'eleanor.vance@studio-vance.design',
+    phone: '+1 (415) 555-0198',
+    whatsapp: '+1 (415) 555-0198',
+    company: 'Studio Vance Architecture',
+    country: 'United States',
+    state: 'CA 94103',
+    city: 'San Francisco',
+    address: '450 Townsend St, Suite 300',
+    notes: 'Please coordinate white-glove pallet delivery for our studio reception gallery.',
+    contactPreference: 'whatsapp',
+  },
+  items: [
+    {
+      id: 'item-preview-1',
+      productId: 'prod-preview-1',
+      productName: 'KURA Akari Acoustic Ceramic Luminaire',
+      sku: 'KURA-AKR-OBS-STD',
+      quantity: 2,
+      unitPrice: 480,
+      subtotal: 960,
+      currency: 'USD',
+      selectedOptions: {
+        Finish: 'Matte Obsidian',
+        Dimension: 'Standard 280mm',
+      },
+    },
+    {
+      id: 'item-preview-2',
+      productId: 'prod-preview-2',
+      productName: 'Borosilicate Glacier Vessel No. 04',
+      sku: 'KURA-VES-GLC-04',
+      quantity: 1,
+      unitPrice: 195,
+      subtotal: 195,
+      currency: 'USD',
+    },
+  ],
+  subtotal: 1155,
+  currency: 'USD',
+  createdAt: new Date().toISOString(),
+}
+
 interface PreviewCanvasProps {
   schema: StorefrontSchema
   storeSlug?: string
   products?: StorefrontProduct[]
+  activePage?: StorefrontEditorPage
+  onPageChange?: (page: StorefrontEditorPage) => void
+  selectedProductId?: string | null
+  cartPreviewMode?: 'filled' | 'empty'
   deviceMode?: DeviceMode
   onDeviceModeChange?: (mode: DeviceMode) => void
   showControlBar?: boolean
@@ -72,6 +257,10 @@ export default function PreviewCanvas({
   schema,
   storeSlug,
   products = [],
+  activePage = 'homepage',
+  onPageChange,
+  selectedProductId,
+  cartPreviewMode = 'filled',
   deviceMode: externalDeviceMode,
   onDeviceModeChange,
   showControlBar = true,
@@ -112,14 +301,11 @@ export default function PreviewCanvas({
     const scaleX = stageWidth / currentPreset.viewportWidth
     const scaleY = stageHeight / currentPreset.viewportHeight
 
-    // 以适配 Viewport 整体形态为准，至少包含 Viewport 框架
     const fitScale = Math.min(scaleX, scaleY)
     const rawPercent = Math.round((fitScale * 100) / 5) * 5
-    // 钳制在 25% 到 150% 之间
     return Math.min(150, Math.max(25, rawPercent))
   }, [currentPreset.viewportWidth, currentPreset.viewportHeight])
 
-  // 当设备模式或 Stage 尺寸改变时，若处于 AutoFit 状态，自动重新计算 Fit Scale
   const handleFit = useCallback(() => {
     const fit = calculateFitZoom()
     setZoomPercent(fit)
@@ -148,9 +334,9 @@ export default function PreviewCanvas({
     observer.observe(innerRef.current)
 
     return () => observer.disconnect()
-  }, [schema, currentPreset.viewportHeight])
+  }, [schema, activePage, currentPreset.viewportHeight])
 
-  // 监听视口大小变动 (Window resize)
+  // 监听窗口大小变动
   useEffect(() => {
     const handleResize = () => {
       if (isAutoFit) {
@@ -163,6 +349,32 @@ export default function PreviewCanvas({
     return () => window.removeEventListener('resize', handleResize)
   }, [isAutoFit, calculateFitZoom])
 
+  const displayProducts = useMemo(() => {
+    return products.length > 0 ? products : DEFAULT_PREVIEW_PRODUCTS
+  }, [products])
+
+  const activeProduct = useMemo(() => {
+    if (selectedProductId) {
+      const found = displayProducts.find((p) => p.id === selectedProductId)
+      if (found) return found
+    }
+    return displayProducts[0] || DEFAULT_PREVIEW_PRODUCTS[0]
+  }, [displayProducts, selectedProductId])
+
+  const storeInfo: StorefrontStore = useMemo(() => {
+    return {
+      id: 'store-preview',
+      name: schema.globalInfo?.brandName || 'Omnilink Store',
+      slug: storeSlug || 'preview',
+      description: 'Curated boutique collection',
+      logoUrl: null,
+      themeId: schema.theme.themeId,
+      currency: 'USD',
+      contact: schema.contact || schema.globalInfo?.contact,
+      social: schema.social || schema.globalInfo?.social,
+    }
+  }, [schema, storeSlug])
+
   const orderedSections = useMemo(() => {
     return [...schema.sections]
       .filter((s) => s.visible !== false)
@@ -173,110 +385,144 @@ export default function PreviewCanvas({
   const scaledWidth = currentPreset.viewportWidth * scale
   const scaledHeight = contentHeight * scale
 
+  const pagesList: Array<{ id: StorefrontEditorPage; labelZh: string; labelEn: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
+    { id: 'homepage', labelZh: '首页', labelEn: 'Home', icon: Home },
+    { id: 'product', labelZh: '商品详情', labelEn: 'Product', icon: ShoppingBag },
+    { id: 'cart', labelZh: '购物车', labelEn: 'Cart', icon: ShoppingCart },
+    { id: 'checkout', labelZh: '结算咨询', labelEn: 'Checkout', icon: CreditCard },
+    { id: 'confirmation', labelZh: '订单确认', labelEn: 'Confirmation', icon: CheckCircle2 },
+  ]
+
   return (
     <div className={`flex flex-col h-full w-full bg-slate-100 overflow-hidden ${className}`}>
       {/* 预览控制栏 (Preview Toolbar) */}
       {showControlBar && (
-        <div className="h-12 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 z-10 text-xs text-gray-700 shadow-xs">
-          {/* 左侧：设备切换 */}
-          <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-lg border border-gray-200/60">
-            <button
-              type="button"
-              onClick={() => setDeviceMode('desktop')}
-              className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
-                deviceMode === 'desktop'
-                  ? 'bg-white text-[#FB7185] shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              title={isZh ? '桌面端 (1440x900)' : 'Desktop (1440x900)'}
-            >
-              <Monitor size={14} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDeviceMode('tablet')}
-              className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
-                deviceMode === 'tablet'
-                  ? 'bg-white text-[#FB7185] shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              title={isZh ? '平板 (768x1024)' : 'Tablet (768x1024)'}
-            >
-              <Tablet size={14} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDeviceMode('mobile')}
-              className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
-                deviceMode === 'mobile'
-                  ? 'bg-white text-[#FB7185] shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              title={isZh ? '手机 (390x844)' : 'Mobile (390x844)'}
-            >
-              <Smartphone size={14} />
-            </button>
+        <div className="h-13 bg-white border-b border-gray-200 px-4 flex flex-wrap items-center justify-between gap-3 shrink-0 z-10 text-xs text-gray-700 shadow-xs">
+          {/* 左侧：页面切换 Tabs (Page Switcher) */}
+          <div className="flex items-center gap-1 bg-gray-100/90 p-1 rounded-xl border border-gray-200/70 overflow-x-auto">
+            {pagesList.map((p) => {
+              const Icon = p.icon
+              const isActive = activePage === p.id
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onPageChange?.(p.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'bg-white text-[#FB7185] shadow-xs ring-1 ring-black/5 font-bold'
+                      : 'text-gray-600 hover:text-gray-950 hover:bg-white/60'
+                  }`}
+                >
+                  <Icon size={13} className={isActive ? 'text-[#FB7185]' : 'text-gray-500'} />
+                  <span>{isZh ? p.labelZh : p.labelEn}</span>
+                </button>
+              )
+            })}
           </div>
 
-          {/* 右侧：Zoom 缩放控制 */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-gray-100/80 px-2 py-1 rounded-lg border border-gray-200/60">
+          {/* 中间/右侧：设备切换 + 缩放 */}
+          <div className="flex items-center gap-3">
+            {/* 设备切换 */}
+            <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-lg border border-gray-200/60">
               <button
                 type="button"
-                onClick={() => {
-                  setZoomPercent((prev) => Math.max(25, prev - 5))
-                  setIsAutoFit(false)
-                }}
-                className="p-0.5 text-gray-500 hover:text-gray-900 rounded cursor-pointer"
-                title={isZh ? '缩小' : 'Zoom Out'}
+                onClick={() => setDeviceMode('desktop')}
+                className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                  deviceMode === 'desktop'
+                    ? 'bg-white text-[#FB7185] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title={isZh ? '桌面端 (1440x900)' : 'Desktop (1440x900)'}
               >
-                <ZoomOut size={13} />
+                <Monitor size={14} />
               </button>
-
-              <input
-                type="range"
-                min={25}
-                max={150}
-                step={5}
-                value={zoomPercent}
-                onChange={(e) => {
-                  setZoomPercent(Number(e.target.value))
-                  setIsAutoFit(false)
-                }}
-                className="w-20 sm:w-28 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-[#FB7185]"
-              />
 
               <button
                 type="button"
-                onClick={() => {
-                  setZoomPercent((prev) => Math.min(150, prev + 5))
-                  setIsAutoFit(false)
-                }}
-                className="p-0.5 text-gray-500 hover:text-gray-900 rounded cursor-pointer"
-                title={isZh ? '放大' : 'Zoom In'}
+                onClick={() => setDeviceMode('tablet')}
+                className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                  deviceMode === 'tablet'
+                    ? 'bg-white text-[#FB7185] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title={isZh ? '平板 (768x1024)' : 'Tablet (768x1024)'}
               >
-                <ZoomIn size={13} />
+                <Tablet size={14} />
               </button>
 
-              <span className="font-mono text-[11px] font-extrabold text-[#FB7185] w-10 text-right select-none">
-                {zoomPercent}%
-              </span>
+              <button
+                type="button"
+                onClick={() => setDeviceMode('mobile')}
+                className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                  deviceMode === 'mobile'
+                    ? 'bg-white text-[#FB7185] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title={isZh ? '手机 (390x844)' : 'Mobile (390x844)'}
+              >
+                <Smartphone size={14} />
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleFit}
-              className={`p-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
-                isAutoFit
-                  ? 'bg-[#FFF1F2] text-[#FB7185] border-[#FECDD3] shadow-2xs'
-                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-              }`}
-              title={isZh ? '自适应当前屏幕' : 'Fit to screen'}
-            >
-              <Maximize2 size={13} />
-            </button>
+            {/* Zoom 缩放控制 */}
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1.5 bg-gray-100/80 px-2 py-1 rounded-lg border border-gray-200/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomPercent((prev) => Math.max(25, prev - 5))
+                    setIsAutoFit(false)
+                  }}
+                  className="p-0.5 text-gray-500 hover:text-gray-900 rounded cursor-pointer"
+                  title={isZh ? '缩小' : 'Zoom Out'}
+                >
+                  <ZoomOut size={13} />
+                </button>
+
+                <input
+                  type="range"
+                  min={25}
+                  max={150}
+                  step={5}
+                  value={zoomPercent}
+                  onChange={(e) => {
+                    setZoomPercent(Number(e.target.value))
+                    setIsAutoFit(false)
+                  }}
+                  className="w-16 sm:w-24 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-[#FB7185]"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomPercent((prev) => Math.min(150, prev + 5))
+                    setIsAutoFit(false)
+                  }}
+                  className="p-0.5 text-gray-500 hover:text-gray-900 rounded cursor-pointer"
+                  title={isZh ? '放大' : 'Zoom In'}
+                >
+                  <ZoomIn size={13} />
+                </button>
+
+                <span className="font-mono text-[11px] font-extrabold text-[#FB7185] w-9 text-right select-none">
+                  {zoomPercent}%
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleFit}
+                className={`p-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                  isAutoFit
+                    ? 'bg-[#FFF1F2] text-[#FB7185] border-[#FECDD3] shadow-2xs'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                }`}
+                title={isZh ? '自适应当前屏幕' : 'Fit to screen'}
+              >
+                <Maximize2 size={13} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -333,21 +579,82 @@ export default function PreviewCanvas({
 
             {/* Storefront 内容层 */}
             <div ref={innerRef} className="w-full bg-[var(--th-color-background)]">
-              <ThemeRoot themeId={schema.theme.themeId}>
-                <div style={storefrontThemeOverrides(schema.theme) as CSSProperties}>
-                  {orderedSections.map((section) => (
-                    <DynamicSectionRenderer
-                      key={section.id}
-                      section={section}
-                      storeSlug={storeSlug}
-                      products={products}
-                      globalInfo={schema.globalInfo}
-                      contact={schema.contact}
-                      social={schema.social}
-                    />
-                  ))}
-                </div>
-              </ThemeRoot>
+              <CartProvider storeSlug={storeInfo.slug} currency={storeInfo.currency}>
+                <ThemeRoot themeId={schema.theme.themeId}>
+                  <div
+                    style={storefrontThemeOverrides(schema.theme) as CSSProperties}
+                    className="min-h-[600px]"
+                  >
+                    {/* 1. 首页预览 */}
+                    {activePage === 'homepage' && (
+                      <div>
+                        {orderedSections.map((section) => (
+                          <DynamicSectionRenderer
+                            key={section.id}
+                            section={section}
+                            storeSlug={storeSlug}
+                            products={displayProducts}
+                            globalInfo={schema.globalInfo}
+                            contact={schema.contact}
+                            social={schema.social}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 2. 商品详情页预览 */}
+                    {activePage === 'product' && (
+                      <div>
+                        <Navbar store={storeInfo} />
+                        <ProductHero product={activeProduct} store={storeInfo} />
+                        {displayProducts.filter((p) => p.id !== activeProduct.id).length > 0 && (
+                          <section className="bg-[var(--th-color-background)] px-4 pb-[calc(var(--th-spacing-section)/2)] pt-6">
+                            <div className="mx-auto max-w-[var(--th-spacing-container)]">
+                              <h2 className="[font-family:var(--th-font-heading)] text-xl font-bold tracking-tight text-[var(--th-color-text)] sm:text-2xl mb-6">
+                                {isZh ? '推荐搭配与精选系列' : 'Curated Companions'}
+                              </h2>
+                              <ProductGrid
+                                products={displayProducts.filter((p) => p.id !== activeProduct.id)}
+                              />
+                            </div>
+                          </section>
+                        )}
+                        <Footer store={storeInfo} />
+                      </div>
+                    )}
+
+                    {/* 3. 购物车预览 */}
+                    {activePage === 'cart' && (
+                      <div>
+                        <Navbar store={storeInfo} />
+                        <CartPageView store={storeInfo} />
+                        <Footer store={storeInfo} />
+                      </div>
+                    )}
+
+                    {/* 4. 结算与咨询预览 */}
+                    {activePage === 'checkout' && (
+                      <div>
+                        <Navbar store={storeInfo} />
+                        <CheckoutPageView store={storeInfo} />
+                        <Footer store={storeInfo} />
+                      </div>
+                    )}
+
+                    {/* 5. 订单确认回执预览 */}
+                    {activePage === 'confirmation' && (
+                      <div>
+                        <Navbar store={storeInfo} />
+                        <OrderConfirmationPageView
+                          order={DEFAULT_PREVIEW_ORDER}
+                          store={storeInfo}
+                        />
+                        <Footer store={storeInfo} />
+                      </div>
+                    )}
+                  </div>
+                </ThemeRoot>
+              </CartProvider>
             </div>
           </div>
         </div>

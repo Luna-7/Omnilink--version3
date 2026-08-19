@@ -1,14 +1,12 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import type { StorefrontSchema } from '@/lib/storefront/schema'
 import { createDefaultSchema } from '@/lib/storefront/schema'
-import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
-import ThemeRoot from '@/components/theme/ThemeRoot'
-import DynamicSectionRenderer from '@/components/storefront/DynamicSectionRenderer'
-import PreviewCanvas, { type DeviceMode } from '@/components/storefront/PreviewCanvas'
+import type { StorefrontProduct } from '@/lib/storefront/types'
+import PreviewCanvas from '@/components/storefront/PreviewCanvas'
 import { applyTemplateToStoreAction } from '@/app/actions/template'
 import {
   ArrowLeft,
@@ -35,6 +33,74 @@ const TEMPLATE_NAMES: Record<string, { zh: string; en: string }> = {
   diffuse: { zh: 'Diffuse · 弥散氛围', en: 'Diffuse Glow' },
   tech: { zh: 'Tech · 电光科技', en: 'Cyber Tech' },
 }
+
+/** 4 款高定眼镜展示商品（对应真实图片资产与商业选品，4列完美排版） */
+const CURATED_EYEWEAR_PRODUCTS: StorefrontProduct[] = [
+  {
+    id: 'prod-kinfolk-01',
+    name: 'The Kinfolk Round 01',
+    slug: 'kinfolk-round-01',
+    price: 185,
+    currency: 'USD',
+    imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
+    href: '#products',
+    description: 'Handcrafted Japanese beta-titanium core with organic tortoiseshell acetate rims.',
+    attributes: {
+      Material: 'Japanese Titanium',
+      Shape: 'Round Classic',
+      Optics: 'Anti-Reflective UV400',
+    },
+    badges: ['Best Seller', 'Artisan Edition'],
+  },
+  {
+    id: 'prod-velvet-02',
+    name: 'The Velvet Horizon 02',
+    slug: 'velvet-horizon-02',
+    price: 210,
+    currency: 'USD',
+    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
+    href: '#products',
+    description: 'Deep midnight obsidian & burgundy sculpted bio-acetate frame with rose gold accents.',
+    attributes: {
+      Material: 'Mazzucchelli Bio-Acetate',
+      Shape: 'Square Architectural',
+      Optics: 'High-Index Clarity',
+    },
+    badges: ['Limited Batch'],
+  },
+  {
+    id: 'prod-prism-03',
+    name: 'The Prism Mood 03',
+    slug: 'prism-mood-03',
+    price: 195,
+    currency: 'USD',
+    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
+    href: '#products',
+    description: 'Ultra-lightweight champagne gold wireframe with spectrum-tint optical lenses.',
+    attributes: {
+      Material: 'Beta-Titanium Alloy',
+      Shape: 'Panto Minimal',
+      Optics: 'Blue-Light Guard',
+    },
+    badges: ['New Arrival'],
+  },
+  {
+    id: 'prod-paper-04',
+    name: 'The Paper Geometric 04',
+    slug: 'paper-geometric-04',
+    price: 220,
+    currency: 'USD',
+    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
+    href: '#products',
+    description: 'Dual-tone enamel rimmed geometric wireframe engineered for weightless ergonomics.',
+    attributes: {
+      Material: 'Cold-Formed Alloy',
+      Shape: 'Hexagonal',
+      Optics: 'Gradient Polarized',
+    },
+    badges: ["Editor's Pick"],
+  },
+]
 
 export default function TemplatePreviewClient({
   templateId,
@@ -92,13 +158,6 @@ export default function TemplatePreviewClient({
   const handleBack = () => {
     router.push('/dashboard/storefront?tab=templates')
   }
-
-  const orderedSections = [...effectiveSchema.sections]
-    .filter((s) => s.visible !== false)
-    .sort((a, b) => a.order - b.order)
-
-  const previewMaxWidth =
-    deviceMode === 'mobile' ? 390 : deviceMode === 'tablet' ? 768 : '100%'
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col relative">
@@ -163,7 +222,7 @@ export default function TemplatePreviewClient({
         <PreviewCanvas
           schema={effectiveSchema}
           storeSlug={store.store_slug}
-          products={[]}
+          products={CURATED_EYEWEAR_PRODUCTS}
           deviceMode={deviceMode}
           onDeviceModeChange={setDeviceMode}
         />
@@ -171,3 +230,4 @@ export default function TemplatePreviewClient({
     </div>
   )
 }
+

@@ -19,6 +19,7 @@ import Link from 'next/link'
 import type { StorefrontSection, GlobalStoreInfo, StoreContactConfig, StoreSocialConfig } from '@/lib/storefront/schema'
 import type { StorefrontProduct } from '@/lib/storefront/types'
 import ProductCard from '@/components/theme/core/ProductCard'
+import NavbarCartButton from '@/components/cart/NavbarCartButton'
 import {
   Mail,
   Phone,
@@ -192,22 +193,25 @@ function HeaderSection({
             {content.title || 'Store'}
           </span>
         </Link>
-        <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-[var(--th-color-muted)]">
-          <Link href={`/store/${storeSlug || ''}`} className="hover:text-[var(--th-color-primary)]">
-            Home
-          </Link>
-          <a href="#products" className="hover:text-[var(--th-color-primary)]">
-            Products
-          </a>
-          {(contact?.contactUrl || contact?.email) && (
-            <a
-              href={contact.contactUrl || `mailto:${contact.email}`}
-              className="hover:text-[var(--th-color-primary)]"
-            >
-              Contact
+        <div className="flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-[var(--th-color-muted)]">
+            <Link href={`/store/${storeSlug || ''}`} className="hover:text-[var(--th-color-primary)]">
+              Home
+            </Link>
+            <a href="#products" className="hover:text-[var(--th-color-primary)]">
+              Products
             </a>
-          )}
-        </nav>
+            {(contact?.contactUrl || contact?.email) && (
+              <a
+                href={contact.contactUrl || `mailto:${contact.email}`}
+                className="hover:text-[var(--th-color-primary)]"
+              >
+                Contact
+              </a>
+            )}
+          </nav>
+          <NavbarCartButton />
+        </div>
       </div>
     </header>
   )
@@ -279,9 +283,9 @@ function HeroSection({
 }
 
 const GRID_COLUMNS_CLASS: Record<number, string> = {
-  2: 'lg:grid-cols-2',
-  3: 'lg:grid-cols-3',
-  4: 'lg:grid-cols-4',
+  2: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2',
+  3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+  4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
 }
 
 function ProductGridSection({
@@ -294,9 +298,9 @@ function ProductGridSection({
   const columns =
     typeof content.columns === 'number' && GRID_COLUMNS_CLASS[content.columns]
       ? content.columns
-      : 3
+      : 4
   const count =
-    typeof content.count === 'number' && content.count > 0 ? content.count : 6
+    typeof content.count === 'number' && content.count > 0 ? content.count : 4
   const showPrice = content.showPrice !== false
   const visibleProducts = products.slice(0, count)
 
@@ -315,7 +319,7 @@ function ProductGridSection({
       )}
       {visibleProducts.length > 0 ? (
         <div
-          className={`mt-8 grid grid-cols-1 sm:grid-cols-2 ${GRID_COLUMNS_CLASS[columns]} gap-6`}
+          className={`mt-8 grid ${GRID_COLUMNS_CLASS[columns] || 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'} gap-6`}
         >
           {visibleProducts.map((product) => (
             <ProductCard key={product.id} product={product} showPrice={showPrice} />
@@ -383,7 +387,7 @@ function CollectionSection({
               <img
                 src={content.imageUrl}
                 alt={content.title || 'Collection'}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-top sm:object-[center_12%]"
               />
             </div>
           </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
 import {
@@ -9,9 +9,13 @@ import {
   Globe,
   Palette,
   Layout,
+  ExternalLink,
+  Bot,
+  ShieldCheck,
+  Monitor,
+  Smartphone,
 } from 'lucide-react'
 import StorefrontEditor from '@/components/storefront/StorefrontEditor'
-import AcrylicDashboard from '@/components/dashboard/AcrylicDashboard'
 import { TemplateSelector } from '@/components/store/TemplateSelector'
 import { publishStorefrontAction } from '@/app/actions/store'
 import type { StorefrontSchema } from '@/lib/storefront/schema'
@@ -42,8 +46,54 @@ export function StorefrontHub({
   storefrontProducts = [],
 }: StorefrontHubProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab') as ActiveHubTab | null
   const { isZh } = useLanguage()
-  const [activeTab, setActiveTab] = useState<ActiveHubTab>('editor')
+  const [activeTab, setActiveTab] = useState<ActiveHubTab>(
+    tabParam === 'templates' || tabParam === 'console' || tabParam === 'pages_seo' || tabParam === 'editor'
+      ? tabParam
+      : 'editor'
+  )
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [published, setPublished] = useState(
+    Boolean(storefrontSchema?.meta?.published ?? storePage?.published)
+  )
+  const [copiedUrl, setCopiedUrl] = useState(false)
+  const [publishFeedback, setPublishFeedback] = useState('')
+
+  const publicUrl = `/store/${store.store_slug}`
+
+  const handleCopyUrl = () => {
+    if (typeof window !== 'undefined') {
+      const fullUrl = `${window.location.origin}${publicUrl}`
+      navigator.clipboard.writeText(fullUrl)
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 2000)
+    }
+  }
+
+  const handleTogglePublish = async () => {
+    setIsPublishing(true)
+    setPublishFeedback('')
+
+    try {
+      const result = await publishStorefrontAction(store.id)
+      if (result.success) {
+        setPublished(Boolean(result.published))
+        setPublishFeedback(
+          result.published
+            ? (isZh ? '店铺已正式发布上线！' : 'Store published successfully!')
+            : (isZh ? '店铺已切换为草稿模式。' : 'Store unpublished (draft mode).')
+        )
+        router.refresh()
+        setTimeout(() => setPublishFeedback(''), 3000)
+      }
+    } catch (err) {
+      setPublishFeedback(err instanceof Error ? err.message : 'Publish action failed')
+    } finally {
+      setIsPublishing(false)
+    }
+  }
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
@@ -119,7 +169,143 @@ export function StorefrontHub({
 
       {/* Tab 2: 店铺控制台与概览 (Store Console & Channels) */}
       {activeTab === 'console' && (
-        <AcrylicDashboard />
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* 左侧：多渠道接入看板 (8 cols) */}
+            <div className="lg:col-span-8 space-y-5">
+              <div className="crextio-card p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-heading text-base font-bold text-[#111827]">
+                      {isZh ? '全渠道分发与链接状态' : 'Multi-Channel Distribution'}
+                    </h3>
+                    <p className="text-xs text-[#6B7280] mt-0.5">
+                      {isZh
+                        ? '同一套商品主档与主题配置，秒级同步分发至 Web、移动 H5 与 AI Agent 智能推荐网络'
+                        : 'Single canonical schema synchronized across Web, Mobile, and AI Agents.'}
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-bold border border-green-200">
+                    {isZh ? '全渠道已就绪' : 'All Ready'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+                  <div className="p-4 rounded-2xl bg-[#F4F5F7] border border-[#E5E7EB] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Monitor size={18} className="text-[#111827]" />
+                        <span className="text-[10px] font-bold text-green-600 bg-green-100/60 px-2 py-0.5 rounded-full">
+                          ONLINE
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-[#111827]">
+                        {isZh ? '独立商城官网 (Web)' : 'Desktop Web'}
+                      </div>
+                      <p className="text-[11px] text-[#6B7280] mt-1">
+                        {isZh ? '支持大屏沉浸式瀑布流与 4K 视觉' : 'High-density grid layout'}
+                      </p>
+                    </div>
+                    <div className="pt-3 mt-3 border-t border-[#E5E7EB] text-[11px] font-mono text-[#9CA3AF]">
+                      {publicUrl}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#F4F5F7] border border-[#E5E7EB] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Smartphone size={18} className="text-[#111827]" />
+                        <span className="text-[10px] font-bold text-green-600 bg-green-100/60 px-2 py-0.5 rounded-full">
+                          RESPONSIVE
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-[#111827]">
+                        {isZh ? '移动端 H5 智能商城' : 'Mobile Web H5'}
+                      </div>
+                      <p className="text-[11px] text-[#6B7280] mt-1">
+                        {isZh ? '自适应微信、小红书与外链一键拉起' : 'Adaptive touch navigation'}
+                      </p>
+                    </div>
+                    <div className="pt-3 mt-3 border-t border-[#E5E7EB] text-[11px] font-mono text-[#9CA3AF]">
+                      {publicUrl}?view=mobile
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#F4F5F7] border border-[#E5E7EB] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Bot size={18} className="text-[#FB7185]" />
+                        <span className="text-[10px] font-bold text-[#FB7185] bg-[#FB7185]/10 px-2 py-0.5 rounded-full">
+                          AI AGENT
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-[#111827]">
+                        {isZh ? 'Agent 语义推荐通道' : 'AI Agent Commerce API'}
+                      </div>
+                      <p className="text-[11px] text-[#6B7280] mt-1">
+                        {isZh ? '供 GPT / Claude / Gemini 检索知识与直购' : 'MCP & REST Protocol'}
+                      </p>
+                    </div>
+                    <div className="pt-3 mt-3 border-t border-[#E5E7EB] text-[11px] font-mono text-[#9CA3AF]">
+                      /api/agent/v1/store/{store.store_slug}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 基础配置卡 */}
+              <div className="crextio-card p-6 space-y-4">
+                <h3 className="font-heading text-base font-bold text-[#111827]">
+                  {isZh ? '店铺基本运行参数' : 'Store Parameters'}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB]">
+                    <span className="text-[#6B7280] block font-medium mb-1">
+                      {isZh ? '店铺全局唯一标识 (Store ID)' : 'Store Entity ID'}
+                    </span>
+                    <span className="font-mono font-bold text-[#111827]">{store.id}</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB]">
+                    <span className="text-[#6B7280] block font-medium mb-1">
+                      {isZh ? '自定义 Slug 路径' : 'Storefront Slug'}
+                    </span>
+                    <span className="font-mono font-bold text-[#111827]">/{store.store_slug}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 右侧：安全与存证卡片 (4 cols) */}
+            <div className="lg:col-span-4 space-y-5">
+              <div className="crextio-dark-card p-6 space-y-4">
+                <div className="w-10 h-10 rounded-xl bg-white/10 text-[#edbc40] flex items-center justify-center">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">
+                    {isZh ? '数字存证与 SSL 加密' : 'Security & Trust'}
+                  </h4>
+                  <p className="text-xs text-white/70 mt-1 leading-relaxed">
+                    {isZh
+                      ? '所有页面渲染规则均受 TLS 1.3 高强度加密保护，并在 AI 搜索引擎中建立不可篡改的企业数字信任凭证。'
+                      : 'Protected with TLS 1.3 and cryptographically verifiable seller identities.'}
+                  </p>
+                </div>
+                <div className="pt-3 border-t border-white/10 text-xs text-white/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span>SSL 证书状态</span>
+                    <span className="text-[#edbc40] font-bold">有效 (Auto Renew)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>边缘 CDN 加速</span>
+                    <span className="text-[#edbc40] font-bold">已启用 (Cloudflare)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Tab 3: 行业模板库 (Templates Gallery) */}

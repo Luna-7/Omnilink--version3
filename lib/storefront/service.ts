@@ -16,15 +16,24 @@ import {
   normalizeProducts,
   type StorefrontProductRow,
 } from './normalize'
-import type { StorefrontProduct, StorefrontStore } from './types'
+import type {
+  StorefrontProduct,
+  StorefrontStore,
+  OrderConfirmationDTO,
+} from './types'
 import {
   normalizeStorefrontSchema,
   type StorefrontSchema,
+  type StoreContactConfig,
+  type StoreSocialConfig,
 } from './schema'
 
 /** 商品白名单列：只取 UI 需要的字段，绝不暴露 raw_data/sku/inventory 等内部字段。 */
 const PRODUCT_SELECT =
   'id, name, description, price, currency, semantic_data, product_assets(url, asset_type)'
+
+const PRODUCT_DETAIL_SELECT =
+  'id, name, description, price, currency, semantic_data, product_assets(url, asset_type), product_options(id, name, code, position, values), product_variants(id, sku, price, currency, inventory, status, option_values)'
 
 type StoreRef = Pick<StorefrontStore, 'id' | 'slug'> & {
   currency?: string | null
@@ -49,6 +58,28 @@ function readThemeId(themeConfig: unknown): string | null {
   return typeof legacy === 'string' && legacy.length > 0 ? legacy : null
 }
 
+/** 提取全局联系与社交配置 */
+function readGlobalInfo(themeConfig: unknown): {
+  contact?: StoreContactConfig
+  social?: StoreSocialConfig
+} {
+  if (themeConfig === null || typeof themeConfig !== 'object') return {}
+  const obj = themeConfig as Record<string, unknown>
+  const globalInfo =
+    obj.globalInfo && typeof obj.globalInfo === 'object'
+      ? (obj.globalInfo as Record<string, unknown>)
+      : null
+
+  const contact = (globalInfo?.contact || obj.contact) as
+    | StoreContactConfig
+    | undefined
+  const social = (globalInfo?.social || obj.social) as
+    | StoreSocialConfig
+    | undefined
+
+  return { contact, social }
+}
+
 /**
  * 获取公开 storefront 的店铺数据。
  * 公开口径（与现有公开路由一致）：status = 'active' 且存在已发布的 store_pages。
@@ -66,7 +97,30 @@ export async function getPublishedStore(
     .maybeSingle()
 
   if (storeError) throw new Error(storeError.message)
-  if (!store) return null
+  if (!store) {
+    if (storeSlug === 'omnilink-flagship') {
+      return {
+        id: 'demo-store',
+        name: 'Omnilink 旗舰店',
+        slug: 'omnilink-flagship',
+        description: 'AI 原生智能电商示范旗舰店',
+        logoUrl: null,
+        currency: 'CNY',
+        themeId: 'minimal',
+        contact: {
+          email: 'concierge@omnilink.ai',
+          whatsapp: '+1 (555) 019-2834',
+          phone: '+1 (555) 019-2834',
+          address: '77 Atelier Way, Suite 400, San Francisco, CA',
+        },
+        social: {
+          instagram: 'https://instagram.com/omnilink',
+          x: 'https://x.com/omnilink',
+        },
+      }
+    }
+    return null
+  }
 
   const { data: publishedPage, error: pageError } = await supabase
     .from('store_pages')
@@ -87,6 +141,8 @@ export async function getPublishedStore(
 
   if (settingsError) throw new Error(settingsError.message)
 
+  const { contact, social } = readGlobalInfo(settings?.theme_config)
+
   return {
     id: store.id,
     name: store.store_name,
@@ -95,19 +151,13 @@ export async function getPublishedStore(
     logoUrl: store.logo_url,
     currency: store.currency,
     themeId: readThemeId(settings?.theme_config),
+    contact,
+    social,
   }
 }
 
 /**
  * 公开店面入口 —— 唯一事实源 = store_settings.theme_config（canonical StorefrontSchema）。
- *
- * 公开门槛：
- *   1. store.status = 'active'
- *   2. canonical schema 存在且 meta.published = true
- *   3. legacy 兼容：schema 为草稿/缺失，但存在已发布 store_pages 行的旧店铺，
- *      沿用旧门槛保持可见（默认骨架渲染，hero 回填店名/简介）。
- *
- * store_pages 在此仅作 legacy 发布位兜底，不是内容事实源。
  */
 export async function getPublicStorefront(
   storeSlug: string
@@ -138,6 +188,8 @@ export async function getPublicStorefront(
             logoUrl: null,
             currency: 'CNY',
             themeId: demoSchema.theme.themeId,
+            contact: demoSchema.globalInfo?.contact,
+            social: demoSchema.globalInfo?.social,
           },
           schema: {
             ...demoSchema,
@@ -148,64 +200,28 @@ export async function getPublicStorefront(
       return null
     }
 
-  const { data: settings, error: settingsError } = await supabase
-    .from('store_settings')
-    .select('theme_config')
-    .eq('store_id', store.id)
-    .maybeSingle()
-
-  if (settingsError) throw new Error(settingsError.message)
-
-  const rawConfig = settings?.theme_config
-  let schema = normalizeStorefrontSchema(rawConfig)
-  const isLegacyConfig =
-    rawConfig !== null &&
-    typeof rawConfig === 'object' &&
-    typeof (rawConfig as Record<string, unknown>).theme_id === 'string' &&
-    !(rawConfig as Record<string, unknown>).version
-
-  // legacy 兼容回填：旧店铺没有编辑器内容，hero 用店名/简介，避免「假欢迎语」
-  if (schema && isLegacyConfig) {
-    schema = {
-      ...schema,
-      sections: schema.sections.map((s) =>
-        s.type === 'hero'
-          ? {
-              ...s,
-              content: {
-                ...s.content,
-                title: store.store_name,
-                description: store.description ?? s.content.description,
-              },
-            }
-          : s
-      ),
-    }
-  }
-
-  // 发布门槛：canonical 以 meta.published 为准；草稿/无 schema 时 legacy 店铺
-  // 回退检查 store_pages.published（旧系统的唯一发布位）。
-  if (!schema || !schema.meta.published) {
-    const { data: publishedPage, error: pageError } = await supabase
-      .from('store_pages')
-      .select('id')
+    const { data: settings, error: settingsError } = await supabase
+      .from('store_settings')
+      .select('theme_config')
       .eq('store_id', store.id)
-      .eq('published', true)
-      .limit(1)
       .maybeSingle()
 
-    if (pageError) throw new Error(pageError.message)
-    if (!publishedPage) return null
+    if (settingsError) throw new Error(settingsError.message)
 
-    if (schema) {
-      schema = { ...schema, meta: { ...schema.meta, published: true } }
-    } else {
-      // 无 theme_config 的 legacy 已发布店铺：默认骨架 + hero 回填，保持可见。
-      const base = normalizeStorefrontSchema({ theme_id: 'electric-violet' })
-      if (!base) return null
+    const rawConfig = settings?.theme_config
+    let schema = normalizeStorefrontSchema(rawConfig)
+    const { contact, social } = readGlobalInfo(rawConfig)
+
+    const isLegacyConfig =
+      rawConfig !== null &&
+      typeof rawConfig === 'object' &&
+      typeof (rawConfig as Record<string, unknown>).theme_id === 'string' &&
+      !(rawConfig as Record<string, unknown>).version
+
+    if (schema && isLegacyConfig) {
       schema = {
-        ...base,
-        sections: base.sections.map((s) =>
+        ...schema,
+        sections: schema.sections.map((s) =>
           s.type === 'hero'
             ? {
                 ...s,
@@ -217,29 +233,65 @@ export async function getPublicStorefront(
               }
             : s
         ),
-        meta: { ...base.meta, published: true },
       }
     }
-  }
 
-  if (!schema) return null
+    if (!schema || !schema.meta.published) {
+      const { data: publishedPage, error: pageError } = await supabase
+        .from('store_pages')
+        .select('id')
+        .eq('store_id', store.id)
+        .eq('published', true)
+        .limit(1)
+        .maybeSingle()
 
-  return {
-    store: {
-      id: store.id,
-      name: store.store_name,
-      slug: store.store_slug,
-      description: store.description,
-      logoUrl: store.logo_url,
-      currency: store.currency,
-      themeId: schema.theme.themeId,
-    },
-    schema,
-  }
+      if (pageError) throw new Error(pageError.message)
+      if (!publishedPage) return null
+
+      if (schema) {
+        schema = { ...schema, meta: { ...schema.meta, published: true } }
+      } else {
+        const base = normalizeStorefrontSchema({ theme_id: 'minimal' })
+        if (!base) return null
+        schema = {
+          ...base,
+          sections: base.sections.map((s) =>
+            s.type === 'hero'
+              ? {
+                  ...s,
+                  content: {
+                    ...s.content,
+                    title: store.store_name,
+                    description: store.description ?? s.content.description,
+                  },
+                }
+              : s
+          ),
+          meta: { ...base.meta, published: true },
+        }
+      }
+    }
+
+    if (!schema) return null
+
+    return {
+      store: {
+        id: store.id,
+        name: store.store_name,
+        slug: store.store_slug,
+        description: store.description,
+        logoUrl: store.logo_url,
+        currency: store.currency,
+        themeId: schema.theme.themeId,
+        contact: contact || schema.globalInfo?.contact,
+        social: social || schema.globalInfo?.social,
+      },
+      schema,
+    }
   } catch (err) {
     console.error('getPublicStorefront error:', err)
     if (storeSlug === 'omnilink-flagship') {
-      const demoSchema = normalizeStorefrontSchema({ theme_id: 'electric-violet' })!
+      const demoSchema = normalizeStorefrontSchema({ theme_id: 'minimal' })!
       return {
         store: {
           id: 'demo-store',
@@ -249,6 +301,8 @@ export async function getPublicStorefront(
           logoUrl: null,
           currency: 'CNY',
           themeId: demoSchema.theme.themeId,
+          contact: demoSchema.globalInfo?.contact,
+          social: demoSchema.globalInfo?.social,
         },
         schema: {
           ...demoSchema,
@@ -296,8 +350,8 @@ export async function getStorefrontProducts(
 }
 
 /**
- * 单个公开商品。store_id + 商品 id 双重过滤，
- * 从数据库层阻止跨店铺读取（/store/a/products/属于b的商品 → null）。
+ * 单个公开商品。store_id + 商品 id 双重过滤。
+ * 优雅降级：若 product_options/product_variants 表查询报错，退回到普通查询。
  */
 export async function getStorefrontProduct(
   store: StoreRef,
@@ -305,7 +359,27 @@ export async function getStorefrontProduct(
 ): Promise<StorefrontProduct | null> {
   const supabase = await createClientServer()
 
-  const { data, error } = await supabase
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_DETAIL_SELECT)
+      .eq('id', productId)
+      .eq('store_id', store.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (!error && data) {
+      return normalizeProduct(data as unknown as StorefrontProductRow, {
+        storeSlug: store.slug,
+        storeCurrency: store.currency,
+      })
+    }
+  } catch {
+    // fallback below
+  }
+
+  // Fallback to basic product select
+  const { data: basicData, error: basicError } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('id', productId)
@@ -313,18 +387,17 @@ export async function getStorefrontProduct(
     .eq('status', 'active')
     .maybeSingle()
 
-  if (error) throw new Error(error.message)
-  if (!data) return null
+  if (basicError) throw new Error(basicError.message)
+  if (!basicData) return null
 
-  return normalizeProduct(data as unknown as StorefrontProductRow, {
+  return normalizeProduct(basicData as unknown as StorefrontProductRow, {
     storeSlug: store.slug,
     storeCurrency: store.currency,
   })
 }
 
 /**
- * 相关商品。当前阶段刻意简单：同店铺 + active + 排除当前商品 + limit。
- * 不做推荐算法。
+ * 相关商品。
  */
 export async function getRelatedProducts(
   store: StoreRef,
@@ -348,4 +421,115 @@ export async function getRelatedProducts(
     (data ?? []) as unknown as StorefrontProductRow[],
     { storeSlug: store.slug, storeCurrency: store.currency }
   )
+}
+
+/**
+ * 根据 orderId 和 storeSlug 查询订单确认回执。
+ */
+export async function getOrderById(
+  storeSlug: string,
+  orderId: string
+): Promise<OrderConfirmationDTO | null> {
+  try {
+    const supabase = await createClientServer()
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        order_number,
+        store_id,
+        customer_name,
+        customer_email,
+        customer_phone,
+        customer_whatsapp,
+        company,
+        country,
+        state,
+        city,
+        address,
+        notes,
+        contact_preference,
+        currency,
+        subtotal,
+        status,
+        created_at,
+        order_items (
+          id,
+          product_id,
+          variant_id,
+          product_name_snapshot,
+          sku_snapshot,
+          quantity,
+          unit_price_snapshot,
+          currency,
+          selected_options
+        ),
+        stores (
+          store_name,
+          store_slug,
+          store_settings (
+            theme_config
+          )
+        )
+      `)
+      .eq('id', orderId)
+      .maybeSingle()
+
+    if (orderError || !order) {
+      return null
+    }
+
+    const storeData = Array.isArray(order.stores) ? order.stores[0] : order.stores
+    const settings = Array.isArray(storeData?.store_settings)
+      ? storeData.store_settings[0]
+      : storeData?.store_settings
+
+    const { contact } = readGlobalInfo(settings?.theme_config)
+
+    const rawItems = Array.isArray(order.order_items) ? order.order_items : []
+    const items = rawItems.map((item: any) => ({
+      id: item.id,
+      productId: item.product_id,
+      variantId: item.variant_id,
+      productName: item.product_name_snapshot,
+      sku: item.sku_snapshot,
+      quantity: Number(item.quantity) || 1,
+      unitPrice: Number(item.unit_price_snapshot) || 0,
+      currency: item.currency || order.currency || 'USD',
+      selectedOptions: item.selected_options || {},
+      subtotal:
+        (Number(item.unit_price_snapshot) || 0) * (Number(item.quantity) || 1),
+    }))
+
+    return {
+      id: order.id,
+      orderNumber: order.order_number,
+      storeId: order.store_id,
+      storeSlug: storeData?.store_slug || storeSlug,
+      storeName: storeData?.store_name || 'Store',
+      customer: {
+        name: order.customer_name,
+        email: order.customer_email,
+        phone: order.customer_phone,
+        whatsapp: order.customer_whatsapp,
+        company: order.company,
+        country: order.country,
+        state: order.state,
+        city: order.city,
+        address: order.address,
+        notes: order.notes,
+        contactPreference: order.contact_preference,
+      },
+      items,
+      currency: order.currency || 'USD',
+      subtotal: Number(order.subtotal) || 0,
+      status: order.status || 'inquiry_pending',
+      createdAt: order.created_at,
+      storeContact: contact,
+    }
+  } catch (err) {
+    console.error('getOrderById error:', err)
+    return null
+  }
 }

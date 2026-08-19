@@ -55,7 +55,7 @@ export default function ProductPage({
     <>
       <Navbar store={store} />
 
-      <ProductHero product={product} action={action} />
+      <ProductHero product={product} store={store} action={action} />
 
       {hasRelated && relatedProducts && (
         <section className="bg-[var(--th-color-background)] px-4 pb-[calc(var(--th-spacing-section)/2)]">

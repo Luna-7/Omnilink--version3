@@ -7,9 +7,13 @@
  * 畸形 semantic_data）都只影响该条本身，绝不让页面崩溃。
  */
 
-import type { StorefrontProduct } from './types'
+import type {
+  StorefrontProduct,
+  StorefrontProductOption,
+  StorefrontProductVariant,
+} from './types'
 
-/** service 层查询返回的单条商品行（白名单 select + 关联 assets）。 */
+/** service 层查询返回的单条商品行（白名单 select + 关联 assets + 关联 options/variants）。 */
 export interface StorefrontProductRow {
   id: string
   name: string | null
@@ -20,6 +24,22 @@ export interface StorefrontProductRow {
   product_assets?: Array<{
     url: string | null
     asset_type: string | null
+  }> | null
+  product_options?: Array<{
+    id: string
+    name: string
+    code: string
+    position?: number
+    values: unknown
+  }> | null
+  product_variants?: Array<{
+    id: string
+    sku: string | null
+    price: number | string | null
+    currency: string | null
+    inventory: number | null
+    status: string | null
+    option_values: unknown
   }> | null
 }
 
@@ -35,18 +55,36 @@ function toFiniteNumber(value: number | string | null): number {
   return typeof n === 'number' && Number.isFinite(n) ? n : 0
 }
 
-/** 主图：优先 original，其次任一有效 url，最后 null。 */
-function pickImageUrl(
+/** 提取画廊图片：优先 original 居首，其余有效 URL 随后，去重。 */
+function extractImageGallery(
   assets: StorefrontProductRow['product_assets']
-): string | null {
-  if (!Array.isArray(assets) || assets.length === 0) return null
+): { primary: string | null; all: string[] } {
+  if (!Array.isArray(assets) || assets.length === 0) {
+    return { primary: null, all: [] }
+  }
   const valid = assets.filter(
     (a): a is { url: string; asset_type: string | null } =>
-      typeof a?.url === 'string' && a.url.length > 0
+      typeof a?.url === 'string' && a.url.trim().length > 0
   )
-  if (valid.length === 0) return null
+  if (valid.length === 0) {
+    return { primary: null, all: [] }
+  }
+
+  const urls: string[] = []
   const original = valid.find((a) => a.asset_type === 'original')
-  return (original ?? valid[0]).url
+  if (original) {
+    urls.push(original.url)
+  }
+  for (const item of valid) {
+    if (!urls.includes(item.url)) {
+      urls.push(item.url)
+    }
+  }
+
+  return {
+    primary: urls[0] ?? null,
+    all: urls,
+  }
 }
 
 /**
@@ -71,11 +109,50 @@ function flattenSemanticData(input: unknown): Record<string, string> {
   return out
 }
 
+function normalizeOptions(
+  rawOptions?: StorefrontProductRow['product_options']
+): StorefrontProductOption[] | undefined {
+  if (!Array.isArray(rawOptions) || rawOptions.length === 0) return undefined
+  return rawOptions
+    .map((opt) => ({
+      id: String(opt.id),
+      name: String(opt.name || opt.code || 'Option'),
+      code: String(opt.code || opt.name || 'opt').toLowerCase(),
+      position: typeof opt.position === 'number' ? opt.position : 0,
+      values: Array.isArray(opt.values)
+        ? opt.values.map((v) => (typeof v === 'string' ? v : String(v?.name || v)))
+        : [],
+    }))
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+}
+
+function normalizeVariants(
+  rawVariants?: StorefrontProductRow['product_variants']
+): StorefrontProductVariant[] | undefined {
+  if (!Array.isArray(rawVariants) || rawVariants.length === 0) return undefined
+  return rawVariants.map((v) => ({
+    id: String(v.id),
+    sku: v.sku ? String(v.sku) : null,
+    price: v.price !== null && v.price !== undefined ? toFiniteNumber(v.price) : null,
+    currency: v.currency ? String(v.currency) : null,
+    inventory: typeof v.inventory === 'number' ? v.inventory : null,
+    status: v.status ? String(v.status) : 'active',
+    optionValues:
+      v.option_values && typeof v.option_values === 'object' && !Array.isArray(v.option_values)
+        ? (v.option_values as Record<string, string>)
+        : {},
+  }))
+}
+
 export function normalizeProduct(
   row: StorefrontProductRow,
   opts: NormalizeOptions
 ): StorefrontProduct {
   const id = String(row.id)
+  const gallery = extractImageGallery(row.product_assets)
+  const options = normalizeOptions(row.product_options)
+  const variants = normalizeVariants(row.product_variants)
+
   return {
     id,
     name: row.name?.trim() || 'Untitled product',
@@ -83,11 +160,14 @@ export function normalizeProduct(
     slug: id,
     price: toFiniteNumber(row.price),
     currency: row.currency ?? opts.storeCurrency ?? 'USD',
-    imageUrl: pickImageUrl(row.product_assets),
+    imageUrl: gallery.primary,
+    images: gallery.all.length > 0 ? gallery.all : (gallery.primary ? [gallery.primary] : []),
     href: `/store/${opts.storeSlug}/products/${id}`,
     description: row.description ?? null,
     attributes: flattenSemanticData(row.semantic_data),
     badges: [],
+    options,
+    variants,
   }
 }
 

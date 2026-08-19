@@ -12,6 +12,31 @@
  *   - attributes 来自 products.semantic_data 的安全拍平。
  */
 
+import type { StoreContactConfig, StoreSocialConfig } from './schema'
+
+export interface StorefrontProductOptionValue {
+  name: string
+  priceDelta?: number
+}
+
+export interface StorefrontProductOption {
+  id: string
+  name: string
+  code: string
+  position?: number
+  values: string[] | StorefrontProductOptionValue[]
+}
+
+export interface StorefrontProductVariant {
+  id: string
+  sku?: string | null
+  price?: number | null
+  currency?: string | null
+  inventory?: number | null
+  status?: string | null
+  optionValues: Record<string, string>
+}
+
 export interface StorefrontProduct {
   /** 稳定识别（DB uuid）。 */
   id: string
@@ -25,6 +50,8 @@ export interface StorefrontProduct {
   currency: string
   /** 主图；无图时为 null（UI 负责占位，不在这里猜）。 */
   imageUrl: string | null
+  /** 多图画廊（包含主图在内的所有有效图）。 */
+  images?: string[]
   /** normalize 预生成，组件不自行拼 URL。 */
   href: string
   /** 允许为空。 */
@@ -33,6 +60,10 @@ export interface StorefrontProduct {
   attributes: Record<string, string>
   /** 扩展点：当前无稳定 badge 规则，保持空数组。 */
   badges?: string[]
+  /** 可选商品规格维度（如颜色、材质、尺码）。 */
+  options?: StorefrontProductOption[]
+  /** 可选 SKU 变体集合。 */
+  variants?: StorefrontProductVariant[]
 }
 
 export interface StorefrontStore {
@@ -47,6 +78,87 @@ export interface StorefrontStore {
    * 可能为 null；未知 id 的回退由 lib/themes registry 在渲染层处理。
    */
   themeId: string | null
+  /** 全局联系信息（Email, WhatsApp, Phone, Address）。 */
+  contact?: StoreContactConfig
+  /** 全局社交媒体链接。 */
+  social?: StoreSocialConfig
+}
+
+/**
+ * 购物车单项数据模型（Client-side State + Server Recalculation）。
+ */
+export interface CartItem {
+  id: string // `${productId}_${variantId || 'default'}`
+  productId: string
+  variantId?: string | null
+  quantity: number
+  productName: string
+  image: string | null
+  price: number
+  currency: string
+  selectedOptions?: Record<string, string>
+  sku?: string | null
+}
+
+/**
+ * 订单提交 DTO（从客户端传给服务端，服务端强制重算价格）。
+ */
+export interface OrderCustomerInfo {
+  name: string
+  email: string
+  phone?: string
+  whatsapp?: string
+  company?: string
+  country?: string
+  state?: string
+  city?: string
+  address?: string
+  notes?: string
+  contactPreference?: 'email' | 'whatsapp' | 'phone'
+}
+
+export interface OrderItemSubmission {
+  productId: string
+  variantId?: string | null
+  quantity: number
+  selectedOptions?: Record<string, string>
+}
+
+export interface OrderSubmissionPayload {
+  storeSlug: string
+  customer: OrderCustomerInfo
+  items: OrderItemSubmission[]
+}
+
+/**
+ * 订单回执快照（展示在 Order Confirmation 页面）。
+ */
+export interface OrderConfirmationItem {
+  id: string
+  productId?: string | null
+  variantId?: string | null
+  productName: string
+  sku?: string | null
+  quantity: number
+  unitPrice: number
+  currency: string
+  selectedOptions?: Record<string, string>
+  subtotal: number
+}
+
+export interface OrderConfirmationDTO {
+  id: string
+  orderNumber: string
+  storeId: string
+  storeSlug: string
+  storeName: string
+  customer: OrderCustomerInfo
+  items: OrderConfirmationItem[]
+  currency: string
+  subtotal: number
+  status: string
+  createdAt: string
+  storeContact?: StoreContactConfig
 }
 
 /**

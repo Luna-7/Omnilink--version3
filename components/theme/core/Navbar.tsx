@@ -11,6 +11,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { StorefrontStore } from '@/lib/storefront/types'
 import MobileMenu from './MobileMenu'
+import NavbarCartButton from '@/components/cart/NavbarCartButton'
 
 export type NavItem = {
   label: string
@@ -79,18 +80,23 @@ export default function Navbar({ store, navItems, cta }: NavbarProps) {
           ))}
         </nav>
 
-        {/* 桌面端 CTA（仅在调用方提供时渲染） */}
-        {cta && (
-          <Link
-            href={cta.href}
-            className="hidden shrink-0 rounded-[var(--th-radius-button)] bg-[var(--th-color-primary)] px-4 py-1.5 text-sm font-semibold text-white transition-colors [transition-duration:var(--th-motion-duration)] [transition-timing-function:var(--th-motion-easing)] hover:bg-[var(--th-color-accent)] md:inline-flex"
-          >
-            {cta.label}
-          </Link>
-        )}
+        {/* 右侧动作区：Cart + CTA + MobileMenu */}
+        <div className="flex items-center gap-2">
+          <NavbarCartButton />
 
-        {/* 移动端折叠岛 */}
-        <MobileMenu navItems={items} cta={cta} />
+          {/* 桌面端 CTA（仅在调用方提供时渲染） */}
+          {cta && (
+            <Link
+              href={cta.href}
+              className="hidden shrink-0 rounded-[var(--th-radius-button)] bg-[var(--th-color-primary)] px-4 py-1.5 text-sm font-semibold text-white transition-colors [transition-duration:var(--th-motion-duration)] [transition-timing-function:var(--th-motion-easing)] hover:bg-[var(--th-color-accent)] md:inline-flex"
+            >
+              {cta.label}
+            </Link>
+          )}
+
+          {/* 移动端折叠岛 */}
+          <MobileMenu navItems={items} cta={cta} />
+        </div>
       </div>
     </header>
   )
