@@ -316,10 +316,14 @@ export async function getPublicStorefront(
 
 /** 店铺公开商品列表（active、按创建时间倒序、限量）。 */
 export async function getStorefrontProducts(
-  store: StoreRef,
+  storeOrId: StoreRef | { id: string; store_slug?: string; currency?: string | null } | string,
   limit = 24
 ): Promise<StorefrontProduct[]> {
-  if (store.id === 'demo-store') {
+  const storeId = typeof storeOrId === 'string' ? storeOrId : storeOrId?.id
+  const storeSlug = typeof storeOrId === 'string' ? 'store' : ('slug' in storeOrId ? storeOrId.slug : storeOrId.store_slug) || 'store'
+  const storeCurrency = typeof storeOrId === 'string' ? null : storeOrId?.currency
+
+  if (!storeId || storeId === 'demo-store') {
     return []
   }
 
@@ -329,7 +333,7 @@ export async function getStorefrontProducts(
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_SELECT)
-      .eq('store_id', store.id)
+      .eq('store_id', storeId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -341,7 +345,7 @@ export async function getStorefrontProducts(
 
     return normalizeProducts(
       (data ?? []) as unknown as StorefrontProductRow[],
-      { storeSlug: store.slug, storeCurrency: store.currency }
+      { storeSlug, storeCurrency }
     )
   } catch (err) {
     console.error('getStorefrontProducts exception:', err)

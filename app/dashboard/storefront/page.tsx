@@ -45,11 +45,17 @@ export default async function StorefrontDashboardPage() {
     redirect('/onboarding')
   }
 
-  const { data: page } = await supabase
-    .from('store_pages')
-    .select('id, published, template_id, sections')
-    .eq('store_id', store.id)
-    .maybeSingle()
+  let page = null
+  try {
+    const { data } = await supabase
+      .from('store_pages')
+      .select('id, published, template_id, sections')
+      .eq('store_id', store.id)
+      .maybeSingle()
+    page = data
+  } catch (error) {
+    console.error('Failed to fetch store page:', error)
+  }
 
   let storefrontSchema = null
   try {
@@ -60,7 +66,11 @@ export default async function StorefrontDashboardPage() {
 
   let storefrontProducts: any[] = []
   try {
-    storefrontProducts = await getStorefrontProducts(store.id)
+    storefrontProducts = await getStorefrontProducts({
+      id: store.id,
+      slug: store.store_slug,
+      currency: store.currency,
+    })
   } catch (error) {
     console.error('Failed to load storefront products:', error)
   }

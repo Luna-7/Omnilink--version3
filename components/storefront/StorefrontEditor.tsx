@@ -13,7 +13,7 @@
 
 'use client'
 
-import { useState, useEffect, useId, useMemo } from 'react'
+import { useState, useEffect, useId, useMemo, useRef } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import type {
   SectionStyle,
@@ -29,6 +29,7 @@ import { getTheme, DEFAULT_THEME_ID, ALL_STYLES } from '@/lib/themes/registry'
 import PreviewCanvas, {
   type StorefrontEditorPage,
   DEFAULT_PREVIEW_PRODUCTS,
+  getPreviewProductsForLanguage,
 } from './PreviewCanvas'
 import {
   saveStorefrontSchemaAction,
@@ -40,6 +41,12 @@ import {
   loadTemplateSchemaAction,
 } from '@/app/actions/template'
 import {
+  ENGLISH_FONTS,
+  CHINESE_FONTS,
+} from '@/lib/storefront/theme-overrides'
+import {
+  Globe,
+  Type,
   ArrowLeft,
   Eye,
   Save,
@@ -53,6 +60,7 @@ import {
   ExternalLink,
   AlertCircle,
   Plus,
+  X,
   Trash2,
   Copy,
   Check,
@@ -61,21 +69,9 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  ImageIcon,
   CheckCircle2,
-  Home,
-  ShoppingBag,
-  ShoppingCart,
-  CreditCard,
-  Sliders,
-  Store,
-  Sparkles,
-  ShieldCheck,
-  MessageCircle,
-  Mail,
-  FileText,
-  Package,
 } from 'lucide-react'
+import { resolveStorefrontLanguage } from '@/lib/storefront/locale'
 
 /** 可选 Section 类型（与 schema.ts SECTION_TYPES 对齐）。 */
 const SECTION_TYPE_OPTIONS: Array<{ type: SectionType; label: string }> = [
@@ -278,6 +274,52 @@ function defaultStyleFor(type: SectionType): SectionStyle {
   }
 }
 
+function AddSectionMenu({ isZh, onAdd }: { isZh: boolean; onAdd: (type: SectionType) => void }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full py-2 bg-black hover:bg-black/90 text-white rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+      >
+        <Plus size={12} />
+        <span>{isZh ? '添加分区' : 'Add Section'}</span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1 z-30 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          {SECTION_TYPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.type}
+              type="button"
+              onClick={() => {
+                onAdd(opt.type)
+                setIsOpen(false)
+              }}
+              className="w-full text-left px-3 py-2 text-xs text-[#1D1D1F] hover:bg-black/5 font-semibold transition-colors cursor-pointer"
+            >
+              {isZh ? SECTION_LABELS[opt.type].zh : opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface StorefrontEditorProps {
   store: {
     id: string
@@ -320,8 +362,8 @@ export default function StorefrontEditor({
   const [newSectionType, setNewSectionType] = useState<SectionType>('hero')
 
   const displayProducts = useMemo(() => {
-    return products.length > 0 ? products : DEFAULT_PREVIEW_PRODUCTS
-  }, [products])
+    return products.length > 0 ? products : getPreviewProductsForLanguage(isZh ? 'zh' : 'en')
+  }, [products, isZh])
 
   function updateGlobalInfo(
     contactPartial: Partial<StoreContactConfig>,
@@ -574,34 +616,43 @@ export default function StorefrontEditor({
       )}
 
       {/* 顶部工具栏 */}
-      <div className="h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 z-20">
-        <div className="flex items-center gap-3">
+      <div
+        className="h-14 px-4 flex items-center justify-between shrink-0 z-20"
+        style={{
+          background: 'rgba(255, 255, 255, 0.65)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.03)',
+        }}
+      >
+        <div className="flex items-center gap-2">
           <a
             href={`/store/${store.store_slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-black/10 bg-white hover:bg-gray-50 text-gray-700 text-[11px] font-semibold shadow-2xs transition-all cursor-pointer"
           >
             <span>{isZh ? '访问店铺' : 'Visit Store'}</span>
-            <ExternalLink size={12} />
+            <ExternalLink size={11} />
           </a>
 
           {mode === 'template' ? (
             <>
               <a
                 href="/dashboard/storefront?tab=templates"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-black/10 bg-white hover:bg-gray-50 text-gray-700 text-[11px] font-semibold shadow-2xs transition-all cursor-pointer"
               >
-                <ArrowLeft size={12} />
+                <ArrowLeft size={11} />
                 <span>{isZh ? '返回模板库' : 'Back to Templates'}</span>
               </a>
 
               {templateId && (
                 <a
                   href={`/dashboard/storefront/templates/${templateId}/preview`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-black/10 bg-white hover:bg-gray-50 text-gray-700 text-[11px] font-semibold shadow-2xs transition-all cursor-pointer"
                 >
-                  <Eye size={12} />
+                  <Eye size={11} />
                   <span>{isZh ? '预览模板' : 'Preview Template'}</span>
                 </a>
               )}
@@ -612,19 +663,19 @@ export default function StorefrontEditor({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors"
+            className="p-1.5 rounded-full border border-black/10 bg-white hover:bg-gray-50 text-gray-700 shadow-2xs transition-all cursor-pointer"
             title={isFullscreen ? (isZh ? '退出全屏' : 'Exit Fullscreen') : isZh ? '全屏编辑' : 'Fullscreen'}
           >
-            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>
 
           {mode === 'template' ? (
             <button
               onClick={handleSaveDraft}
               disabled={isSaving}
-              className="px-4 py-1.5 rounded-lg bg-[#FB7185] hover:bg-[#E11D48] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+              className="px-5 py-1.5 rounded-full bg-black hover:bg-black/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-md transition-all disabled:opacity-50 cursor-pointer"
             >
-              {isSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+              {isSaving ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
               <span>{isZh ? '保存模板' : 'Save Template'}</span>
             </button>
           ) : (
@@ -632,18 +683,18 @@ export default function StorefrontEditor({
               <button
                 onClick={handleSaveDraft}
                 disabled={isSaving}
-                className="px-3.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all disabled:opacity-50"
+                className="px-4 py-1.5 rounded-full border border-black/10 bg-white hover:bg-gray-50 text-gray-700 text-[11px] font-bold transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
               >
-                {isSaving ? <RefreshCw size={12} className="animate-spin inline mr-1" /> : null}
+                {isSaving ? <RefreshCw size={11} className="animate-spin inline mr-1" /> : null}
                 <span>{isZh ? '保存草稿' : 'Save Draft'}</span>
               </button>
 
               <button
                 onClick={handlePublish}
                 disabled={isPublishing}
-                className="px-4 py-1.5 rounded-lg bg-[#FB7185] hover:bg-[#E11D48] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                className="px-5 py-1.5 rounded-full bg-black hover:bg-black/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-md transition-all disabled:opacity-50 cursor-pointer"
               >
-                {isPublishing ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                {isPublishing ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
                 <span>
                   {isPublishing
                     ? isZh
@@ -666,41 +717,86 @@ export default function StorefrontEditor({
       {/* 三栏工作台 */}
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：页面分区与层级结构 (Dynamic Page Section Inspector) */}
-        <div className="w-64 sm:w-72 bg-white border-r border-gray-200 flex flex-col shrink-0">
-          {/* 左栏头部：根据当前页面显示 */}
-          <div className="p-3 border-b border-gray-200 flex items-center justify-between bg-gray-50/70">
-            <div className="flex items-center gap-1.5">
-              <Layers size={15} className="text-[#FB7185]" />
-              <span className="text-xs font-extrabold text-gray-900">
-                {activePage === 'homepage' && (isZh ? '首页分区结构' : 'Homepage Sections')}
-                {activePage === 'product' && (isZh ? '商品详情分区' : 'Product Page Sections')}
-                {activePage === 'cart' && (isZh ? '购物车分区' : 'Cart Page Sections')}
-                {activePage === 'checkout' && (isZh ? '结算咨询分区' : 'Checkout Sections')}
-                {activePage === 'confirmation' && (isZh ? '订单确认分区' : 'Confirmation Sections')}
-              </span>
+        <div
+          className={`flex flex-col shrink-0 overflow-hidden transition-all duration-300 ease-in-out transform ${
+            activePage === 'homepage'
+              ? 'w-64 sm:w-72 opacity-100 translate-x-0 pointer-events-auto'
+              : 'w-0 opacity-0 -translate-x-full pointer-events-none'
+          }`}
+          style={{
+            background: 'rgba(255, 255, 255, 0.65)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.03)',
+          }}
+        >
+          <div className="w-64 sm:w-72 flex flex-col h-full shrink-0">
+            {/* 全局配置组 (Global Design System Shortcuts) */}
+            <div className="p-3 border-b border-black/[0.04]">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 select-none">
+                {isZh ? '全局配置' : 'Global Settings'}
+              </div>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSectionId('theme_design')
+                    setActiveTab('theme')
+                  }}
+                  className={`w-full px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                    selectedSectionId === 'theme_design'
+                      ? 'bg-black text-white shadow-sm font-bold'
+                      : 'text-gray-700 hover:bg-black/5'
+                  }`}
+                >
+                  <Palette size={13} />
+                  <span>{isZh ? '全局主题' : 'Global Theme'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSectionId('global_settings')
+                    setActiveTab('global')
+                  }}
+                  className={`w-full px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                    selectedSectionId === 'global_settings'
+                      ? 'bg-black text-white shadow-sm font-bold'
+                      : 'text-gray-700 hover:bg-black/5'
+                  }`}
+                >
+                  <Globe size={13} />
+                  <span>{isZh ? '全店信息' : 'Store Metadata'}</span>
+                </button>
+              </div>
             </div>
-            {activePage === 'homepage' && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+
+            {/* 左栏头部：首页分区结构 */}
+            <div className="p-3 border-b border-black/[0.04] flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Layers size={13} className="text-gray-400" />
+                <span className="text-xs font-bold text-gray-800">
+                  {isZh ? '首页分区结构' : 'Homepage Sections'}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/5 text-gray-500">
                 {schema.sections.length}
               </span>
-            )}
-          </div>
+            </div>
 
-          {/* 左栏主体 */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {/* 1. 首页模式：Section List */}
-            {activePage === 'homepage' && (
-              <div className="space-y-1.5">
+            {/* 左栏主体：首页 Section List (macOS List Style) */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div className="space-y-1">
                 {orderedSections.map((section, index) => {
                   const isSelected = selectedSectionId === section.id
                   return (
                     <div
                       key={section.id}
                       onClick={() => selectSection(section.id)}
-                      className={`group px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                      className={`group px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-between select-none ${
                         isSelected
-                          ? 'bg-[#FB7185] text-white border-[#FB7185] shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                          ? 'bg-black text-white shadow-sm font-bold'
+                          : 'bg-transparent text-[#1D1D1F] hover:bg-black/5'
                       }`}
                     >
                       <div className="flex items-center gap-2 truncate">
@@ -708,7 +804,7 @@ export default function StorefrontEditor({
                           {isZh ? SECTION_LABELS[section.type].zh : SECTION_LABELS[section.type].en}
                         </span>
                         {!section.visible && (
-                          <EyeOff size={12} className={isSelected ? 'text-white/70' : 'text-gray-400'} />
+                          <EyeOff size={11} className={isSelected ? 'text-white/60' : 'text-gray-400'} />
                         )}
                       </div>
                       <div
@@ -717,270 +813,83 @@ export default function StorefrontEditor({
                         } transition-opacity`}
                       >
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             moveSection(index, index - 1)
                           }}
                           disabled={index === 0}
-                          className={`p-1 rounded disabled:opacity-30 ${
-                            isSelected ? 'hover:bg-white/20' : 'hover:bg-gray-200'
+                          className={`p-0.5 rounded disabled:opacity-30 ${
+                            isSelected ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-gray-400 hover:text-black'
                           }`}
                           title={isZh ? '上移' : 'Move up'}
                         >
-                          <ChevronUp size={12} />
+                          <ChevronUp size={11} />
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             moveSection(index, index + 1)
                           }}
                           disabled={index === orderedSections.length - 1}
-                          className={`p-1 rounded disabled:opacity-30 ${
-                            isSelected ? 'hover:bg-white/20' : 'hover:bg-gray-200'
+                          className={`p-0.5 rounded disabled:opacity-30 ${
+                            isSelected ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-gray-400 hover:text-black'
                           }`}
                           title={isZh ? '下移' : 'Move down'}
                         >
-                          <ChevronDown size={12} />
+                          <ChevronDown size={11} />
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             toggleSectionVisibility(section.id)
                           }}
-                          className={`p-1 rounded ${
-                            isSelected ? 'hover:bg-white/20' : 'hover:bg-gray-200'
+                          className={`p-0.5 rounded ${
+                            isSelected ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-gray-400 hover:text-black'
                           }`}
                           title={section.visible ? (isZh ? '隐藏' : 'Hide') : isZh ? '显示' : 'Show'}
                         >
-                          {section.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                          {section.visible ? <Eye size={11} /> : <EyeOff size={11} />}
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             duplicateSection(section.id)
                           }}
-                          className={`p-1 rounded ${
-                            isSelected ? 'hover:bg-white/20' : 'hover:bg-gray-200'
+                          className={`p-0.5 rounded ${
+                            isSelected ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-gray-400 hover:text-black'
                           }`}
                           title={isZh ? '复制' : 'Duplicate'}
                         >
-                          <Copy size={12} />
+                          <Copy size={11} />
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             deleteSection(section.id)
                           }}
-                          className={`p-1 rounded ${
-                            isSelected ? 'hover:bg-white/20 text-white' : 'hover:bg-gray-200 text-red-500'
+                          className={`p-0.5 rounded ${
+                            isSelected ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-red-500'
                           }`}
                           title={isZh ? '删除' : 'Delete'}
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={11} />
                         </button>
                       </div>
                     </div>
                   )
                 })}
 
-                {/* 添加分区控件 */}
-                <div className="pt-2 border-t border-gray-200 space-y-2">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
-                    {isZh ? '添加新分区' : 'Add Section'}
-                  </label>
-                  <div className="flex gap-1.5">
-                    <select
-                      value={newSectionType}
-                      onChange={(e) => setNewSectionType(e.target.value as SectionType)}
-                      className="flex-1 px-2.5 py-1.5 text-xs font-semibold bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
-                    >
-                      {SECTION_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.type} value={opt.type}>
-                          {isZh ? SECTION_LABELS[opt.type].zh : opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => addSection(newSectionType)}
-                      className="px-3 py-1.5 bg-[#FB7185] hover:bg-[#E11D48] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors shrink-0"
-                    >
-                      <Plus size={13} />
-                      <span>{isZh ? '添加' : 'Add'}</span>
-                    </button>
-                  </div>
+                {/* Inline elegant + Add Section trigger */}
+                <div className="relative pt-3 border-t border-black/[0.04] mt-2">
+                  <AddSectionMenu isZh={isZh} onAdd={addSection} />
                 </div>
               </div>
-            )}
-
-            {/* 2. 商品详情模式：Product Switcher & Page Modules */}
-            {activePage === 'product' && (
-              <div className="space-y-3">
-                <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
-                    {isZh ? '切换预览商品' : 'Select Preview Product'}
-                  </label>
-                  <select
-                    value={selectedProductId || displayProducts[0]?.id}
-                    onChange={(e) => setSelectedProductId(e.target.value)}
-                    className="w-full px-2.5 py-2 text-xs font-semibold bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185] truncate"
-                  >
-                    {displayProducts.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.currency} {p.price})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block px-1">
-                    {isZh ? '详情页模块构成' : 'Page Composition'}
-                  </label>
-                  {[
-                    { nameZh: '悬浮顶栏导航', nameEn: 'Floating Navbar', icon: Sparkles },
-                    { nameZh: '画廊主图与缩略图', nameEn: 'Interactive Gallery', icon: ImageIcon },
-                    { nameZh: '变体与规格选择器', nameEn: 'Variant Pill Selectors', icon: Sliders },
-                    { nameZh: '购买与咨询按钮组', nameEn: 'Commerce & Inquiry CTAs', icon: ShoppingBag },
-                    { nameZh: '品质保障与服务承诺', nameEn: 'Trust Badges', icon: ShieldCheck },
-                    { nameZh: '规格参数明细表', nameEn: 'Specifications Table', icon: FileText },
-                    { nameZh: '推荐搭配与相关商品', nameEn: 'Curated Companions', icon: Package },
-                    { nameZh: '全局品牌页脚', nameEn: 'Global Store Footer', icon: Layers },
-                  ].map((mod, idx) => {
-                    const Icon = mod.icon
-                    return (
-                      <div
-                        key={idx}
-                        className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 flex items-center gap-2.5 shadow-2xs"
-                      >
-                        <Icon size={14} className="text-[#FB7185] shrink-0" />
-                        <span className="truncate">{isZh ? mod.nameZh : mod.nameEn}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 3. 购物车模式：Cart Mode & Modules */}
-            {activePage === 'cart' && (
-              <div className="space-y-3">
-                <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
-                    {isZh ? '购物车预览状态' : 'Cart Preview State'}
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCartPreviewMode('filled')}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold border text-center transition-all ${
-                        cartPreviewMode === 'filled'
-                          ? 'bg-[#FB7185] text-white border-[#FB7185]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      {isZh ? '含商品预览' : 'With Items'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCartPreviewMode('empty')}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold border text-center transition-all ${
-                        cartPreviewMode === 'empty'
-                          ? 'bg-[#FB7185] text-white border-[#FB7185]'
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      {isZh ? '空袋预览' : 'Empty Bag'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block px-1">
-                    {isZh ? '购物车模块构成' : 'Cart Modules'}
-                  </label>
-                  {[
-                    { nameZh: '悬浮顶栏与袋标', nameEn: 'Navbar with Cart Badge', icon: Sparkles },
-                    { nameZh: '已选商品明细与数量步进', nameEn: 'Items List & Stepper', icon: ShoppingCart },
-                    { nameZh: '小计结算侧边卡片', nameEn: 'Order Summary Card', icon: CreditCard },
-                    { nameZh: '白手套直发保障承诺', nameEn: 'Direct Dispatch Guarantees', icon: ShieldCheck },
-                    { nameZh: '前往结算主行动按钮', nameEn: 'Proceed to Checkout CTA', icon: CheckCircle2 },
-                    { nameZh: '全局品牌页脚', nameEn: 'Global Store Footer', icon: Layers },
-                  ].map((mod, idx) => {
-                    const Icon = mod.icon
-                    return (
-                      <div
-                        key={idx}
-                        className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 flex items-center gap-2.5 shadow-2xs"
-                      >
-                        <Icon size={14} className="text-[#FB7185] shrink-0" />
-                        <span className="truncate">{isZh ? mod.nameZh : mod.nameEn}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 4. 结算模式：Checkout Modules */}
-            {activePage === 'checkout' && (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block px-1">
-                    {isZh ? '结算与意向登记分区' : 'Checkout Sections'}
-                  </label>
-                  {[
-                    { nameZh: '顶栏与安全说明', nameEn: 'Navbar & Security Guarantee', icon: ShieldCheck },
-                    { nameZh: '客户联络信息表单', nameEn: 'Contact Info Form', icon: Mail },
-                    { nameZh: '收货地址与特殊备注', nameEn: 'Delivery Address & Notes', icon: FileText },
-                    { nameZh: '确认偏好 (WhatsApp/邮件)', nameEn: 'Confirmation Channel Preference', icon: MessageCircle },
-                    { nameZh: '实时商品与金额核对卡', nameEn: 'Itemized Order Snapshot', icon: CreditCard },
-                    { nameZh: '提交意向与订单确认', nameEn: 'Submit Inquiry CTA', icon: CheckCircle2 },
-                    { nameZh: '全局品牌页脚', nameEn: 'Global Store Footer', icon: Layers },
-                  ].map((mod, idx) => {
-                    const Icon = mod.icon
-                    return (
-                      <div
-                        key={idx}
-                        className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 flex items-center gap-2.5 shadow-2xs"
-                      >
-                        <Icon size={14} className="text-[#FB7185] shrink-0" />
-                        <span className="truncate">{isZh ? mod.nameZh : mod.nameEn}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 5. 订单确认模式：Confirmation Modules */}
-            {activePage === 'confirmation' && (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block px-1">
-                    {isZh ? '订单回执分区' : 'Confirmation Sections'}
-                  </label>
-                  {[
-                    { nameZh: '成功提示与订单参考号 (ORD-*)', nameEn: 'Success Banner & Order Ref', icon: CheckCircle2 },
-                    { nameZh: '一键 WhatsApp / 邮件管家联系', nameEn: 'Direct Merchant WhatsApp / Email', icon: MessageCircle },
-                    { nameZh: '客户与目的地登记卡', nameEn: 'Client & Destination Record', icon: FileText },
-                    { nameZh: '快照商品收据清单', nameEn: 'Itemized Receipt Snapshot', icon: Package },
-                    { nameZh: '返回店铺继续浏览按钮', nameEn: 'Continue Shopping CTA', icon: ArrowLeft },
-                    { nameZh: '全局品牌页脚', nameEn: 'Global Store Footer', icon: Layers },
-                  ].map((mod, idx) => {
-                    const Icon = mod.icon
-                    return (
-                      <div
-                        key={idx}
-                        className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 flex items-center gap-2.5 shadow-2xs"
-                      >
-                        <Icon size={14} className="text-[#FB7185] shrink-0" />
-                        <span className="truncate">{isZh ? mod.nameZh : mod.nameEn}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -993,68 +902,84 @@ export default function StorefrontEditor({
             activePage={activePage}
             onPageChange={setActivePage}
             selectedProductId={selectedProductId}
+            onProductChange={setSelectedProductId}
             cartPreviewMode={cartPreviewMode}
             deviceMode={deviceMode}
             onDeviceModeChange={setDeviceMode}
             showControlBar={true}
+            rightPanelOpen={selectedSectionId !== null}
           />
         </div>
 
         {/* 右侧：Property Panel & Design System Controls */}
-        <div className="w-72 sm:w-80 bg-white border-l border-gray-200 flex flex-col shrink-0">
-          <div className="p-3 border-b border-gray-200 flex flex-col gap-2">
-            <div className="flex items-center gap-1.5">
-              <Palette size={15} className="text-gray-700" />
-              <span className="text-xs font-extrabold text-gray-900">
-                {isZh ? '属性与设计系统' : 'Properties & Theme'}
-              </span>
-            </div>
+        <div
+          className={`flex flex-col shrink-0 overflow-hidden transition-all duration-300 ease-in-out transform ${
+            selectedSectionId !== null
+              ? 'w-72 sm:w-80 opacity-100 translate-x-0 pointer-events-auto'
+              : 'w-0 opacity-0 translate-x-full pointer-events-none'
+          }`}
+          style={{
+            background: 'rgba(255, 255, 255, 0.65)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            borderLeft: '1px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.03)',
+          }}
+        >
+          {selectedSectionId !== null && (
+            <>
+              {/* Header inside the sliding drawer */}
+              <div className="p-3 border-b border-black/[0.04] flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                  {selectedSectionId === 'theme_design' ? (
+                    <>
+                      <Palette size={13} className="text-gray-500" />
+                      <span>{isZh ? '全局主题设计' : 'Global Theme'}</span>
+                    </>
+                  ) : selectedSectionId === 'global_settings' ? (
+                    <>
+                      <Globe size={13} className="text-gray-500" />
+                      <span>{isZh ? '店铺基本配置' : 'Store Metadata'}</span>
+                    </>
+                  ) : selectedSection ? (
+                    <>
+                      <Layers size={13} className="text-gray-500" />
+                      <span>
+                        {isZh ? '编辑分区: ' : 'Edit: '}
+                        {isZh ? SECTION_LABELS[selectedSection.type].zh : SECTION_LABELS[selectedSection.type].en}
+                      </span>
+                    </>
+                  ) : (
+                    <span>{isZh ? '分区属性' : 'Properties'}</span>
+                  )}
+                </div>
 
-            {/* Tab 切换：模块属性 / 全局主题 / 全店信息 */}
-            <div className="flex bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => setActiveTab('section')}
-                className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                  activeTab === 'section'
-                    ? 'bg-white text-[#FB7185] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {activePage === 'homepage'
-                  ? isZh
-                    ? '模块'
-                    : 'Section'
-                  : isZh
-                  ? '页面配置'
-                  : 'Page'}
-              </button>
-              <button
-                onClick={() => setActiveTab('theme')}
-                className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                  activeTab === 'theme'
-                    ? 'bg-white text-[#FB7185] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {isZh ? '全局主题' : 'Theme'}
-              </button>
-              <button
-                onClick={() => setActiveTab('global')}
-                className={`flex-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                  activeTab === 'global'
-                    ? 'bg-white text-[#FB7185] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {isZh ? '全店信息' : 'Global'}
-              </button>
-            </div>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSectionId(null)}
+                  className="p-1 rounded-full text-gray-400 hover:text-gray-900 hover:bg-black/5 transition-all cursor-pointer"
+                  title={isZh ? '收起面板' : 'Close Panel'}
+                >
+                  <X size={13} />
+                </button>
+              </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
-            {activeTab === 'section' ? (
-              activePage === 'homepage' ? (
-                selectedSection ? (
+              {/* Panel Content */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {selectedSectionId === 'theme_design' ? (
+                  <ThemePanel
+                    schema={schema}
+                    isZh={isZh}
+                    colorPickerId={colorPickerId}
+                    onUpdateTheme={updateThemeConfig}
+                  />
+                ) : selectedSectionId === 'global_settings' ? (
+                  <GlobalInfoPanel
+                    schema={schema}
+                    isZh={isZh}
+                    onUpdateGlobalInfo={updateGlobalInfo}
+                  />
+                ) : selectedSection ? (
                   <SectionProperties
                     section={selectedSection}
                     isZh={isZh}
@@ -1066,182 +991,14 @@ export default function StorefrontEditor({
                     onDuplicate={() => duplicateSection(selectedSection.id)}
                     onDelete={() => deleteSection(selectedSection.id)}
                   />
-                ) : (
-                  <div className="text-center text-gray-400 text-xs py-8">
-                    {isZh ? '请在左侧选择一个首页分区进行编辑' : 'Select a section to edit properties'}
-                  </div>
-                )
-              ) : (
-                <CommercePageProperties
-                  activePage={activePage}
-                  isZh={isZh}
-                  schema={schema}
-                  onUpdateGlobalInfo={updateGlobalInfo}
-                />
-              )
-            ) : activeTab === 'theme' ? (
-              <ThemePanel
-                schema={schema}
-                isZh={isZh}
-                colorPickerId={colorPickerId}
-                onUpdateTheme={updateThemeConfig}
-              />
-            ) : (
-              <GlobalInfoPanel
-                schema={schema}
-                isZh={isZh}
-                onUpdateGlobalInfo={updateGlobalInfo}
-              />
-            )}
-          </div>
+                ) : null}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
   )
-}
-
-/** 商业闭环各页面独立配置面板 */
-function CommercePageProperties({
-  activePage,
-  isZh,
-  schema,
-  onUpdateGlobalInfo,
-}: {
-  activePage: StorefrontEditorPage
-  isZh: boolean
-  schema: StorefrontSchema
-  onUpdateGlobalInfo: (
-    contact: Partial<StoreContactConfig>,
-    social: Partial<StoreSocialConfig>,
-    brandName?: string
-  ) => void
-}) {
-  const contact = schema.contact || schema.globalInfo?.contact || {}
-
-  if (activePage === 'product') {
-    return (
-      <div className="space-y-4 text-xs">
-        <div className="p-3 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-[#FB7185] font-semibold">
-          {isZh
-            ? '商品详情页完全由全局主题驱动，自动继承字体、强调色、圆角与阴影。'
-            : 'Product Page is driven by the Global Theme and inherits all design tokens.'}
-        </div>
-
-        <div className="space-y-3">
-          <div className="font-extrabold text-gray-900">
-            {isZh ? '专属咨询与快捷渠道' : 'Concierge & Inquiry Channels'}
-          </div>
-          <TextField
-            label={isZh ? 'WhatsApp 咨询号码' : 'WhatsApp Number'}
-            value={contact.whatsapp || ''}
-            onChange={(v) => onUpdateGlobalInfo({ whatsapp: v }, {})}
-          />
-          <TextField
-            label={isZh ? '客服联络邮箱' : 'Contact Email'}
-            value={contact.email || ''}
-            onChange={(v) => onUpdateGlobalInfo({ email: v }, {})}
-          />
-        </div>
-
-        <div className="space-y-2 pt-3 border-t border-gray-200">
-          <div className="font-extrabold text-gray-900">
-            {isZh ? '详情页交互与保障' : 'Product Interactivity'}
-          </div>
-          <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 space-y-1.5">
-            <div className="flex items-center gap-2 text-emerald-700 font-bold">
-              <CheckCircle2 size={13} />
-              <span>{isZh ? '画廊缩略图切换已启用' : 'Thumbnail Gallery Active'}</span>
-            </div>
-            <div className="flex items-center gap-2 text-emerald-700 font-bold">
-              <CheckCircle2 size={13} />
-              <span>{isZh ? '动态规格/变体切换已启用' : 'Dynamic Variant Switching Active'}</span>
-            </div>
-            <div className="flex items-center gap-2 text-emerald-700 font-bold">
-              <CheckCircle2 size={13} />
-              <span>{isZh ? '无缝加入购物车与数量步进已启用' : 'Add to Cart Active'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (activePage === 'cart') {
-    return (
-      <div className="space-y-4 text-xs">
-        <div className="p-3 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-[#FB7185] font-semibold">
-          {isZh
-            ? '购物车支持 LocalStorage 隔离存储、动态小计更新与白手套保障。'
-            : 'Cart supports store-isolated storage, live subtotal, and guarantees.'}
-        </div>
-
-        <div className="space-y-3">
-          <div className="font-extrabold text-gray-900">
-            {isZh ? '购物车保障说明' : 'Cart Guarantees'}
-          </div>
-          <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 space-y-1">
-            <div>• {isZh ? '100% 官方正品与大师编号保真' : '100% Verified Authentic'}</div>
-            <div>• {isZh ? '全程白手套保价极速直发' : 'White-Glove Insured Delivery'}</div>
-            <div>• {isZh ? '尊享 1 对 1 专属艺术顾问协助' : '1-on-1 Dedicated Concierge'}</div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (activePage === 'checkout') {
-    return (
-      <div className="space-y-4 text-xs">
-        <div className="p-3 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-[#FB7185] font-semibold">
-          {isZh
-            ? '结算流程采用服务端价格重算机制（Trust Boundary），保障价格准确。'
-            : 'Checkout enforces Server Price Re-verification (Trust Boundary).'}
-        </div>
-
-        <div className="space-y-3">
-          <div className="font-extrabold text-gray-900">
-            {isZh ? '支持的确认与沟通偏好' : 'Supported Confirmation Channels'}
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-center">
-              WhatsApp
-            </div>
-            <div className="p-2 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 font-bold text-center">
-              Email
-            </div>
-            <div className="p-2 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 font-bold text-center">
-              Phone
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (activePage === 'confirmation') {
-    return (
-      <div className="space-y-4 text-xs">
-        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
-          {isZh
-            ? '订单回执生成唯一 ORD-XXXX-XXXX 编号，并支持一键唤起 WhatsApp / 邮件客服。'
-            : 'Order Confirmation creates unique ORD-* IDs with instant WhatsApp/Email actions.'}
-        </div>
-
-        <div className="space-y-3">
-          <div className="font-extrabold text-gray-900">
-            {isZh ? '回执快照项目' : 'Receipt Snapshot Features'}
-          </div>
-          <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 space-y-1">
-            <div>• {isZh ? '商品名、SKU、规格与单价不可篡改快照' : 'Immutable SKU & Price Snapshot'}</div>
-            <div>• {isZh ? '客户信息与收货地址记录' : 'Client Profile & Destination'}</div>
-            <div>• {isZh ? '待确认审核状态标签' : 'Inquiry Pending Status Tag'}</div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return null
 }
 
 /** 首页分区属性面板 */
@@ -1279,11 +1036,9 @@ function SectionProperties({
   const hasSecondaryButton = t === 'hero'
   const hasCount = t === 'featured_products'
   const hasCopyright = t === 'footer'
-  const hasTrustBadges = t === 'footer'
   const hasTextAlign = ['hero', 'collection', 'image_text', 'rich_text'].includes(t)
   const hasColumns = t === 'featured_products'
   const hasImagePosition = ['collection', 'image_text'].includes(t)
-  const hasShowPrice = t === 'featured_products'
 
   return (
     <div className="space-y-4">
@@ -1566,59 +1321,73 @@ function ThemePanel({
   colorPickerId: string
   onUpdateTheme: (theme: Partial<StorefrontSchema['theme']>) => void
 }) {
-  const currentThemeId = schema.theme.themeId || DEFAULT_THEME_ID
   const currentAccent = schema.theme.accent || DEFAULT_ACCENT
   const currentRadius = schema.theme.radius ?? DEFAULT_RADIUS
+  const currentLanguage = resolveStorefrontLanguage(schema.theme?.language, isZh ? 'zh' : 'en')
 
   return (
-    <div className="space-y-5">
-      {/* 视觉风格选择 */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-gray-900 block">
-          {isZh ? '视觉风格 / 模版主题' : 'Visual Archetype'}
+    <div className="space-y-4">
+      {/* 语言与字体一栏 (Language & Font in single horizontal row) */}
+      <div className="space-y-1.5 pb-1">
+        <label className="text-[11px] font-semibold text-gray-500">
+          {isZh ? '展示语言与字体' : 'Language & Font'}
         </label>
-        <div className="space-y-1.5">
-          {AVAILABLE_THEMES.map((t) => {
-            const isSelected = currentThemeId === t.id
-            return (
-              <div
-                key={t.id}
-                onClick={() => onUpdateTheme({ themeId: t.id })}
-                className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#FFF1F2] border-[#FB7185] shadow-xs'
-                    : 'bg-white border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-xs font-bold ${
-                      isSelected ? 'text-[#FB7185]' : 'text-gray-900'
-                    }`}
-                  >
-                    {t.name}
-                  </span>
-                  {isSelected && <Check size={14} className="text-[#FB7185]" />}
-                </div>
-                <div className="text-[11px] text-gray-500 mt-1 leading-snug">
-                  {t.description}
-                </div>
-              </div>
-            )
-          })}
+        <div className="flex items-center gap-1.5">
+          {/* 展示语言 (Language toggle) */}
+          <button
+            type="button"
+            onClick={() => {
+              const nextLang = currentLanguage === 'zh' ? 'en' : 'zh'
+              onUpdateTheme({ language: nextLang, fontFamily: undefined })
+            }}
+            className="px-2 py-1.5 rounded-lg border border-gray-100 bg-white hover:bg-gray-50/80 text-[11px] font-semibold text-gray-700 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1"
+          >
+            <Globe size={11} className="text-gray-400" />
+            <span>{currentLanguage === 'zh' ? '中文' : 'English'}</span>
+          </button>
+
+          {/* 字体选择下拉框 (白色半透明下拉框) */}
+          <div className="relative flex-1">
+            <select
+              value={schema.theme?.fontFamily || (currentLanguage === 'zh' ? CHINESE_FONTS[0].value : ENGLISH_FONTS[0].value)}
+              onChange={(e) => onUpdateTheme({ fontFamily: e.target.value })}
+              className="w-full pl-2.5 pr-7 py-1.5 rounded-lg border border-gray-100 bg-white/70 backdrop-blur-xs text-[11px] font-semibold text-gray-800 shadow-2xs focus:outline-none transition-all cursor-pointer appearance-none"
+              style={{ fontFamily: schema.theme?.fontFamily }}
+            >
+              {(currentLanguage === 'zh' ? CHINESE_FONTS : ENGLISH_FONTS).map((font) => (
+                <option key={font.id} value={font.value} className="text-gray-900 bg-white text-xs">
+                  {isZh ? font.label : font.nameEn}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+              <ChevronDown size={11} />
+            </div>
+          </div>
+
+          {/* 恢复默认字体 */}
+          {schema.theme?.fontFamily && (
+            <button
+              type="button"
+              onClick={() => onUpdateTheme({ fontFamily: undefined })}
+              className="px-1 py-1 text-[10px] font-semibold text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              {isZh ? '默认' : 'Reset'}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 品牌强调色 */}
-      <div className="space-y-2 border-t border-gray-200 pt-4">
+      {/* 唯一主题色选择 (Brand Accent Color without Presets) */}
+      <div className="space-y-1.5 border-t border-gray-100 pt-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-gray-900">
-            {isZh ? '品牌强调色 (Accent Color)' : 'Brand Accent Color'}
+          <label className="text-[11px] font-semibold text-gray-500">
+            {isZh ? '主题色' : 'Theme Color'}
           </label>
           <button
             type="button"
             onClick={() => onUpdateTheme({ accent: undefined })}
-            className="text-[10px] font-bold text-gray-500 hover:text-gray-900"
+            className="text-[10px] font-semibold text-gray-400 hover:text-gray-600"
           >
             {isZh ? '重置' : 'Reset'}
           </button>
@@ -1635,68 +1404,40 @@ function ThemePanel({
             />
             <label
               htmlFor={colorPickerId}
-              className="w-8 h-8 rounded-lg border border-gray-300 shadow-inner flex items-center justify-center cursor-pointer transition-transform hover:scale-105"
+              className="w-7 h-7 rounded-lg border border-gray-100 shadow-[inset_0_1px_1.5px_rgba(0,0,0,0.02)] flex items-center justify-center cursor-pointer transition-transform hover:scale-105"
               style={{ backgroundColor: currentAccent }}
-              title={isZh ? '选择自定义颜色' : 'Pick custom color'}
             />
           </div>
           <input
             type="text"
             value={currentAccent}
             onChange={(e) => onUpdateTheme({ accent: e.target.value })}
-            className="w-28 px-2.5 py-1.5 text-xs font-mono uppercase font-bold border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FB7185]"
+            className="w-24 px-2 py-1 text-[11px] font-mono uppercase font-semibold border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-200"
           />
-        </div>
-
-        <div className="grid grid-cols-4 gap-1.5 pt-1">
-          {ACCENT_PRESETS.map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => onUpdateTheme({ accent: preset.value })}
-              className="p-1.5 rounded-lg border border-gray-200 hover:border-gray-400 flex items-center gap-1.5 transition-all text-left"
-            >
-              <span
-                className="w-3.5 h-3.5 rounded-full shrink-0 border border-black/10"
-                style={{ backgroundColor: preset.value }}
-              />
-              <span className="text-[10px] font-medium text-gray-700 truncate">
-                {preset.name}
-              </span>
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* 界面圆角 */}
-      <div className="space-y-2 border-t border-gray-200 pt-4">
+      {/* 界面圆角 - 改为滑块移动 (Border Radius Slider) */}
+      <div className="space-y-1.5 border-t border-gray-100 pt-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-gray-900">
-            {isZh ? '界面圆角 (Border Radius)' : 'Border Radius'}
+          <label className="text-[11px] font-semibold text-gray-500">
+            {isZh ? '界面圆角' : 'Border Radius'}
           </label>
-          <span className="text-xs font-mono font-bold text-gray-700">
+          <span className="text-[11px] font-mono font-bold text-gray-500">
             {currentRadius}px
           </span>
         </div>
 
-        <div className="grid grid-cols-5 gap-1">
-          {RADIUS_PRESETS.map((r) => {
-            const isSelected = currentRadius === r.value
-            return (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => onUpdateTheme({ radius: r.value })}
-                className={`py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                  isSelected
-                    ? 'bg-[#FB7185] text-white border-[#FB7185]'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {r.label}
-              </button>
-            )
-          })}
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="range"
+            min="0"
+            max="24"
+            step="2"
+            value={currentRadius}
+            onChange={(e) => onUpdateTheme({ radius: parseInt(e.target.value) })}
+            className="w-full h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-rose-500 focus:outline-none focus:ring-0"
+          />
         </div>
       </div>
     </div>

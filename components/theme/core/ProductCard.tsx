@@ -22,7 +22,8 @@ function formatPrice(price: number, currency: string): string {
         maximumFractionDigits: 2,
       })
     : '0.00'
-  return `${currency} ${amount}`
+  const symbol = currency === 'CNY' || currency === '¥' ? '¥' : '$'
+  return `${symbol}${amount}`
 }
 
 type ProductCardProps = {

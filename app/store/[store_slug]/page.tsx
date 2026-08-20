@@ -16,10 +16,13 @@
 
 import type { CSSProperties } from 'react'
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import ThemeRoot from '@/components/theme/ThemeRoot'
 import DynamicSectionRenderer from '@/components/storefront/DynamicSectionRenderer'
 import { getPublicStorefront, getStorefrontProducts } from '@/lib/storefront/service'
 import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
+
+import { resolveStorefrontLanguage } from '@/lib/storefront/locale'
 
 export default async function PublicStorePage({
   params,
@@ -35,7 +38,10 @@ export default async function PublicStorePage({
 
   const { store, schema } = data
   const products = await getStorefrontProducts(store)
-  const overrides = storefrontThemeOverrides(schema.theme)
+  const headerList = await headers()
+  const acceptLang = headerList.get('accept-language') || ''
+  const effectiveLang = resolveStorefrontLanguage(schema.theme?.language, acceptLang)
+  const overrides = storefrontThemeOverrides(schema.theme, acceptLang)
   const orderedSections = [...schema.sections].sort((a, b) => a.order - b.order)
 
   return (
@@ -50,6 +56,10 @@ export default async function PublicStorePage({
             section={section}
             storeSlug={store.slug}
             products={products}
+            globalInfo={schema.globalInfo}
+            contact={schema.contact}
+            social={schema.social}
+            language={effectiveLang}
           />
         ))}
       </div>

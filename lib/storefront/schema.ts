@@ -115,6 +115,10 @@ export interface StorefrontSection {
 export interface StorefrontThemeConfig {
   /** Theme ID（映射到 ThemeRegistry）。 */
   themeId: string
+  /** 展示语言偏好：'en' | 'zh' （Demo 阶段唯一源头，联动 Currency & Typography）。 */
+  language?: 'en' | 'zh'
+  /** 字体族选择（英文或中文字体）。 */
+  fontFamily?: string
   /** 自定义强调色（覆盖 theme tokens）。 */
   accent?: string
   /** 自定义圆角（覆盖 theme tokens）。 */
@@ -193,6 +197,12 @@ export function createDefaultSchema(): StorefrontSchema {
           title: 'OPTIQUE ATELIER',
           announcement: 'COMPLIMENTARY WORLDWIDE INSURED COURIER ON ALL ARTISAN EDITIONS · 30-DAY ATELIER TRY-ON',
           showAnnouncement: true,
+          en: {
+            announcement: 'COMPLIMENTARY WORLDWIDE INSURED COURIER ON ALL ARTISAN EDITIONS · 30-DAY ATELIER TRY-ON',
+          },
+          zh: {
+            announcement: '全场匠人手作限定系列享全球保价包邮 · 支持 30 天工坊无忧试戴',
+          },
         },
         style: {
           padding: 'standard',
@@ -214,6 +224,22 @@ export function createDefaultSchema(): StorefrontSchema {
           secondaryButtonText: 'Read Craft Story',
           secondaryButtonLink: '#sec-image-text',
           imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=1200&auto=format&fit=crop',
+          en: {
+            tag: 'SPRING / SUMMER 2026 EDITION',
+            title: 'Sculpted Light & Architectural Eyewear',
+            subtitle: 'Handcrafted in Sabae and Belluno. Pure bio-acetate contours meeting weightless Japanese beta-titanium.',
+            description: 'Engineered with millimeter precision for effortless daily wear. Calibrated optical balance that frames your individual perspective with quiet distinction.',
+            buttonText: 'Explore 2026 Editions',
+            secondaryButtonText: 'Read Craft Story',
+          },
+          zh: {
+            tag: '2026 春夏高级眼镜系列',
+            title: '雕琢之光 · 极简高定光学镜架',
+            subtitle: '日本鲭江与意大利贝尔鲁诺手工打造。纯正生物醋酸纤维与轻量化日本β钛金属组合。',
+            description: '毫米级精密结构计算，为无感佩戴而生。调校光学平衡，彰显独立审美。',
+            buttonText: '探索 2026 选品',
+            secondaryButtonText: '阅读工坊故事',
+          },
         },
         style: {
           padding: 'spacious',
@@ -234,6 +260,16 @@ export function createDefaultSchema(): StorefrontSchema {
           count: 4,
           showPrice: true,
           showBuyButton: true,
+          en: {
+            tag: 'SIGNATURE EDITIONS',
+            title: 'Curated Eyewear & Optics',
+            subtitle: 'Small-batch releases sculpted for balance, tactile luxury, and everyday clarity.',
+          },
+          zh: {
+            tag: '工坊代表作',
+            title: '精选高级光学镜架',
+            subtitle: '限量手工小批量发行，兼具佩戴平衡感、高定质感与清晰视野。',
+          },
         },
         style: {
           padding: 'standard',
@@ -254,6 +290,20 @@ export function createDefaultSchema(): StorefrontSchema {
           buttonLink: '#products',
           imagePosition: 'right',
           imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=1200&auto=format&fit=crop',
+          en: {
+            tag: 'SEASONAL HIGHLIGHT',
+            title: 'The Kinfolk Minimalist Series',
+            subtitle: 'Organic circular curves, hand-beveled tortoiseshell rims, and featherweight core wires.',
+            description: 'Inspired by modernist architectural forms and honest materiality. The Kinfolk series balances classic circular contours with ultra-light Japanese titanium wirework, delivering an uncompromised field of vision and zero pressure points.',
+            buttonText: 'Discover Kinfolk Series',
+          },
+          zh: {
+            tag: '本季主打',
+            title: 'Kinfolk 极简圆框系列',
+            subtitle: '有机圆润线条，手工倒角玳瑁纹理与超轻金属镜腿。',
+            description: '灵感源自现代主义建筑线条与纯粹材质。Kinfolk 系列平衡经典复古圆框与超轻钛金材质，带来无感舒适的配戴体验。',
+            buttonText: '探索 Kinfolk 系列',
+          },
         },
         style: {
           padding: 'standard',
@@ -275,6 +325,20 @@ export function createDefaultSchema(): StorefrontSchema {
           buttonLink: '#sec-rich-text',
           imagePosition: 'left',
           imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=1200&auto=format&fit=crop',
+          en: {
+            tag: 'CRAFTSMANSHIP & MATERIALS',
+            title: 'Mazzucchelli Bio-Acetate & Sabae Beta-Titanium',
+            subtitle: 'Over 200 meticulous hand-finishing steps across three generations of mastery.',
+            description: 'Every frame is tumbled in Japanese cedar barrels for 72 hours to achieve our signature velvet patina. Hand-riveted 5-barrel hinges and custom core wires ensure lifetime structural integrity without unnecessary weight or branding.',
+            buttonText: 'Our Atelier Process',
+          },
+          zh: {
+            tag: '传统工艺与材质',
+            title: '意大利 Mazzucchelli 生物板材与鲭江β钛',
+            subtitle: '三代匠人传承，200 余道精密手工打磨工序。',
+            description: '镜框经雪松木桶 72 小时手工滚筒打磨，呈现丝绒般温润质感。配备手工铆钉与高耐用铰链，无冗余重量与夸张 Logos。',
+            buttonText: '了解工坊制作流程',
+          },
         },
         style: {
           padding: 'standard',
@@ -292,6 +356,18 @@ export function createDefaultSchema(): StorefrontSchema {
           title: 'Frames Designed to Disappear, Silhouettes Meant to Endure',
           subtitle: 'We believe true luxury in optics is not loud branding, but structural poise and pure optical clarity.',
           description: 'In an era of disposable fast fashion and conspicuous logos, OPTIQUE ATELIER crafts timeless optical instruments. We calibrate the weight distribution to the exact millimeter, ensuring that when you wear our glasses, you forget the frame exists — while the world sees pure architectural poise.',
+          en: {
+            tag: 'OUR MANIFESTO',
+            title: 'Frames Designed to Disappear, Silhouettes Meant to Endure',
+            subtitle: 'We believe true luxury in optics is not loud branding, but structural poise and pure optical clarity.',
+            description: 'In an era of disposable fast fashion and conspicuous logos, OPTIQUE ATELIER crafts timeless optical instruments. We calibrate the weight distribution to the exact millimeter, ensuring that when you wear our glasses, you forget the frame exists — while the world sees pure architectural poise.',
+          },
+          zh: {
+            tag: '工坊宣言',
+            title: '设计至无感，廓形至长久',
+            subtitle: '我们相信，光学领域的真正奢华绝非张扬标语，而是精简的结构沉淀与极致清晰。',
+            description: '在快时尚泛滥的时代，我们打造经典耐用的光学镜架。严格校准配重，让您几乎感受不到镜框的存在，展现独立沉稳的风采。',
+          },
         },
         style: {
           padding: 'spacious',
@@ -327,6 +403,54 @@ export function createDefaultSchema(): StorefrontSchema {
               rating: 5,
             },
           ],
+          en: {
+            tag: 'CRITICAL REFLECTION',
+            title: 'Words from Opticians, Architects & Collectors',
+            testimonialsList: [
+              {
+                name: 'Architectural Review Digest',
+                role: 'Design & Living Journal',
+                quote: 'OPTIQUE ATELIER accomplishes what few luxury brands can: weightless architectural geometry paired with warm, tactile materiality.',
+                rating: 5,
+              },
+              {
+                name: 'Dr. Julian Vance, O.D.',
+                role: 'Master Optometrist, Vance Vision Studio',
+                quote: 'The nasal bridge ergonomics and cold-insertion lens centration in the Sabae Series are extraordinary. Easily the finest daily wear frame I have fitted this decade.',
+                rating: 5,
+              },
+              {
+                name: 'Claire DeWitt',
+                role: 'Creative Director & Industrial Designer',
+                quote: 'The Kinfolk Round in Classic Tortoise has become my permanent daily signature. Impeccable hinge action and universally flattering proportions.',
+                rating: 5,
+              },
+            ],
+          },
+          zh: {
+            tag: '行业评价',
+            title: '验光师、建筑师与收藏家之声',
+            testimonialsList: [
+              {
+                name: '《建筑评论》',
+                role: '设计与生活专刊',
+                quote: 'OPTIQUE ATELIER 实现了少数奢牌才能做到的品质：轻量建筑几何与极致温润材质的完美融合。',
+                rating: 5,
+              },
+              {
+                name: '朱利安·凡斯 博士',
+                role: '首席验光师，Vance 视光中心',
+                quote: 'Sabae 系列的人体工学鼻梁与镜片嵌合度令人惊叹，绝对是我近十年来验配过最舒适的日常镜架。',
+                rating: 5,
+              },
+              {
+                name: '克莱尔·德维特',
+                role: '创意总监 & 工业设计师',
+                quote: '经典玳瑁色的 Kinfolk 圆框已成为我的日常标志。严丝合缝的铰链体验与百搭比例。',
+                rating: 5,
+              },
+            ],
+          },
         },
         style: {
           padding: 'standard',
@@ -355,6 +479,42 @@ export function createDefaultSchema(): StorefrontSchema {
               answer: 'Our frames are sculpted from plant-based Mazzucchelli bio-acetate and Japanese titanium. Clean gently with lukewarm water and our custom woven microfiber cloth. Store in the included molded magnetic leather case when not in use.',
             },
           ],
+          en: {
+            tag: 'CONCIERGE & SUPPORT',
+            title: 'Frequently Asked Questions',
+            faqList: [
+              {
+                question: 'Can I fit custom prescription or progressive lenses into OPTIQUE ATELIER frames?',
+                answer: 'Yes. All of our frames feature optical-grade bevel channels engineered for cold and warm lens insertion, fully compatible with single-vision, progressive, high-index blue light, and polarized sunglass prescriptions from any licensed optometrist.',
+              },
+              {
+                question: 'How does the complimentary 30-day Home Atelier Try-On work?',
+                answer: 'We provide insured, expedited courier delivery worldwide. Take up to 30 days to test the fit and optical balance in your daily environment. If you need a different bridge width or style, returns and exchanges are completely complimentary.',
+              },
+              {
+                question: 'What materials are used, and how should I care for bio-acetate frames?',
+                answer: 'Our frames are sculpted from plant-based Mazzucchelli bio-acetate and Japanese titanium. Clean gently with lukewarm water and our custom woven microfiber cloth. Store in the included molded magnetic leather case when not in use.',
+              },
+            ],
+          },
+          zh: {
+            tag: '客户服务 & 常见问题',
+            title: '常见问题解答',
+            faqList: [
+              {
+                question: '是否支持配置定制近视镜片或渐进多焦点镜片？',
+                answer: '支持。我们所有镜架均采用光学级槽口设计，适配各类近视、远视、防蓝光及偏光太阳镜片。',
+              },
+              {
+                question: '30 天工坊试戴服务是如何运作的？',
+                answer: '我们提供全程保价快递。您可以在收到后 30 天内自由试戴。如有尺寸或款式调整需求，均享免费退换。',
+              },
+              {
+                question: '使用了哪些材质？板材镜架应如何保养？',
+                answer: '镜框采用植物基生物醋酸纤维与日本钛金属。建议使用温水与擦镜布清洁，存放于随附的磁吸皮革盒中。',
+              },
+            ],
+          },
         },
         style: {
           padding: 'standard',
@@ -373,6 +533,20 @@ export function createDefaultSchema(): StorefrontSchema {
           description: 'Patrons receive preview access 48 hours prior to public collection drops, bespoke bridge adjustments, and complimentary lifetime optical servicing.',
           buttonText: 'Book Private Consultation',
           buttonLink: '#products',
+          en: {
+            tag: 'PRIVATE ATELIER ACCESS',
+            title: 'Experience Architectural Optics',
+            subtitle: 'Schedule a private styling consultation or reserve priority allocation for upcoming artisan batch releases.',
+            description: 'Patrons receive preview access 48 hours prior to public collection drops, bespoke bridge adjustments, and complimentary lifetime optical servicing.',
+            buttonText: 'Book Private Consultation',
+          },
+          zh: {
+            tag: '私享工坊通道',
+            title: '预约体验建筑美学眼镜',
+            subtitle: '预约一对一造型建议，或优先锁定下一批工坊限量作品。',
+            description: '会员可提前 48 小时优先购，享受专属鼻梁微调与终身免费维护服务。',
+            buttonText: '预约私享咨询',
+          },
         },
         style: {
           padding: 'spacious',
@@ -391,6 +565,20 @@ export function createDefaultSchema(): StorefrontSchema {
           trustBadge2: '30-Day Atelier Try-On',
           trustBadge3: 'Lifetime Structural Warranty',
           copyright: '© 2026 OPTIQUE ATELIER. Handcrafted Optics & Fine Eyewear. All rights reserved.',
+          en: {
+            title: 'OPTIQUE ATELIER',
+            trustBadge1: 'Handcrafted in Sabae & Belluno',
+            trustBadge2: '30-Day Atelier Try-On',
+            trustBadge3: 'Lifetime Structural Warranty',
+            copyright: '© 2026 OPTIQUE ATELIER. Handcrafted Optics & Fine Eyewear. All rights reserved.',
+          },
+          zh: {
+            title: 'OPTIQUE ATELIER',
+            trustBadge1: '日本鲭江 & 意大利贝尔鲁诺手工',
+            trustBadge2: '30 天工坊试戴',
+            trustBadge3: '终身质保承诺',
+            copyright: '© 2026 OPTIQUE ATELIER 高级光学镜架工坊. 保留所有权利.',
+          },
         },
         style: {
           padding: 'standard',

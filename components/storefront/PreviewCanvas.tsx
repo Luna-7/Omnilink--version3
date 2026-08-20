@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { StorefrontSchema } from '@/lib/storefront/schema'
 import type { StorefrontProduct, StorefrontStore, OrderConfirmationDTO } from '@/lib/storefront/types'
 import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
+import { resolveStorefrontLanguage } from '@/lib/storefront/locale'
 import ThemeRoot from '@/components/theme/ThemeRoot'
 import DynamicSectionRenderer from '@/components/storefront/DynamicSectionRenderer'
 import Navbar from '@/components/theme/core/Navbar'
@@ -81,111 +82,217 @@ export const DEVICE_PRESETS: Record<DeviceMode, DevicePreset> = {
 /** 默认预览商品列表（当店铺尚未录入商品时使用） */
 export const DEFAULT_PREVIEW_PRODUCTS: StorefrontProduct[] = [
   {
-    id: 'prod-preview-1',
-    name: 'KURA Akari Acoustic Ceramic Luminaire',
-    slug: 'kura-akari-luminaire',
-    description:
-      'Hand-thrown textured stoneware housing a dimmable warm-spectrum OLED light engine and precision acoustic dampening chamber.',
-    price: 480,
+    id: 'prod-kinfolk-01',
+    name: 'The Kinfolk Round 01',
+    slug: 'kinfolk-round-01',
+    price: 185,
     currency: 'USD',
-    imageUrl:
-      'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
     images: [
-      'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1540932239986-30128078f3c5?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
     ],
-    badges: ['Limited Edition', 'Artisan Drop'],
+    href: '#products',
+    description: 'Handcrafted Japanese beta-titanium core with organic tortoiseshell acetate rims.',
     attributes: {
-      Material: 'High-fire Stoneware & Brass',
-      Dimensions: '280 × 160 × 340 mm',
-      Finish: 'Matte Obsidian Glaze',
-      Origin: 'Kyoto Atelier, Japan',
+      Material: 'Japanese Titanium',
+      Shape: 'Round Classic',
+      Optics: 'Anti-Reflective UV400',
     },
     options: [
       {
-        id: 'opt-finish',
-        name: 'Finish',
-        code: 'finish',
-        values: ['Matte Obsidian', 'Glacier White', 'Raw Terracotta'],
+        id: 'opt-color',
+        name: 'Color',
+        code: 'color',
+        values: ['Classic Tortoise', 'Midnight Obsidian', 'Champagne Gold'],
       },
       {
         id: 'opt-size',
-        name: 'Dimension',
+        name: 'Size',
         code: 'size',
-        values: ['Standard 280mm', 'Grand 380mm'],
+        values: ['Standard 48mm', 'Large 52mm'],
       },
     ],
     variants: [
       {
-        id: 'var-1',
-        price: 480,
+        id: 'var-kf-1',
+        price: 185,
         currency: 'USD',
-        sku: 'KURA-AKR-OBS-STD',
+        sku: 'KF-RND-TRT-48',
         optionValues: {
-          Finish: 'Matte Obsidian',
-          Dimension: 'Standard 280mm',
+          Color: 'Classic Tortoise',
+          Size: 'Standard 48mm',
         },
       },
       {
-        id: 'var-2',
-        price: 640,
+        id: 'var-kf-2',
+        price: 195,
         currency: 'USD',
-        sku: 'KURA-AKR-OBS-GRD',
+        sku: 'KF-RND-OBS-48',
         optionValues: {
-          Finish: 'Matte Obsidian',
-          Dimension: 'Grand 380mm',
+          Color: 'Midnight Obsidian',
+          Size: 'Standard 48mm',
         },
       },
       {
-        id: 'var-3',
-        price: 495,
+        id: 'var-kf-3',
+        price: 210,
         currency: 'USD',
-        sku: 'KURA-AKR-WHT-STD',
+        sku: 'KF-RND-GLD-52',
         optionValues: {
-          Finish: 'Glacier White',
-          Dimension: 'Standard 280mm',
+          Color: 'Champagne Gold',
+          Size: 'Large 52mm',
         },
       },
     ],
-    href: '#',
+    badges: ['Best Seller', 'Artisan Edition'],
   },
   {
-    id: 'prod-preview-2',
-    name: 'Borosilicate Glacier Vessel No. 04',
-    slug: 'glacier-vessel-04',
-    description:
-      'Double-walled hand-blown borosilicate vessel engineered with subtle internal refraction optics.',
+    id: 'prod-velvet-02',
+    name: 'The Velvet Horizon 02',
+    slug: 'velvet-horizon-02',
+    price: 210,
+    currency: 'USD',
+    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
+    ],
+    href: '#products',
+    description: 'Deep midnight obsidian & burgundy sculpted bio-acetate frame with rose gold accents.',
+    attributes: {
+      Material: 'Mazzucchelli Bio-Acetate',
+      Shape: 'Square Architectural',
+      Optics: 'High-Index Clarity',
+    },
+    badges: ['Limited Batch'],
+  },
+  {
+    id: 'prod-prism-03',
+    name: 'The Prism Mood 03',
+    slug: 'prism-mood-03',
     price: 195,
     currency: 'USD',
-    imageUrl:
-      'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=1200&q=80',
-    badges: ['Bespoke Run'],
+    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
+    ],
+    href: '#products',
+    description: 'Ultra-lightweight champagne gold wireframe with spectrum-tint optical lenses.',
     attributes: {
-      Material: 'German Schott Glass',
-      Capacity: '750 ml',
-      Weight: '420 g',
+      Material: 'Beta-Titanium Alloy',
+      Shape: 'Panto Minimal',
+      Optics: 'Blue-Light Guard',
     },
-    href: '#',
+    badges: ['New Arrival'],
   },
   {
-    id: 'prod-preview-3',
-    name: 'Architectural Cast Iron Tea Kettle',
-    slug: 'cast-iron-kettle',
-    description:
-      'Traditional Nanbu ironware reimagined through clean geometric silhouettes and ergonomic solid walnut handle.',
-    price: 320,
+    id: 'prod-paper-04',
+    name: 'The Paper Geometric 04',
+    slug: 'paper-geometric-04',
+    price: 220,
     currency: 'USD',
-    imageUrl:
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1200&q=80',
-    badges: ['Heritage'],
+    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
+    ],
+    href: '#products',
+    description: 'Dual-tone enamel rimmed geometric wireframe engineered for weightless ergonomics.',
     attributes: {
-      Material: 'Cast Iron & Walnut',
-      Capacity: '1.2 L',
+      Material: 'Cold-Formed Alloy',
+      Shape: 'Hexagonal',
+      Optics: 'Gradient Polarized',
     },
-    href: '#',
+    badges: ["Editor's Pick"],
   },
 ]
+
+export const DEFAULT_PREVIEW_PRODUCTS_ZH: StorefrontProduct[] = [
+  {
+    id: 'prod-kinfolk-01',
+    name: 'The Kinfolk 经典圆框 01',
+    slug: 'kinfolk-round-01',
+    price: 899,
+    currency: 'CNY',
+    imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
+    ],
+    href: '#products',
+    description: '手工日本 β 钛金属镜芯结合有机玳瑁板材镜圈。',
+    attributes: {
+      材质: '日本钛金属',
+      框型: '经典复古圆框',
+      光学: '抗反射 UV400 防蓝光',
+    },
+    badges: ['畅销推荐', '匠心高定'],
+  },
+  {
+    id: 'prod-velvet-02',
+    name: 'The Velvet 深邃地平线 02',
+    slug: 'velvet-horizon-02',
+    price: 1290,
+    currency: 'CNY',
+    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
+    ],
+    href: '#products',
+    description: '深邃夜黑与勃艮第红雕琢生物板材镜框，配玫瑰金点缀。',
+    attributes: {
+      材质: 'Mazzucchelli 生物板材',
+      框型: '建筑几何方框',
+      光学: '高折射率高清镜片',
+    },
+    badges: ['限量版'],
+  },
+  {
+    id: 'prod-prism-03',
+    name: 'The Prism 极光风尚 03',
+    slug: 'prism-mood-03',
+    price: 980,
+    currency: 'CNY',
+    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
+    ],
+    href: '#products',
+    description: '超轻香槟金细金属框，配备渐变光谱光学防蓝光镜片。',
+    attributes: {
+      材质: 'β-钛合金',
+      框型: '轻盈极简',
+      光学: '防蓝光护眼',
+    },
+    badges: ['新品上市'],
+  },
+  {
+    id: 'prod-paper-04',
+    name: 'The Paper 几何切角 04',
+    slug: 'paper-geometric-04',
+    price: 1150,
+    currency: 'CNY',
+    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
+    images: [
+      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
+    ],
+    href: '#products',
+    description: '双色珐琅包边几何金属细框，人体工学无感佩戴设计。',
+    attributes: {
+      材质: '冷锻合金',
+      框型: '六边形',
+      光学: '渐变偏光',
+    },
+    badges: ['编辑推荐'],
+  },
+]
+
+export function getPreviewProductsForLanguage(lang: 'en' | 'zh'): StorefrontProduct[] {
+  return lang === 'zh' ? DEFAULT_PREVIEW_PRODUCTS_ZH : DEFAULT_PREVIEW_PRODUCTS
+}
 
 /** 默认预览订单详情 */
 const DEFAULT_PREVIEW_ORDER: OrderConfirmationDTO = {
@@ -246,27 +353,55 @@ interface PreviewCanvasProps {
   activePage?: StorefrontEditorPage
   onPageChange?: (page: StorefrontEditorPage) => void
   selectedProductId?: string | null
+  onProductChange?: (id: string) => void
   cartPreviewMode?: 'filled' | 'empty'
   deviceMode?: DeviceMode
   onDeviceModeChange?: (mode: DeviceMode) => void
   showControlBar?: boolean
   className?: string
+  rightPanelOpen?: boolean
 }
 
 export default function PreviewCanvas({
   schema,
   storeSlug,
   products = [],
-  activePage = 'homepage',
+  activePage: externalActivePage,
   onPageChange,
-  selectedProductId,
+  selectedProductId: externalSelectedProductId,
+  onProductChange,
   cartPreviewMode = 'filled',
   deviceMode: externalDeviceMode,
   onDeviceModeChange,
   showControlBar = true,
   className = '',
+  rightPanelOpen = false,
 }: PreviewCanvasProps) {
   const { isZh } = useLanguage()
+
+  // 内部与外部 activePage 同步
+  const [internalActivePage, setInternalActivePage] = useState<StorefrontEditorPage>('homepage')
+  const activePage = externalActivePage ?? internalActivePage
+
+  const handlePageChange = (page: StorefrontEditorPage) => {
+    if (onPageChange) {
+      onPageChange(page)
+    } else {
+      setInternalActivePage(page)
+    }
+  }
+
+  // 内部与外部 selectedProductId 同步
+  const [internalSelectedProductId, setInternalSelectedProductId] = useState<string | null>(null)
+  const selectedProductId = externalSelectedProductId ?? internalSelectedProductId ?? (products[0]?.id || null)
+
+  const handleProductChange = (id: string) => {
+    if (onProductChange) {
+      onProductChange(id)
+    } else {
+      setInternalSelectedProductId(id)
+    }
+  }
 
   // 内部与外部 DeviceMode 同步
   const [internalDeviceMode, setInternalDeviceMode] = useState<DeviceMode>('desktop')
@@ -336,8 +471,10 @@ export default function PreviewCanvas({
     return () => observer.disconnect()
   }, [schema, activePage, currentPreset.viewportHeight])
 
-  // 监听窗口大小变动
+  // 监听舞台 (stageRef) 的大小变化以进行自适应缩放（包括窗口大小变动和右侧栏滑动导致的大小变化）
   useEffect(() => {
+    if (!stageRef.current) return
+
     const handleResize = () => {
       if (isAutoFit) {
         const fit = calculateFitZoom()
@@ -345,35 +482,50 @@ export default function PreviewCanvas({
       }
     }
 
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    const observer = new ResizeObserver(handleResize)
+    observer.observe(stageRef.current)
+
+    return () => observer.disconnect()
   }, [isAutoFit, calculateFitZoom])
 
+  // 当右侧边栏开启或关闭状态变化时，强制触发一次自适应 (Fit) 缩放，确保内容完美适配
+  useEffect(() => {
+    handleFit()
+  }, [rightPanelOpen, handleFit])
+
+  const effectiveLanguage = resolveStorefrontLanguage(schema.theme?.language, isZh ? 'zh' : 'en')
+
   const displayProducts = useMemo(() => {
-    return products.length > 0 ? products : DEFAULT_PREVIEW_PRODUCTS
-  }, [products])
+    if (products.length > 0) {
+      return products.map((p) => ({
+        ...p,
+        currency: effectiveLanguage === 'zh' ? 'CNY' : 'USD',
+      }))
+    }
+    return getPreviewProductsForLanguage(effectiveLanguage)
+  }, [products, effectiveLanguage])
 
   const activeProduct = useMemo(() => {
     if (selectedProductId) {
       const found = displayProducts.find((p) => p.id === selectedProductId)
       if (found) return found
     }
-    return displayProducts[0] || DEFAULT_PREVIEW_PRODUCTS[0]
-  }, [displayProducts, selectedProductId])
+    return displayProducts[0] || getPreviewProductsForLanguage(effectiveLanguage)[0]
+  }, [displayProducts, selectedProductId, effectiveLanguage])
 
   const storeInfo: StorefrontStore = useMemo(() => {
     return {
       id: 'store-preview',
-      name: schema.globalInfo?.brandName || 'Omnilink Store',
+      name: schema.globalInfo?.brandName || (effectiveLanguage === 'zh' ? 'Omnilink 品牌旗舰店' : 'Omnilink Store'),
       slug: storeSlug || 'preview',
-      description: 'Curated boutique collection',
+      description: effectiveLanguage === 'zh' ? '高定质感选品展厅' : 'Curated boutique collection',
       logoUrl: null,
       themeId: schema.theme.themeId,
-      currency: 'USD',
+      currency: effectiveLanguage === 'zh' ? 'CNY' : 'USD',
       contact: schema.contact || schema.globalInfo?.contact,
       social: schema.social || schema.globalInfo?.social,
     }
-  }, [schema, storeSlug])
+  }, [schema, storeSlug, effectiveLanguage])
 
   const orderedSections = useMemo(() => {
     return [...schema.sections]
@@ -397,9 +549,18 @@ export default function PreviewCanvas({
     <div className={`flex flex-col h-full w-full bg-slate-100 overflow-hidden ${className}`}>
       {/* 预览控制栏 (Preview Toolbar) */}
       {showControlBar && (
-        <div className="h-13 bg-white border-b border-gray-200 px-4 flex flex-wrap items-center justify-between gap-3 shrink-0 z-10 text-xs text-gray-700 shadow-xs">
-          {/* 左侧：页面切换 Tabs (Page Switcher) */}
-          <div className="flex items-center gap-1 bg-gray-100/90 p-1 rounded-xl border border-gray-200/70 overflow-x-auto">
+        <div
+          className="h-12 px-4 flex items-center justify-between gap-3 shrink-0 z-10 text-xs text-gray-700 select-none"
+          style={{
+            background: 'rgba(255, 255, 255, 0.65)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.03)',
+          }}
+        >
+          {/* 左侧：页面切换 Tabs (Page Switcher with Apple Segmented style) */}
+          <div className="flex items-center gap-0.5 bg-black/[0.04] p-0.5 rounded-lg border border-black/[0.01] overflow-x-auto">
             {pagesList.map((p) => {
               const Icon = p.icon
               const isActive = activePage === p.id
@@ -407,120 +568,140 @@ export default function PreviewCanvas({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => onPageChange?.(p.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  onClick={() => handlePageChange(p.id)}
+                  title={rightPanelOpen ? (isZh ? p.labelZh : p.labelEn) : undefined}
+                  className={`flex items-center justify-center transition-all cursor-pointer whitespace-nowrap ${
+                    rightPanelOpen 
+                      ? 'p-1.5 rounded-md' 
+                      : 'gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold'
+                  } ${
                     isActive
-                      ? 'bg-white text-[#FB7185] shadow-xs ring-1 ring-black/5 font-bold'
-                      : 'text-gray-600 hover:text-gray-950 hover:bg-white/60'
+                      ? 'bg-white text-black shadow-[0_1.5px_3px_rgba(0,0,0,0.08),0_0.5px_1px_rgba(0,0,0,0.04)] font-bold'
+                      : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
-                  <Icon size={13} className={isActive ? 'text-[#FB7185]' : 'text-gray-500'} />
-                  <span>{isZh ? p.labelZh : p.labelEn}</span>
+                  <Icon size={12} className={isActive ? 'text-black' : 'text-gray-400'} />
+                  {!rightPanelOpen && <span>{isZh ? p.labelZh : p.labelEn}</span>}
                 </button>
               )
             })}
           </div>
 
-          {/* 中间/右侧：设备切换 + 缩放 */}
+          {/* 中间：Preview Product (仅商品详情页显示) */}
+          {activePage === 'product' && (
+            <div className="flex-1 flex justify-center max-w-sm px-4 hidden sm:flex">
+              <select
+                value={selectedProductId || products[0]?.id || ''}
+                onChange={(e) => handleProductChange(e.target.value)}
+                className="w-full max-w-[200px] px-2 py-1 text-[11px] font-semibold bg-white border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-black/10 truncate cursor-pointer hover:bg-gray-50 transition-colors"
+                title={isZh ? '选择预览商品' : 'Select Preview Product'}
+              >
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 右侧：设备切换与极简滑块缩放控制 (Device Toggle & Elegant Slider) */}
           <div className="flex items-center gap-3">
             {/* 设备切换 */}
-            <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-lg border border-gray-200/60">
+            <div className="flex items-center gap-0.5 bg-black/[0.04] p-0.5 rounded-lg border border-black/[0.01]">
               <button
                 type="button"
                 onClick={() => setDeviceMode('desktop')}
-                className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                className={`p-1 rounded-md transition-all cursor-pointer ${
                   deviceMode === 'desktop'
-                    ? 'bg-white text-[#FB7185] shadow-xs'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-black shadow-[0_1.5px_3px_rgba(0,0,0,0.08),0_0.5px_1px_rgba(0,0,0,0.04)]'
+                    : 'text-gray-500 hover:text-gray-900'
                 }`}
-                title={isZh ? '桌面端 (1440x900)' : 'Desktop (1440x900)'}
+                title={isZh ? '桌面端' : 'Desktop'}
               >
-                <Monitor size={14} />
+                <Monitor size={12} />
               </button>
 
               <button
                 type="button"
                 onClick={() => setDeviceMode('tablet')}
-                className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                className={`p-1 rounded-md transition-all cursor-pointer ${
                   deviceMode === 'tablet'
-                    ? 'bg-white text-[#FB7185] shadow-xs'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-black shadow-[0_1.5px_3px_rgba(0,0,0,0.08),0_0.5px_1px_rgba(0,0,0,0.04)]'
+                    : 'text-gray-500 hover:text-gray-900'
                 }`}
-                title={isZh ? '平板 (768x1024)' : 'Tablet (768x1024)'}
+                title={isZh ? '平板' : 'Tablet'}
               >
-                <Tablet size={14} />
+                <Tablet size={12} />
               </button>
 
               <button
                 type="button"
                 onClick={() => setDeviceMode('mobile')}
-                className={`p-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                className={`p-1 rounded-md transition-all cursor-pointer ${
                   deviceMode === 'mobile'
-                    ? 'bg-white text-[#FB7185] shadow-xs'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-black shadow-[0_1.5px_3px_rgba(0,0,0,0.08),0_0.5px_1px_rgba(0,0,0,0.04)]'
+                    : 'text-gray-500 hover:text-gray-900'
                 }`}
-                title={isZh ? '手机 (390x844)' : 'Mobile (390x844)'}
+                title={isZh ? '手机' : 'Mobile'}
               >
-                <Smartphone size={14} />
+                <Smartphone size={12} />
               </button>
             </div>
 
-            {/* Zoom 缩放控制 */}
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1.5 bg-gray-100/80 px-2 py-1 rounded-lg border border-gray-200/60">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setZoomPercent((prev) => Math.max(25, prev - 5))
-                    setIsAutoFit(false)
-                  }}
-                  className="p-0.5 text-gray-500 hover:text-gray-900 rounded cursor-pointer"
-                  title={isZh ? '缩小' : 'Zoom Out'}
-                >
-                  <ZoomOut size={13} />
-                </button>
+            {/* 极简滑块缩放控制 (Minimalist Elegant Slider) */}
+            <div className="hidden sm:flex items-center gap-2 bg-black/[0.02] hover:bg-black/[0.04] px-2.5 py-1 rounded-lg border border-black/[0.03] transition-colors">
+              <button
+                type="button"
+                onClick={() => {
+                  setZoomPercent((prev) => Math.max(25, prev - 5))
+                  setIsAutoFit(false)
+                }}
+                className="p-0.5 text-gray-400 hover:text-black rounded transition-colors cursor-pointer"
+                title={isZh ? '缩小' : 'Zoom Out'}
+              >
+                <ZoomOut size={11} />
+              </button>
 
-                <input
-                  type="range"
-                  min={25}
-                  max={150}
-                  step={5}
-                  value={zoomPercent}
-                  onChange={(e) => {
-                    setZoomPercent(Number(e.target.value))
-                    setIsAutoFit(false)
-                  }}
-                  className="w-16 sm:w-24 h-1.5 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-[#FB7185]"
-                />
+              <input
+                type="range"
+                min={25}
+                max={150}
+                step={5}
+                value={zoomPercent}
+                onChange={(e) => {
+                  setZoomPercent(Number(e.target.value))
+                  setIsAutoFit(false)
+                }}
+                style={{ accentColor: '#000' }}
+                className="w-16 sm:w-20 h-1 rounded-lg appearance-none cursor-pointer bg-black/10 hover:bg-black/20 transition-colors"
+              />
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setZoomPercent((prev) => Math.min(150, prev + 5))
-                    setIsAutoFit(false)
-                  }}
-                  className="p-0.5 text-gray-500 hover:text-gray-900 rounded cursor-pointer"
-                  title={isZh ? '放大' : 'Zoom In'}
-                >
-                  <ZoomIn size={13} />
-                </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setZoomPercent((prev) => Math.min(150, prev + 5))
+                  setIsAutoFit(false)
+                }}
+                className="p-0.5 text-gray-400 hover:text-black rounded transition-colors cursor-pointer"
+                title={isZh ? '放大' : 'Zoom In'}
+              >
+                <ZoomIn size={11} />
+              </button>
 
-                <span className="font-mono text-[11px] font-extrabold text-[#FB7185] w-9 text-right select-none">
-                  {zoomPercent}%
-                </span>
-              </div>
+              <span className="font-mono text-[10px] font-bold text-gray-600 w-8 text-right select-none">
+                {zoomPercent}%
+              </span>
 
               <button
                 type="button"
                 onClick={handleFit}
-                className={`p-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
-                  isAutoFit
-                    ? 'bg-[#FFF1F2] text-[#FB7185] border-[#FECDD3] shadow-2xs'
-                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                className={`p-0.5 rounded transition-all cursor-pointer ${
+                  isAutoFit ? 'text-black font-bold' : 'text-gray-400 hover:text-black'
                 }`}
-                title={isZh ? '自适应当前屏幕' : 'Fit to screen'}
+                title={isZh ? '自适应' : 'Auto Fit'}
               >
-                <Maximize2 size={13} />
+                <Maximize2 size={11} />
               </button>
             </div>
           </div>
@@ -530,13 +711,57 @@ export default function PreviewCanvas({
       {/* 预览舞台 (Preview Stage) */}
       <div
         ref={stageRef}
-        className="flex-1 overflow-auto p-6 flex justify-center items-start relative select-none"
+        className="flex-1 overflow-auto p-8 flex justify-center items-start relative select-none group"
         style={{
           backgroundImage:
-            'radial-gradient(circle, rgba(148, 163, 184, 0.25) 1px, transparent 1px)',
+            'radial-gradient(circle, rgba(0, 0, 0, 0.05) 1px, transparent 1px)',
           backgroundSize: '20px 20px',
         }}
       >
+        {/* 悬浮微型缩放浮条 (Hover Zoom Control overlay) */}
+        <div
+          className="absolute bottom-6 right-6 z-30 flex items-center gap-1.5 px-2 py-1 rounded-full border opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{
+            background: 'rgba(255, 255, 255, 0.7)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            borderColor: 'rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setZoomPercent((prev) => Math.max(25, prev - 5))
+              setIsAutoFit(false)
+            }}
+            className="p-1 text-gray-500 hover:text-black rounded-full hover:bg-black/5 transition-all cursor-pointer"
+            title={isZh ? '缩小' : 'Zoom Out'}
+          >
+            <ZoomOut size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setZoomPercent((prev) => Math.min(150, prev + 5))
+              setIsAutoFit(false)
+            }}
+            className="p-1 text-gray-500 hover:text-black rounded-full hover:bg-black/5 transition-all cursor-pointer"
+            title={isZh ? '放大' : 'Zoom In'}
+          >
+            <ZoomIn size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={handleFit}
+            className={`p-1 rounded-full transition-all cursor-pointer ${
+              isAutoFit ? 'text-black bg-black/5 font-bold' : 'text-gray-500 hover:text-black hover:bg-black/5'
+            }`}
+            title={isZh ? '自适应' : 'Fit Screen'}
+          >
+            <Maximize2 size={12} />
+          </button>
+        </div>
         {/* 缩放控制外框 (Scaled Wrapper Container) */}
         <div
           className="transition-all duration-200 ease-out flex justify-center shrink-0 my-auto"
@@ -548,7 +773,7 @@ export default function PreviewCanvas({
         >
           {/* 设备模拟视口 (Device Viewport Frame) */}
           <div
-            className="bg-white shadow-2xl overflow-hidden border border-gray-300/80 transition-all duration-200"
+            className="bg-white overflow-hidden transition-all duration-200"
             style={{
               width: `${currentPreset.viewportWidth}px`,
               minHeight: `${currentPreset.viewportHeight}px`,
@@ -559,6 +784,7 @@ export default function PreviewCanvas({
               top: 0,
               left: '50%',
               marginLeft: `-${currentPreset.viewportWidth / 2}px`,
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)',
             }}
           >
             {/* 手机/平板 Top Bar 装饰 */}
@@ -582,7 +808,7 @@ export default function PreviewCanvas({
               <CartProvider storeSlug={storeInfo.slug} currency={storeInfo.currency}>
                 <ThemeRoot themeId={schema.theme.themeId}>
                   <div
-                    style={storefrontThemeOverrides(schema.theme) as CSSProperties}
+                    style={storefrontThemeOverrides(schema.theme, effectiveLanguage) as CSSProperties}
                     className="min-h-[600px]"
                   >
                     {/* 1. 首页预览 */}
@@ -597,6 +823,7 @@ export default function PreviewCanvas({
                             globalInfo={schema.globalInfo}
                             contact={schema.contact}
                             social={schema.social}
+                            language={effectiveLanguage}
                           />
                         ))}
                       </div>

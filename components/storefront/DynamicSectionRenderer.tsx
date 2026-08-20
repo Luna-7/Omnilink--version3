@@ -18,6 +18,7 @@
 import Link from 'next/link'
 import type { StorefrontSection, GlobalStoreInfo, StoreContactConfig, StoreSocialConfig } from '@/lib/storefront/schema'
 import type { StorefrontProduct } from '@/lib/storefront/types'
+import { localizeSectionContent, translateText, type StorefrontLanguage } from '@/lib/storefront/locale'
 import ProductCard from '@/components/theme/core/ProductCard'
 import NavbarCartButton from '@/components/cart/NavbarCartButton'
 import {
@@ -38,6 +39,8 @@ interface DynamicSectionRendererProps {
   globalInfo?: GlobalStoreInfo
   contact?: StoreContactConfig
   social?: StoreSocialConfig
+  /** 展示语言 ('en' | 'zh') */
+  language?: StorefrontLanguage
 }
 
 export default function DynamicSectionRenderer({
@@ -47,8 +50,10 @@ export default function DynamicSectionRenderer({
   globalInfo,
   contact,
   social,
+  language = 'en',
 }: DynamicSectionRendererProps) {
-  const { type, content, style, visible } = section
+  const localizedSection = localizeSectionContent(section, language)
+  const { type, content, style, visible } = localizedSection
 
   if (!visible) return null
 
@@ -60,7 +65,7 @@ export default function DynamicSectionRenderer({
 
   switch (type) {
     case 'header':
-      return <HeaderSection content={content} storeSlug={storeSlug} contact={activeContact} />
+      return <HeaderSection content={content} storeSlug={storeSlug} contact={activeContact} language={language} />
     case 'hero':
       return (
         <section className={`${paddingClass} ${bgClass}`}>
@@ -70,7 +75,7 @@ export default function DynamicSectionRenderer({
     case 'featured_products':
       return (
         <section className={`${paddingClass} ${bgClass}`}>
-          <ProductGridSection content={content} products={products} />
+          <ProductGridSection content={content} products={products} language={language} />
         </section>
       )
     case 'collection':
@@ -98,7 +103,7 @@ export default function DynamicSectionRenderer({
         </section>
       )
     case 'footer':
-      return <FooterSection content={content} contact={activeContact} social={activeSocial} />
+      return <FooterSection content={content} contact={activeContact} social={activeSocial} language={language} />
     case 'testimonials':
       return (
         <section className={`${paddingClass} ${bgClass}`}>
@@ -172,10 +177,12 @@ function HeaderSection({
   content,
   storeSlug,
   contact,
+  language = 'en',
 }: {
   content: StorefrontSection['content']
   storeSlug?: string
   contact?: StoreContactConfig
+  language?: StorefrontLanguage
 }) {
   return (
     <header className="sticky top-0 z-40 bg-[var(--th-color-background)]/95 backdrop-blur-md border-b border-[var(--th-color-border)]">
@@ -196,17 +203,17 @@ function HeaderSection({
         <div className="flex items-center gap-6">
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-[var(--th-color-muted)]">
             <Link href={`/store/${storeSlug || ''}`} className="hover:text-[var(--th-color-primary)]">
-              Home
+              {translateText('Home', language)}
             </Link>
             <a href="#products" className="hover:text-[var(--th-color-primary)]">
-              Products
+              {translateText('Products', language)}
             </a>
             {(contact?.contactUrl || contact?.email) && (
               <a
                 href={contact.contactUrl || `mailto:${contact.email}`}
                 className="hover:text-[var(--th-color-primary)]"
               >
-                Contact
+                {translateText('Contact', language)}
               </a>
             )}
           </nav>
@@ -291,9 +298,11 @@ const GRID_COLUMNS_CLASS: Record<number, string> = {
 function ProductGridSection({
   content,
   products,
+  language = 'en',
 }: {
   content: StorefrontSection['content']
   products: StorefrontProduct[]
+  language?: StorefrontLanguage
 }) {
   const columns =
     typeof content.columns === 'number' && GRID_COLUMNS_CLASS[content.columns]
@@ -312,7 +321,7 @@ function ProductGridSection({
         </span>
       )}
       <h2 className="[font-family:var(--th-font-heading)] text-2xl sm:text-3xl font-bold tracking-tight mt-2 text-[var(--th-color-text)]">
-        {content.title || 'Products'}
+        {content.title || translateText('Products', language)}
       </h2>
       {content.subtitle && (
         <p className="mt-2 text-sm text-[var(--th-color-muted)]">{content.subtitle}</p>
@@ -327,7 +336,7 @@ function ProductGridSection({
         </div>
       ) : (
         <div className="mt-8 rounded-[var(--th-radius-card)] border border-dashed border-[var(--th-color-border)] bg-[var(--th-color-surface)] p-10 text-center text-sm text-[var(--th-color-muted)]">
-          No products yet
+          {translateText('No products yet', language)}
         </div>
       )}
     </div>
@@ -486,11 +495,13 @@ function FooterSection({
   content,
   contact,
   social,
+  language = 'en',
 }: {
   content: StorefrontSection['content']
   style?: StorefrontSection['style']
   contact?: StoreContactConfig
   social?: StoreSocialConfig
+  language?: StorefrontLanguage
 }) {
   const trustBadges = [
     content.trustBadge1,
@@ -536,7 +547,7 @@ function FooterSection({
             {hasContact && (
               <div className="space-y-3">
                 <div className="text-xs font-bold uppercase tracking-wider text-[var(--th-color-primary)]">
-                  Contact Us
+                  {translateText('Contact Us', language)}
                 </div>
                 <div className="space-y-2 text-xs sm:text-sm text-[var(--th-color-text)]/90">
                   {contact?.address && (
@@ -581,7 +592,7 @@ function FooterSection({
             {socialLinks.length > 0 && (
               <div className="space-y-3 md:text-right">
                 <div className="text-xs font-bold uppercase tracking-wider text-[var(--th-color-primary)]">
-                  Connect
+                  {translateText('Connect', language)}
                 </div>
                 <div className="flex items-center gap-3 md:justify-end flex-wrap">
                   {socialLinks.map((item) => {

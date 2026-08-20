@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import type { StorefrontSchema } from '@/lib/storefront/schema'
-import { createDefaultSchema } from '@/lib/storefront/schema'
 import type { StorefrontProduct } from '@/lib/storefront/types'
-import PreviewCanvas from '@/components/storefront/PreviewCanvas'
+import { createDefaultSchema } from '@/lib/storefront/schema'
+import PreviewCanvas, { DEFAULT_PREVIEW_PRODUCTS, getPreviewProductsForLanguage } from '@/components/storefront/PreviewCanvas'
 import { applyTemplateToStoreAction } from '@/app/actions/template'
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Sparkles,
+  Globe,
 } from 'lucide-react'
 
 interface TemplatePreviewClientProps {
@@ -110,16 +111,27 @@ export default function TemplatePreviewClient({
   const router = useRouter()
   const { isZh } = useLanguage()
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
+  const [activePage, setActivePage] = useState<'homepage' | 'product' | 'cart' | 'checkout' | 'confirmation'>('homepage')
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(DEFAULT_PREVIEW_PRODUCTS[0]?.id || null)
   const [isApplying, setIsApplying] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
 
   const schema = initialSchema || createDefaultSchema()
-  // 确保 ThemeId 与预览的目标 Template 对齐
+  const [previewLanguage, setPreviewLanguage] = useState<'en' | 'zh'>(
+    schema.theme?.language || (isZh ? 'zh' : 'en')
+  )
+
+  useEffect(() => {
+    setPreviewLanguage(isZh ? 'zh' : 'en')
+  }, [isZh])
+
+  // 确保 ThemeId 与预览的目标 Template 对齐，并带入当前选择的预览语言
   const effectiveSchema: StorefrontSchema = {
     ...schema,
     theme: {
       ...schema.theme,
       themeId: templateId,
+      language: previewLanguage,
     },
   }
 
@@ -196,8 +208,19 @@ export default function TemplatePreviewClient({
           </div>
         </div>
 
-        {/* 右侧：编辑模板与使用此风格 */}
+        {/* 右侧：展示语言切换、编辑模板与使用此风格 */}
         <div className="flex items-center gap-2">
+          {/* 单按钮展示语言切换 */}
+          <button
+            type="button"
+            onClick={() => setPreviewLanguage((prev) => (prev === 'zh' ? 'en' : 'zh'))}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-900 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            title={isZh ? '切换展示语言与币种 ($ / ¥)' : 'Toggle Display Language & Currency ($ / ¥)'}
+          >
+            <Globe size={13} className="text-[#FB7185]" />
+            <span>{previewLanguage === 'zh' ? '中文 (¥)' : 'English ($)'}</span>
+          </button>
+
           <button
             onClick={handleEditTemplate}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-800 text-xs font-bold transition-all cursor-pointer"
@@ -222,7 +245,11 @@ export default function TemplatePreviewClient({
         <PreviewCanvas
           schema={effectiveSchema}
           storeSlug={store.store_slug}
-          products={CURATED_EYEWEAR_PRODUCTS}
+          products={getPreviewProductsForLanguage(previewLanguage)}
+          activePage={activePage}
+          onPageChange={setActivePage}
+          selectedProductId={selectedProductId}
+          onProductChange={setSelectedProductId}
           deviceMode={deviceMode}
           onDeviceModeChange={setDeviceMode}
         />
