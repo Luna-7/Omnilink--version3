@@ -24,7 +24,7 @@ export type ProductInput = {
  * exists only so the public ai-json / agent query have structured data to
  * return. Source of Truth for semantics in the Demo remains products.semantic_data.
  */
-function buildDemoSemanticFallback(): Record<string, unknown> {
+export function buildDemoSemanticFallback(): Record<string, unknown> {
   return { category: null, attributes: {}, confidence: 1 };
 }
 
@@ -93,37 +93,6 @@ export async function getProductById(productId: string) {
     .select(MERCHANT_PRODUCT_SELECT)
     .eq("id", productId)
     .eq("store_id", store.id)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
-}
-
-export async function createProduct(input: ProductInput) {
-  const { supabase, store } = await getOwnedStore();
-
-  const semantic_data =
-    input.semantic_data && typeof input.semantic_data === "object"
-      ? input.semantic_data
-      : buildDemoSemanticFallback();
-
-  const { data, error } = await supabase
-    .from("products")
-    .insert({
-      store_id: store.id,
-      sku: input.sku || null,
-      name: input.name,
-      description: input.description || null,
-      price: input.price,
-      currency: input.currency || "USD",
-      inventory: input.inventory ?? 0,
-      status: "active",
-      semantic_data,
-    })
-    .select()
     .single();
 
   if (error) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   updateProductAction,
@@ -8,6 +8,7 @@ import {
 import { Sparkles, DollarSign, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import { ProductDocumentsSection } from '@/components/products/ProductDocumentsSection'
+import { ProductMediaUploader, ProductMediaUploaderRef, ExistingAsset } from '@/components/products/ProductMediaUploader'
 
 interface ProductFormProps {
   productId?: string
@@ -28,6 +29,33 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const mediaUploaderRef = useRef<ProductMediaUploaderRef>(null)
+  const [existingAssets, setExistingAssets] = useState<ExistingAsset[]>([])
+
+  // Fetch existing assets if editing
+  useEffect(() => {
+    if (!productId) return
+    let isMounted = true
+
+    async function loadAssets() {
+      try {
+        const res = await fetch(`/api/assets?product_id=${productId}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && isMounted) {
+            setExistingAssets(data.map((a) => ({ id: a.id, url: a.url, asset_type: a.asset_type })))
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    loadAssets()
+    return () => {
+      isMounted = false
+    }
+  }, [productId])
 
   // Form state
   const [sku, setSku] = useState(initialData?.sku || '')
@@ -68,7 +96,16 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         try {
           const result = await updateProductAction(productId, formData)
           if (result.success) {
-            setSuccess(isZh ? '商品信息已更新' : 'Product updated')
+            let mediaNotice = ''
+            if (mediaUploaderRef.current?.hasPendingFiles()) {
+              const uploadRes = await mediaUploaderRef.current.uploadPendingFiles(productId)
+              if (uploadRes.failedCount > 0) {
+                mediaNotice = isZh
+                  ? ` (部分图片上传失败 ${uploadRes.failedCount} 张)`
+                  : ` (${uploadRes.failedCount} images failed to upload)`
+              }
+            }
+            setSuccess((isZh ? '商品信息已更新' : 'Product updated') + mediaNotice)
             router.refresh()
           } else {
             setError(result.error || (isZh ? '更新失败，请重试' : 'Unable to update product'))
@@ -100,9 +137,22 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       })
 
       if (res.status === 201 || res.ok) {
-        setSuccess(isZh ? '商品创建成功！正在跳转...' : 'Product created! Redirecting...')
+        const resData = await res.json()
+        const createdId = resData.product?.id || resData.id
+
+        let uploadMessage = ''
+        if (createdId && mediaUploaderRef.current?.hasPendingFiles()) {
+          const uploadRes = await mediaUploaderRef.current.uploadPendingFiles(createdId)
+          if (uploadRes.failedCount > 0) {
+            uploadMessage = isZh
+              ? ` (图片成功 ${uploadRes.successCount} 张，失败 ${uploadRes.failedCount} 张)`
+              : ` (${uploadRes.successCount} images uploaded, ${uploadRes.failedCount} failed)`
+          }
+        }
+
+        setSuccess((isZh ? '商品创建成功！正在跳转...' : 'Product created! Redirecting...') + uploadMessage)
         router.refresh()
-        setTimeout(() => router.push('/dashboard/products'), 600)
+        setTimeout(() => router.push('/dashboard/products'), 800)
         return
       }
 
@@ -252,6 +302,14 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
           />
         </div>
       </div>
+
+      {/* Product Media Uploader (Images) */}
+      <ProductMediaUploader
+        ref={mediaUploaderRef}
+        productId={productId}
+        existingAssets={existingAssets}
+        isZh={isZh}
+      />
 
       {/* Product Documents Section (Public Customer-Facing + Private R&D) */}
       <ProductDocumentsSection productId={productId} />

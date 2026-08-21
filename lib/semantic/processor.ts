@@ -163,22 +163,31 @@ export async function saveProductSemantics(
   productId: string,
   schemaId: string,
   semanticData: Record<string, unknown>,
+  confidence = 1,
+  generatedBy = 'merchant-confirmed',
 ): Promise<void> {
   const supabase = await createClientServer()
 
   const { error } = await supabase
     .from('product_semantics')
-    .upsert({
-      product_id: productId,
-      schema_id: schemaId,
-      semantic_data: semanticData,
-      confidence: 1.0,
-      generated_by: 'rule-based-processor-v1',
-      updated_at: new Date().toISOString(),
-    })
+    .upsert(
+      {
+        product_id: productId,
+        schema_id: schemaId,
+        semantic_data: semanticData,
+        confidence,
+        generated_by: generatedBy,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: 'product_id,schema_id',
+      },
+    )
 
   if (error) {
-    throw new Error(`Failed to save product semantics: ${error.message}`)
+    throw new Error(
+      `Failed to save product semantics: ${error.message}`,
+    )
   }
 }
 

@@ -62,22 +62,38 @@ function extractImageGallery(
   if (!Array.isArray(assets) || assets.length === 0) {
     return { primary: null, all: [] }
   }
+
   const valid = assets.filter(
     (a): a is { url: string; asset_type: string | null } =>
       typeof a?.url === 'string' && a.url.trim().length > 0
   )
+
   if (valid.length === 0) {
     return { primary: null, all: [] }
   }
 
   const urls: string[] = []
-  const original = valid.find((a) => a.asset_type === 'original')
-  if (original) {
-    urls.push(original.url)
+
+  const publicAssets = valid.filter((asset) =>
+    ['public', 'processed', 'watermark', 'transparent'].includes(
+      asset.asset_type ?? ''
+    )
+  )
+
+  for (const asset of publicAssets) {
+    if (!urls.includes(asset.url)) {
+      urls.push(asset.url)
+    }
   }
-  for (const item of valid) {
-    if (!urls.includes(item.url)) {
-      urls.push(item.url)
+
+  // Legacy compatibility for old demo records.
+  if (urls.length === 0) {
+    const legacyOriginal = valid.find(
+      (asset) => asset.asset_type === 'original'
+    )
+
+    if (legacyOriginal) {
+      urls.push(legacyOriginal.url)
     }
   }
 

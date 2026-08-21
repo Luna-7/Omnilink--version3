@@ -657,6 +657,9 @@ export interface Database {
           product_id: string
           asset_type: string
           url: string
+          storage_key: string | null
+          file_hash: string | null
+          size_bytes: number | null
           metadata: Json
           created_at: string
         }
@@ -665,6 +668,9 @@ export interface Database {
           product_id: string
           asset_type: string
           url: string
+          storage_key?: string | null
+          file_hash?: string | null
+          size_bytes?: number | null
           metadata?: Json
           created_at?: string
         }
@@ -673,6 +679,9 @@ export interface Database {
           product_id?: string
           asset_type?: string
           url?: string
+          storage_key?: string | null
+          file_hash?: string | null
+          size_bytes?: number | null
           metadata?: Json
           created_at?: string
         }
