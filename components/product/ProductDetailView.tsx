@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import type { DemoProduct } from '@/lib/products/demo-data'
+import { ProductDocumentsSection } from '@/components/products/ProductDocumentsSection'
 
 interface ProductDetailViewProps {
   product: DemoProduct
@@ -366,6 +367,11 @@ export function ProductDetailView({ product: initialProduct }: ProductDetailView
                   </select>
                 </div>
               </div>
+            </div>
+
+            {/* Product Documents Section */}
+            <div className="crextio-card p-6">
+              <ProductDocumentsSection productId={product.id} />
             </div>
           </div>
 

@@ -21,6 +21,7 @@ import {
   Search,
   Bell,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react'
 
 export type Profile = {
@@ -31,6 +32,7 @@ export type Profile = {
 }
 
 type NavItemKey =
+  | 'customerService'
   | 'dashboard'
   | 'products'
   | 'knowledge'
@@ -44,10 +46,18 @@ type NavItem = {
   href: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   match: (pathname: string) => boolean
+  isSpecialSprite?: boolean
 }
 
-/* 严格对应 app/dashboard 目录下的同名模块，由侧边栏承载 */
+/* 严格对应 app/dashboard 目录下的同名模块，客服中心放置于最上方且具备独立彩色圆球精灵 */
 const NAV_ITEMS: NavItem[] = [
+  {
+    key: 'customerService',
+    href: '/dashboard/customer-service',
+    icon: Sparkles,
+    match: (p) => p.startsWith('/dashboard/customer-service'),
+    isSpecialSprite: true,
+  },
   {
     key: 'dashboard',
     href: '/dashboard',
@@ -261,6 +271,45 @@ export default function OmnilinkLayout({
               const active = item.match(pathname)
               const Icon = item.icon
               const label = t.nav[item.key]
+              
+              if (item.isSpecialSprite) {
+                return (
+                  <div key={item.key} className="relative group mb-1">
+                    <Link
+                      href={item.href}
+                      aria-label={label}
+                      className={cn(
+                        'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer',
+                        active ? 'scale-110' : 'hover:scale-105'
+                      )}
+                    >
+                      {/* 彩色圆球精灵 (Colorful 3D Iridescent Orb Sprite) */}
+                      <div
+                        className={cn(
+                          'w-8 h-8 rounded-full relative flex items-center justify-center transition-all duration-300',
+                          'bg-gradient-to-tr from-[#FF007A] via-[#7928CA] via-[#00DFD8] to-[#FFB800]',
+                          'shadow-[0_2px_12px_rgba(236,72,153,0.5),0_0_10px_rgba(121,40,202,0.4)]',
+                          active
+                            ? 'ring-2 ring-pink-500 ring-offset-2 ring-offset-white shadow-[0_0_18px_rgba(236,72,153,0.7)]'
+                            : 'hover:shadow-[0_0_16px_rgba(236,72,153,0.6)]'
+                        )}
+                      >
+                        {/* 3D 拟物高光反光 (Specular Reflection Highlight) */}
+                        <div className="absolute top-1 left-1.5 w-2.5 h-1.5 bg-white/70 rounded-full blur-[0.4px] rotate-[-25deg] pointer-events-none" />
+                        {/* 中心智慧星芒 */}
+                        <Sparkles size={13} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] animate-pulse" />
+                      </div>
+                    </Link>
+
+                    {/* 专属七彩 Tooltip */}
+                    <div className="absolute left-[52px] top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap px-3 py-1 rounded-full bg-gradient-to-r from-[#FF007A] via-[#7928CA] to-[#00DFD8] text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5">
+                      <Sparkles size={11} className="text-yellow-300" />
+                      <span>{label}</span>
+                    </div>
+                  </div>
+                )
+              }
+
               return (
                 <div key={item.key} className="relative group">
                   <Link
@@ -328,6 +377,23 @@ export default function OmnilinkLayout({
         <div className="flex md:hidden flex-wrap items-center justify-center gap-1.5 p-2 bg-white/90 backdrop-blur-xl rounded-2xl border border-white/80 shadow-xs">
           {NAV_ITEMS.map((item) => {
             const active = item.match(pathname)
+            if (item.isSpecialSprite) {
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={cn(
+                    'px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5',
+                    active
+                      ? 'bg-gradient-to-r from-[#FF007A] via-[#7928CA] to-[#00DFD8] text-white shadow-sm'
+                      : 'bg-pink-50 text-pink-700 border border-pink-200'
+                  )}
+                >
+                  <Sparkles size={12} className={active ? 'text-yellow-300' : 'text-pink-600'} />
+                  <span>{t.nav[item.key]}</span>
+                </Link>
+              )
+            }
             return (
               <Link
                 key={item.key}

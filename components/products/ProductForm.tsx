@@ -7,6 +7,7 @@ import {
 } from '@/app/actions/products'
 import { Sparkles, DollarSign, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
+import { ProductDocumentsSection } from '@/components/products/ProductDocumentsSection'
 
 interface ProductFormProps {
   productId?: string
@@ -251,6 +252,9 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
           />
         </div>
       </div>
+
+      {/* Product Documents Section (Public Customer-Facing + Private R&D) */}
+      <ProductDocumentsSection productId={productId} />
 
       {error && (
         <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">

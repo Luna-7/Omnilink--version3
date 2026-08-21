@@ -699,14 +699,29 @@
     );
   }
 
-  .hatched-pattern-dark {
-    background: repeating-linear-gradient(
-      -45deg,
-      rgba(255, 255, 255, 0.08),
-      rgba(255, 255, 255, 0.08) 4px,
-      transparent 4px,
-      transparent 8px
-    );
+  /* 极简玻璃知识库卡片 */
+  .knowledge-card {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.7) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02) !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .knowledge-card.selected {
+    background: rgba(255, 255, 255, 0.85) !important; /* 仅提亮 */
+    border: 1px solid rgba(255, 255, 255, 1) !important; /* 强化白色高光边缘 */
+    box-shadow: 
+      inset 0 1px 1px rgba(255, 255, 255, 1),
+      0 12px 28px rgba(0, 0, 0, 0.08) !important; /* 微悬浮，绝不用发光紫 */
+    transform: translateY(-2px) !important;
+  }
+
+  .knowledge-card .check-icon.selected {
+    background: rgba(0, 0, 0, 0.85) !important; /* 黑底白勾 或 灰底白勾 */
+    color: #ffffff !important;
   }
 }
 

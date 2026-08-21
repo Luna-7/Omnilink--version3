@@ -2,6 +2,7 @@ export type Language = 'zh' | 'en'
 
 export interface TranslationSchema {
   nav: {
+    customerService: string
     dashboard: string
     products: string
     agentApi: string
@@ -202,6 +203,7 @@ export interface TranslationSchema {
 export const translations: Record<Language, TranslationSchema> = {
   zh: {
     nav: {
+      customerService: 'AI 客服中心',
       dashboard: '控制台',
       products: '商品管理',
       agentApi: 'Agent 接口',
@@ -400,6 +402,7 @@ export const translations: Record<Language, TranslationSchema> = {
   },
   en: {
     nav: {
+      customerService: 'Customer Service',
       dashboard: 'Dashboard',
       products: 'Products',
       agentApi: 'Agent API',

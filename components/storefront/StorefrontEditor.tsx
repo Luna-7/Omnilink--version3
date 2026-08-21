@@ -33,12 +33,10 @@ import PreviewCanvas, {
 } from './PreviewCanvas'
 import {
   saveStorefrontSchemaAction,
-  loadStorefrontSchemaAction,
   publishStorefrontAction,
 } from '@/app/actions/store'
 import {
   saveTemplateSchemaAction,
-  loadTemplateSchemaAction,
 } from '@/app/actions/template'
 import {
   ENGLISH_FONTS,
@@ -406,32 +404,8 @@ export default function StorefrontEditor({
     })
   }
 
-  // Load schema from server on mount if no initial schema
-  useEffect(() => {
-    if (!initialSchema) {
-      if (mode === 'template' && templateId) {
-        loadTemplateSchemaAction(templateId)
-          .then((loadedSchema) => {
-            if (loadedSchema) {
-              setSchema(loadedSchema)
-            }
-          })
-          .catch((error) => {
-            console.error('Failed to load template schema:', error)
-          })
-      } else {
-        loadStorefrontSchemaAction(store.id)
-          .then((loadedSchema) => {
-            if (loadedSchema) {
-              setSchema(loadedSchema)
-            }
-          })
-          .catch((error) => {
-            console.error('Failed to load storefront schema:', error)
-          })
-      }
-    }
-  }, [store.id, initialSchema, mode, templateId])
+  // Schema is loaded on the server side and passed via initialSchema.
+  // The client uses the initialSchema or falls back to a clean default schema.
 
   const orderedSections = useMemo(() => {
     return [...schema.sections].sort((a, b) => a.order - b.order)

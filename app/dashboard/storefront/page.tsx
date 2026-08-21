@@ -26,6 +26,7 @@ export default async function StorefrontDashboardPage() {
 
   // 演示回退与无会话状态保护
   if (!user) {
+    const demoSchema = await loadStorefrontSchemaAction('demo-store')
     return (
       <StorefrontHub
         store={{
@@ -34,7 +35,7 @@ export default async function StorefrontDashboardPage() {
           store_slug: 'omnilink-flagship',
         }}
         storePage={null}
-        storefrontSchema={null}
+        storefrontSchema={demoSchema}
         storefrontProducts={[]}
       />
     )
