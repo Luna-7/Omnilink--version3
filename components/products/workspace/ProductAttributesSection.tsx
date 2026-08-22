@@ -1,9 +1,25 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Sliders, Plus, Trash2, Check, X, Sparkles, Layers, Send, AlertCircle, CheckCircle2 } from 'lucide-react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import {
+  Sliders,
+  Plus,
+  Trash2,
+  Sparkles,
+  Layers,
+  Send,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  RefreshCw,
+} from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetchWithRetry } from '@/lib/network/retry-client'
+import {
+  getCategoryTemplate,
+  ProductCategoryTemplate,
+  AttributeTemplateField,
+} from '@/lib/product/category-templates'
 
 export interface CustomAttribute {
   id: string
@@ -24,17 +40,9 @@ export interface AcceptedAttribute {
   source: 'ai' | 'manual'
 }
 
-interface SuggestedModule {
-  id: string
-  titleZh: string
-  titleEn: string
-  fields: Array<{ key: string; nameZh: string; nameEn: string; defaultValue: string; type?: 'text' | 'number' | 'boolean' | 'select'; confidence?: number }>
-  accepted?: boolean
-  dismissed?: boolean
-}
-
 interface ProductAttributesSectionProps {
   productId?: string
+  category?: string
   coreMaterial: string
   setCoreMaterial: (val: string) => void
   coreDimensions: string
@@ -45,11 +53,13 @@ interface ProductAttributesSectionProps {
   setCoreOrigin: (val: string) => void
   customAttributes: CustomAttribute[]
   setCustomAttributes: React.Dispatch<React.SetStateAction<CustomAttribute[]>>
+  initialAiAttributes?: AcceptedAttribute[]
   disabled?: boolean
 }
 
 export function ProductAttributesSection({
   productId,
+  category = '',
   coreMaterial,
   setCoreMaterial,
   coreDimensions,
@@ -60,42 +70,111 @@ export function ProductAttributesSection({
   setCoreOrigin,
   customAttributes,
   setCustomAttributes,
+  initialAiAttributes = [],
   disabled = false,
 }: ProductAttributesSectionProps) {
   const { isZh } = useLanguage()
 
-  // Accepted Attributes state
-  const [acceptedAttributes, setAcceptedAttributes] = useState<AcceptedAttribute[]>([])
+  // 1. Current category template (if available)
+  const template = useMemo(() => getCategoryTemplate(category), [category])
+  const prevCategoryRef = useRef(category)
+  const [categoryChangeNotice, setCategoryChangeNotice] = useState<string | null>(null)
 
-  // AI Suggested modules state
-  const [suggestedModules, setSuggestedModules] = useState<SuggestedModule[]>([
-    {
-      id: 'optical-specs',
-      titleZh: '光学/眼镜参数规格 (Optical Specs)',
-      titleEn: 'Optical & Eyewear Specs',
-      fields: [
-        { key: 'frame_material', nameZh: '镜框材质', nameEn: 'Frame Material', defaultValue: 'TR90', type: 'select', confidence: 0.94 },
-        { key: 'lens_material', nameZh: '镜片材质', nameEn: 'Lens Material', defaultValue: 'TAC Polarized', type: 'select', confidence: 0.88 },
-        { key: 'uv_protection', nameZh: '防紫外线级别', nameEn: 'UV Protection', defaultValue: 'UV400', type: 'text', confidence: 0.95 },
-        { key: 'temple_length', nameZh: '镜腿长度', nameEn: 'Temple Length', defaultValue: '145', type: 'number', confidence: 0.72 },
-      ],
-      accepted: false,
-      dismissed: false,
-    },
-    {
-      id: 'audio-specs',
-      titleZh: '声学/耳机参数规格 (Audio Specs)',
-      titleEn: 'Acoustic & Audio Specs',
-      fields: [
-        { key: 'driver_unit', nameZh: '发声单元', nameEn: 'Driver Unit', defaultValue: '40mm Dynamic Driver', type: 'text', confidence: 0.91 },
-        { key: 'freq_response', nameZh: '频响范围', nameEn: 'Frequency Response', defaultValue: '20Hz - 40kHz', type: 'text', confidence: 0.85 },
-        { key: 'anc_level', nameZh: '降噪深度', nameEn: 'ANC Level', defaultValue: '-45 dB Adaptive', type: 'text', confidence: 0.65 },
-        { key: 'battery_life', nameZh: '续航时间', nameEn: 'Battery Life', defaultValue: '50 Hours', type: 'text', confidence: 0.55 },
-      ],
-      accepted: false,
-      dismissed: false,
-    },
-  ])
+  // 2. Structured field values for current template
+  // Keyed by template field key -> { value, source: 'ai' | 'manual', confidence, unit }
+  const [templateFieldValues, setTemplateFieldValues] = useState<
+    Record<
+      string,
+      {
+        value: string
+        source: 'ai' | 'manual'
+        confidence: number
+        unit?: string
+      }
+    >
+  >({})
+
+  // 3. Custom / Other Attributes list (for attributes not matching active template)
+  const [otherAttributes, setOtherAttributes] = useState<AcceptedAttribute[]>([])
+
+  // Track initial hydration from initialAiAttributes
+  const initialHydratedRef = useRef(false)
+
+  // Hydrate from initialAiAttributes when they arrive
+  useEffect(() => {
+    if (initialAiAttributes.length === 0 || initialHydratedRef.current) return
+
+    const newFieldVals: typeof templateFieldValues = {}
+    const unmatched: AcceptedAttribute[] = []
+
+    initialAiAttributes.forEach((attr) => {
+      // Check if matches a template field
+      const matchedField = template?.fields.find(
+        (f) =>
+          f.key.toLowerCase() === attr.key.toLowerCase() ||
+          f.nameZh.toLowerCase() === attr.label.toLowerCase() ||
+          f.nameEn.toLowerCase() === attr.label.toLowerCase()
+      )
+
+      if (matchedField) {
+        newFieldVals[matchedField.key] = {
+          value: attr.value,
+          source: attr.source || 'ai',
+          confidence: attr.confidence || 0.9,
+          unit: attr.unit || matchedField.unit,
+        }
+      } else {
+        unmatched.push(attr)
+      }
+    })
+
+    setTemplateFieldValues((prev) => ({ ...prev, ...newFieldVals }))
+    if (unmatched.length > 0) {
+      setOtherAttributes((prev) => [...prev, ...unmatched])
+    }
+    initialHydratedRef.current = true
+  }, [initialAiAttributes, template])
+
+  // Handle Category Changes without silently deleting data
+  useEffect(() => {
+    if (prevCategoryRef.current !== category && prevCategoryRef.current !== '') {
+      const prevTemplate = getCategoryTemplate(prevCategoryRef.current)
+      const currentTemplate = getCategoryTemplate(category)
+
+      if (prevTemplate?.id !== currentTemplate?.id) {
+        // Collect old template values that do not belong to the new template
+        const unmatchedFromOldTemplate: AcceptedAttribute[] = []
+        if (prevTemplate) {
+          Object.entries(templateFieldValues).forEach(([key, valData]) => {
+            if (valData.value && (!currentTemplate || !currentTemplate.fields.some((f) => f.key === key))) {
+              const oldFieldDef = prevTemplate.fields.find((f) => f.key === key)
+              unmatchedFromOldTemplate.push({
+                id: `migrated-${key}-${Date.now()}`,
+                key,
+                label: oldFieldDef ? (isZh ? oldFieldDef.nameZh : oldFieldDef.nameEn) : key,
+                value: valData.value,
+                type: oldFieldDef?.type || 'text',
+                unit: valData.unit || null,
+                confidence: valData.confidence || 1.0,
+                source: valData.source || 'manual',
+              })
+            }
+          })
+        }
+
+        if (unmatchedFromOldTemplate.length > 0) {
+          setOtherAttributes((prev) => [...prev, ...unmatchedFromOldTemplate])
+        }
+
+        setCategoryChangeNotice(
+          isZh
+            ? `分类已更新为「${category || '通用'}」，属性模板已实时切换。原有数据已安全保留。`
+            : `Category updated to "${category || 'General'}". Template refreshed and previous data retained.`
+        )
+      }
+    }
+    prevCategoryRef.current = category
+  }, [category, isZh, templateFieldValues])
 
   // Custom attribute form state
   const [newKey, setNewKey] = useState('')
@@ -113,37 +192,24 @@ export function ProductAttributesSection({
     rejectedCount?: number
   } | null>(null)
 
-  const handleAcceptSuggested = (moduleId: string) => {
-    setSuggestedModules((prev) =>
-      prev.map((mod) => (mod.id === moduleId ? { ...mod, accepted: true, dismissed: false } : mod))
-    )
-    const mod = suggestedModules.find((m) => m.id === moduleId)
-    if (mod) {
-      const newItems: AcceptedAttribute[] = mod.fields.map((f, i) => ({
-        id: `attr-acc-${Date.now()}-${i}`,
-        key: f.key,
-        label: isZh ? f.nameZh : f.nameEn,
-        value: f.defaultValue,
-        type: f.type || 'text',
-        confidence: f.confidence ?? 0.85,
-        source: 'ai',
-      }))
-      
-      setAcceptedAttributes((prev) => {
-        // filter duplicates by key
-        const existingKeys = new Set(prev.map(p => p.key))
-        const filtered = newItems.filter(item => !existingKeys.has(item.key))
-        return [...prev, ...filtered]
-      })
-    }
+  // Handle template field change
+  const handleTemplateFieldChange = (
+    fieldKey: string,
+    value: string,
+    unit?: string
+  ) => {
+    setTemplateFieldValues((prev) => ({
+      ...prev,
+      [fieldKey]: {
+        value,
+        source: 'manual',
+        confidence: 1.0,
+        unit,
+      },
+    }))
   }
 
-  const handleDismissSuggested = (moduleId: string) => {
-    setSuggestedModules((prev) =>
-      prev.map((mod) => (mod.id === moduleId ? { ...mod, dismissed: true, accepted: false } : mod))
-    )
-  }
-
+  // Handle adding custom attribute
   const handleAddCustomAttribute = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setCustomError('')
@@ -171,38 +237,75 @@ export function ProductAttributesSection({
       source: 'manual',
     }
 
-    setAcceptedAttributes((prev) => [...prev, newAttr])
+    setOtherAttributes((prev) => [...prev, newAttr])
     setNewKey('')
     setNewValue('')
     setNewType('text')
   }
 
-  const handleUpdateAcceptedValue = (id: string, val: string) => {
-    setAcceptedAttributes((prev) =>
+  const handleUpdateOtherValue = (id: string, val: string) => {
+    setOtherAttributes((prev) =>
       prev.map((attr) =>
         attr.id === id ? { ...attr, value: val, source: 'manual' } : attr
       )
     )
   }
 
-  const handleRemoveAccepted = (id: string) => {
-    setAcceptedAttributes((prev) => prev.filter((attr) => attr.id !== id))
+  const handleRemoveOther = (id: string) => {
+    setOtherAttributes((prev) => prev.filter((attr) => attr.id !== id))
   }
+
+  // Combine all active attributes for Semantic Data API payload
+  const combinedAttributesForSubmission = useMemo(() => {
+    const list: AcceptedAttribute[] = []
+
+    // 1. Template fields
+    if (template) {
+      template.fields.forEach((field) => {
+        const valData = templateFieldValues[field.key]
+        if (valData && valData.value.trim().length > 0) {
+          list.push({
+            id: `tpl-${field.key}`,
+            key: field.key,
+            label: isZh ? field.nameZh : field.nameEn,
+            value: valData.value.trim(),
+            type: field.type,
+            unit: valData.unit || field.unit || null,
+            confidence: valData.confidence ?? 1.0,
+            source: valData.source ?? 'manual',
+          })
+        }
+      })
+    }
+
+    // 2. Other / custom attributes
+    otherAttributes.forEach((attr) => {
+      if (attr.value.trim().length > 0) {
+        list.push(attr)
+      }
+    })
+
+    return list
+  }, [template, templateFieldValues, otherAttributes, isZh])
 
   // Save to Product Semantic Data handler
   const handleApplyToSemanticData = async () => {
     if (!productId) {
       setApplyResult({
         success: false,
-        message: isZh ? '请先保存商品，获得 Product ID 后再提交语义数据' : 'Please save the product first to acquire a Product ID',
+        message: isZh
+          ? '请先保存商品，获得 Product ID 后再提交语义数据'
+          : 'Please save the product first to acquire a Product ID',
       })
       return
     }
 
-    if (acceptedAttributes.length === 0) {
+    if (combinedAttributesForSubmission.length === 0) {
       setApplyResult({
         success: false,
-        message: isZh ? '请先确认或添加至少一条属性' : 'Please confirm or add at least one attribute first',
+        message: isZh
+          ? '请在属性模板中填写或添加至少一条属性'
+          : 'Please fill in template fields or add at least one attribute first',
       })
       return
     }
@@ -212,7 +315,7 @@ export function ProductAttributesSection({
 
     try {
       const payload = {
-        attributes: acceptedAttributes.map((attr) => ({
+        attributes: combinedAttributesForSubmission.map((attr) => ({
           key: attr.key,
           label: attr.label,
           value: attr.value,
@@ -238,51 +341,65 @@ export function ProductAttributesSection({
       const body = await response.json().catch(() => ({}))
 
       if (!response.ok) {
-        throw new Error(body?.error || (isZh ? '保存语义数据失败' : 'Failed to save semantic data'))
+        const errorMsg =
+          body?.error || (isZh ? '保存语义数据失败' : 'Failed to save semantic data')
+        throw new Error(errorMsg)
       }
 
       const mapping = body.mapping
+
       setApplyResult({
         success: true,
-        message: isZh ? '成功写入商品语义数据 (Product Semantics)' : 'Successfully saved to Product Semantics',
+        message: isZh
+          ? '成功写入商品语义数据 (Product Semantics)'
+          : 'Successfully saved to Product Semantics',
         acceptedCount: mapping?.accepted?.length ?? 0,
         unknownCount: mapping?.unknownFields?.length ?? 0,
         rejectedCount: mapping?.rejected?.length ?? 0,
       })
     } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : isZh
+          ? '请求失败，请稍后重试'
+          : 'Request failed'
       setApplyResult({
         success: false,
-        message: err instanceof Error ? err.message : (isZh ? '请求失败，请稍后重试' : 'Request failed'),
+        message: msg,
       })
     } finally {
       setIsApplying(false)
     }
   }
 
-  const renderConfidenceBadge = (confidence: number) => {
-    if (confidence >= 0.85) {
+  const renderConfidenceBadge = (confidence: number, source: 'ai' | 'manual') => {
+    if (source === 'manual') {
       return (
-        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          {isZh ? '高' : 'High'} ({(confidence * 100).toFixed(0)}%)
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          {isZh ? '手动设定' : 'Manual'}
         </span>
       )
     }
-    if (confidence >= 0.6) {
+    if (confidence >= 0.85) {
       return (
-        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-          {isZh ? '待确认' : 'Review'} ({(confidence * 100).toFixed(0)}%)
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-200">
+          <Sparkles size={10} className="text-violet-600" />
+          <span>✨ AI ({(confidence * 100).toFixed(0)}%)</span>
         </span>
       )
     }
     return (
-      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-        {isZh ? '低' : 'Low'} ({(confidence * 100).toFixed(0)}%)
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+        <Sparkles size={10} className="text-amber-600" />
+        <span>✨ AI 待确认 ({(confidence * 100).toFixed(0)}%)</span>
       </span>
     )
   }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold text-xs">
@@ -290,23 +407,90 @@ export function ProductAttributesSection({
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              {isZh ? '动态语义属性 (Dynamic Semantic Attributes)' : 'Dynamic Semantic Attributes'}
+              {isZh ? '扩展属性与规格模板 (Product Attributes & Specs)' : 'Product Attributes & Specs'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isZh
-                ? '通用核心属性 + AI 识别推荐 + 规范校准与语义层 (Semantic Schema Authority)'
-                : 'Core attributes, AI recognition, normalization, and authority semantic schema mapping'}
+              {template
+                ? isZh
+                  ? `已与分类「${category}」联动加载标准属性模板`
+                  : `Linked with "${category}" category specification template`
+                : isZh
+                ? '当前分类采用通用自由属性体系，支持自定义添加'
+                : 'General custom attributes for unconstrained categories'}
             </p>
           </div>
         </div>
+
+        {/* Action button */}
+        <button
+          type="button"
+          onClick={handleApplyToSemanticData}
+          disabled={disabled || isApplying || combinedAttributesForSubmission.length === 0}
+          className="px-3.5 py-1.5 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all shadow-xs"
+        >
+          <Send size={13} />
+          <span>
+            {isApplying
+              ? isZh
+                ? '正在映射与校准...'
+                : 'Mapping & Normalizing...'
+              : isZh
+              ? '保存到商品语义数据'
+              : 'Apply to Product Semantics'}
+          </span>
+        </button>
       </div>
 
-      {/* 1. Core Universal Attributes */}
+      {/* Category Change Banner */}
+      {categoryChangeNotice && (
+        <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-800 text-xs flex items-center justify-between gap-2 transition-all">
+          <div className="flex items-center gap-2">
+            <Info size={15} className="text-blue-600 shrink-0" />
+            <span>{categoryChangeNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCategoryChangeNotice(null)}
+            className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 cursor-pointer"
+          >
+            {isZh ? '我知道了' : 'Dismiss'}
+          </button>
+        </div>
+      )}
+
+      {/* Apply Result Message */}
+      {applyResult && (
+        <div
+          className={`p-3.5 rounded-xl border text-xs flex items-start gap-2 ${
+            applyResult.success
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
+          }`}
+        >
+          {applyResult.success ? (
+            <CheckCircle2 size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
+          )}
+          <div className="space-y-0.5">
+            <p className="font-semibold">{applyResult.message}</p>
+            {applyResult.success && (
+              <p className="text-[11px] opacity-90">
+                {isZh
+                  ? `匹配核心规范 field: ${applyResult.acceptedCount ?? 0} 项 | 未知属性存入 unknown: ${applyResult.unknownCount ?? 0} 项`
+                  : `Mapped fields: ${applyResult.acceptedCount ?? 0} | Unknown: ${applyResult.unknownCount ?? 0}`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 1. Universal Core Attributes */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Layers size={14} className="text-violet-600" />
           <h3 className="text-xs font-bold text-slate-900">
-            {isZh ? '通用核心属性 (Universal Core Attributes)' : 'Universal Core Attributes'}
+            {isZh ? '通用物理属性 (Universal Physical Attributes)' : 'Universal Physical Attributes'}
           </h3>
         </div>
 
@@ -369,168 +553,174 @@ export function ProductAttributesSection({
         </div>
       </div>
 
-      {/* 2. AI Suggested Modules */}
+      {/* 2. Structured Category Template Specs OR Fallback Notice */}
       <div className="space-y-3 pt-3 border-t border-slate-100">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-violet-600" />
-          <h3 className="text-xs font-bold text-slate-900">
-            {isZh ? 'AI 识别推荐模块 (AI Suggested Modules)' : 'AI Suggested Attribute Modules'}
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {suggestedModules.map((mod) => {
-            if (mod.dismissed) return null
-            return (
-              <div
-                key={mod.id}
-                className={`p-3.5 rounded-xl border transition-all ${
-                  mod.accepted
-                    ? 'bg-emerald-50/50 border-emerald-200'
-                    : 'bg-violet-50/40 border-violet-100'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-900">
-                    {isZh ? mod.titleZh : mod.titleEn}
-                  </span>
-                  {!mod.accepted ? (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleAcceptSuggested(mod.id)}
-                        className="px-2.5 py-1 rounded-lg bg-violet-600 text-white text-[11px] font-semibold hover:bg-violet-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Check size={12} />
-                        <span>{isZh ? '接受建议' : 'Accept'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDismissSuggested(mod.id)}
-                        className="p-1 rounded-lg hover:bg-slate-200/60 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        title={isZh ? '忽略' : 'Dismiss'}
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                      <Check size={12} />
-                      <span>{isZh ? '已加入待提交列表' : 'Accepted'}</span>
-                    </span>
-                  )}
+        {template ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="px-2 py-0.5 rounded-md bg-violet-100/70 text-violet-800 text-[11px] font-bold border border-violet-200">
+                  {isZh ? template.titleZh : template.titleEn}
                 </div>
-
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  {mod.fields.map((f) => (
-                    <div key={f.key} className="bg-white/80 p-1.5 rounded-md border border-slate-200/50 flex flex-col justify-between">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-slate-500 font-medium truncate">{isZh ? f.nameZh : f.nameEn}</span>
-                        {f.confidence && renderConfidenceBadge(f.confidence)}
-                      </div>
-                      <span className="font-semibold text-slate-800 truncate">{f.defaultValue}</span>
-                    </div>
-                  ))}
-                </div>
+                <span className="text-xs text-slate-500">
+                  {isZh ? template.descriptionZh : template.descriptionEn}
+                </span>
               </div>
-            )
-          })}
-        </div>
+            </div>
+
+            {/* Template Fields Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 p-4 rounded-xl bg-slate-50/70 border border-slate-200">
+              {template.fields.map((field) => {
+                const valData = templateFieldValues[field.key] || {
+                  value: '',
+                  source: 'manual',
+                  confidence: 1.0,
+                }
+                const label = isZh ? field.nameZh : field.nameEn
+                const placeholder = isZh ? field.placeholderZh : field.placeholderEn
+
+                return (
+                  <div key={field.key} className="space-y-1.5 bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+                        <span>{label}</span>
+                        {field.unit && (
+                          <span className="text-[10px] text-slate-400 font-normal">({field.unit})</span>
+                        )}
+                      </label>
+                      {valData.value ? (
+                        renderConfidenceBadge(valData.confidence, valData.source)
+                      ) : (
+                        <span className="text-[10px] text-slate-400">{isZh ? '待填写' : 'Empty'}</span>
+                      )}
+                    </div>
+
+                    {field.type === 'select' ? (
+                      <select
+                        value={valData.value}
+                        onChange={(e) => handleTemplateFieldChange(field.key, e.target.value, field.unit)}
+                        disabled={disabled}
+                        className="w-full h-8 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      >
+                        <option value="">{isZh ? '-- 请选择 --' : '-- Select --'}</option>
+                        {field.options?.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : field.type === 'boolean' ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleTemplateFieldChange(
+                              field.key,
+                              valData.value === 'true' ? 'false' : 'true'
+                            )
+                          }
+                          disabled={disabled}
+                          className={`h-7 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            valData.value === 'true'
+                              ? 'bg-violet-600 text-white'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          {valData.value === 'true' ? (isZh ? '已启用 / 支持' : 'Supported / Yes') : (isZh ? '未启用 / 否' : 'No')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type={field.type === 'number' ? 'number' : 'text'}
+                          value={valData.value}
+                          onChange={(e) => handleTemplateFieldChange(field.key, e.target.value, field.unit)}
+                          disabled={disabled}
+                          placeholder={placeholder || (isZh ? '输入参数值...' : 'Enter value...')}
+                          className="w-full h-8 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="py-6 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 space-y-1.5">
+            <Sliders size={20} className="mx-auto text-slate-400 mb-1" />
+            <h4 className="text-xs font-bold text-slate-700">
+              {isZh ? '通用属性 (Custom Attributes)' : 'Custom Attributes'}
+            </h4>
+            <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+              {isZh
+                ? '当前品类暂无专用属性模板，可自行添加商品规格。'
+                : 'No dedicated attribute template for this category yet. You may add custom product specifications.'}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* 3. Accepted Attributes Review Section */}
+      {/* 3. Other & Custom Attributes (Preserves unmatched attributes on category change) */}
       <div className="space-y-3 pt-3 border-t border-slate-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle2 size={14} className="text-emerald-600" />
+            <Sliders size={14} className="text-slate-700" />
             <h3 className="text-xs font-bold text-slate-900">
-              {isZh ? '已确认属性 (Accepted Attributes)' : 'Accepted Attributes Review'}
+              {template
+                ? isZh
+                  ? '其他与自定义规格 (Other & Custom Attributes)'
+                  : 'Other & Custom Attributes'
+                : isZh
+                ? '已添加自定义属性 (Custom Attributes List)'
+                : 'Custom Attributes List'}
             </h3>
             <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600">
-              {acceptedAttributes.length}
+              {otherAttributes.length}
             </span>
           </div>
-
-          <button
-            type="button"
-            onClick={handleApplyToSemanticData}
-            disabled={disabled || isApplying || acceptedAttributes.length === 0}
-            className="px-3.5 py-1.5 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all shadow-xs"
-          >
-            <Send size={13} />
-            <span>
-              {isApplying
-                ? (isZh ? '正在映射与校准...' : 'Mapping & Normalizing...')
-                : (isZh ? '保存到商品语义数据' : 'Apply to Product Semantics')}
-            </span>
-          </button>
         </div>
 
-        {applyResult && (
-          <div
-            className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
-              applyResult.success
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-rose-50 border-rose-200 text-rose-800'
-            }`}
-          >
-            {applyResult.success ? (
-              <CheckCircle2 size={15} className="text-emerald-600 shrink-0 mt-0.5" />
-            ) : (
-              <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
-            )}
-            <div className="space-y-0.5">
-              <p className="font-semibold">{applyResult.message}</p>
-              {applyResult.success && (
-                <p className="text-[11px] opacity-90">
-                  {isZh
-                    ? `匹配核心规范 field: ${applyResult.acceptedCount ?? 0} 项 | 未知属性存入 unknown: ${applyResult.unknownCount ?? 0} 项 | 校验不通过: ${applyResult.rejectedCount ?? 0} 项`
-                    : `Mapped: ${applyResult.acceptedCount ?? 0} | Unknown: ${applyResult.unknownCount ?? 0} | Rejected: ${applyResult.rejectedCount ?? 0}`}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {acceptedAttributes.length > 0 ? (
+        {otherAttributes.length > 0 ? (
           <div className="space-y-2">
-            {acceptedAttributes.map((attr) => (
-              <div key={attr.id} className="grid grid-cols-12 gap-2 items-center p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+            {otherAttributes.map((attr) => (
+              <div
+                key={attr.id}
+                className="grid grid-cols-12 gap-2 items-center p-2.5 rounded-xl bg-slate-50 border border-slate-200"
+              >
                 <div className="col-span-3">
-                  <span className="text-[11px] font-bold text-slate-700 block truncate">{attr.label}</span>
-                  <span className="text-[10px] font-mono text-slate-400 block truncate">{attr.key}</span>
+                  <span className="text-[11px] font-bold text-slate-800 block truncate">
+                    {attr.label || attr.key}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 block truncate">
+                    {attr.key}
+                  </span>
                 </div>
 
                 <div className="col-span-4">
                   <input
                     type="text"
                     value={attr.value}
-                    onChange={(e) => handleUpdateAcceptedValue(attr.id, e.target.value)}
+                    onChange={(e) => handleUpdateOtherValue(attr.id, e.target.value)}
                     placeholder={isZh ? '属性值' : 'Value'}
                     className="w-full h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-violet-500"
                   />
                 </div>
 
                 <div className="col-span-2 flex items-center justify-center">
-                  {renderConfidenceBadge(attr.confidence)}
+                  {renderConfidenceBadge(attr.confidence, attr.source)}
                 </div>
 
                 <div className="col-span-2 flex items-center justify-center">
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                      attr.source === 'manual'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {attr.source === 'manual' ? (isZh ? '手动修改' : 'Manual') : (isZh ? 'AI 提取' : 'AI Draft')}
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    {attr.type}
                   </span>
                 </div>
 
                 <div className="col-span-1 text-right">
                   <button
                     type="button"
-                    onClick={() => handleRemoveAccepted(attr.id)}
+                    onClick={() => handleRemoveOther(attr.id)}
                     className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
                     title={isZh ? '移除' : 'Remove'}
                   >
@@ -541,70 +731,70 @@ export function ProductAttributesSection({
             ))}
           </div>
         ) : (
-          <div className="py-3 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
-            {isZh ? '暂无已确认属性。可在下方手动添加或由上方 AI 建议接受。' : 'No accepted attributes yet. Accept AI suggestions or add custom attributes below.'}
-          </div>
+          <p className="text-center py-2 text-[11px] text-slate-400">
+            {isZh ? '暂无额外属性。可在下方自由添加。' : 'No additional attributes. Add below if needed.'}
+          </p>
         )}
-      </div>
 
-      {/* 4. Add Custom Attribute */}
-      <div className="space-y-3 pt-3 border-t border-slate-100">
-        <div className="flex items-center gap-2">
-          <Sliders size={14} className="text-slate-700" />
-          <h3 className="text-xs font-bold text-slate-900">
-            {isZh ? '添加自定义属性 (Add Custom Attribute)' : 'Add Custom Attribute'}
-          </h3>
+        {/* Add Custom Attribute Form */}
+        <div className="pt-2">
+          {customError && (
+            <p className="text-xs text-rose-600 font-medium mb-1.5">{customError}</p>
+          )}
+
+          <form
+            onSubmit={handleAddCustomAttribute}
+            className="grid grid-cols-12 gap-2 items-center bg-slate-50/80 p-3 rounded-xl border border-slate-200"
+          >
+            <div className="col-span-4">
+              <input
+                type="text"
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value)}
+                placeholder={
+                  isZh
+                    ? '属性名 (如: water_resistance)'
+                    : 'Key / Name (e.g. water_resistance)'
+                }
+                className="w-full h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+            </div>
+
+            <div className="col-span-4">
+              <input
+                type="text"
+                value={newValue}
+                onChange={(e) => setNewValue(e.target.value)}
+                placeholder={isZh ? '属性值 (如: IP68)' : 'Value (e.g. IP68)'}
+                className="w-full h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <select
+                value={newType}
+                onChange={(e) => setNewType(e.target.value as any)}
+                className="w-full h-8 px-2 rounded-lg bg-white border border-slate-200 text-xs text-slate-700 focus:outline-none"
+              >
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="boolean">Boolean</option>
+                <option value="select">Select</option>
+              </select>
+            </div>
+
+            <div className="col-span-2 text-right">
+              <button
+                type="submit"
+                disabled={disabled}
+                className="w-full h-8 px-3 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-black flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+              >
+                <Plus size={13} />
+                <span>{isZh ? '添加' : 'Add'}</span>
+              </button>
+            </div>
+          </form>
         </div>
-
-        {customError && (
-          <p className="text-xs text-rose-600 font-medium">{customError}</p>
-        )}
-
-        <form onSubmit={handleAddCustomAttribute} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
-          <div className="col-span-4">
-            <input
-              type="text"
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value)}
-              placeholder={isZh ? '属性名 (1~80 字符, 如: frame_finish)' : 'Key / Name (e.g. frame_finish)'}
-              className="w-full h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-violet-500"
-            />
-          </div>
-
-          <div className="col-span-4">
-            <input
-              type="text"
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              placeholder={isZh ? '属性值 (1~500 字符, 如: Matte Black)' : 'Value (e.g. Matte Black)'}
-              className="w-full h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-violet-500"
-            />
-          </div>
-
-          <div className="col-span-2">
-            <select
-              value={newType}
-              onChange={(e) => setNewType(e.target.value as any)}
-              className="w-full h-8 px-2 rounded-lg bg-white border border-slate-200 text-xs text-slate-700 focus:outline-none"
-            >
-              <option value="text">Text</option>
-              <option value="number">Number</option>
-              <option value="boolean">Boolean</option>
-              <option value="select">Select</option>
-            </select>
-          </div>
-
-          <div className="col-span-2 text-right">
-            <button
-              type="submit"
-              disabled={disabled}
-              className="w-full h-8 px-3 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-black flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-            >
-              <Plus size={13} />
-              <span>{isZh ? '添加' : 'Add'}</span>
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   )

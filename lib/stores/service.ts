@@ -94,7 +94,8 @@ export async function initializeMerchantStore(params: {
     ? `${baseSlug}-${randomUUID().slice(0, 8)}`
     : baseSlug
 
-  const { data: store, error: storeError } = await supabase
+    const baseCurrency = (currency === 'USD' ? 'USD' : 'CNY')
+    const { data: store, error: storeError } = await supabase
     .from('stores')
     .insert({
       owner_id,
@@ -104,7 +105,8 @@ export async function initializeMerchantStore(params: {
       industry_category: industry_category ?? null,
       logo_url: logo_url ?? null,
       description: description ?? null,
-      currency: currency ?? 'CNY',
+      base_currency: baseCurrency,
+      currency: baseCurrency,
     } as StoreInsert)
     .select('id')
     .single()
@@ -150,4 +152,23 @@ export async function getStoreByOwnerId(owner_id: string) {
   }
 
   return store
+}
+
+export async function updateStoreBaseCurrency(owner_id: string, base_currency: 'CNY' | 'USD') {
+  const supabase = await createClientServer()
+  const { data, error } = await supabase
+    .from('stores')
+    .update({
+      base_currency,
+      currency: base_currency,
+    })
+    .eq('owner_id', owner_id)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to update store base currency: ${error.message}`)
+  }
+
+  return data
 }

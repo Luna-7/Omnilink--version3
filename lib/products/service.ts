@@ -48,7 +48,7 @@ async function getOwnedStore() {
 
   const { data: store, error } = await supabase
     .from("stores")
-    .select("id")
+    .select("id, base_currency, currency")
     .eq("owner_id", user.id)
     .maybeSingle();
 
@@ -108,6 +108,8 @@ export async function updateProduct(
 ) {
   const { supabase, store } = await getOwnedStore();
 
+  const storeBaseCurrency = (store as any).base_currency || (store as any).currency || "CNY";
+
   const { data, error } = await supabase
     .from("products")
     .update({
@@ -115,7 +117,7 @@ export async function updateProduct(
       name: input.name,
       description: input.description || null,
       price: input.price,
-      currency: input.currency || "USD",
+      currency: storeBaseCurrency,
       inventory: input.inventory ?? 0,
     })
     .eq("id", productId)

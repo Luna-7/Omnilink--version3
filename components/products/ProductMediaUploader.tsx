@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { UploadCloud, X, CheckCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react'
-import { fetchWithRetry } from '@/lib/network/retry-client'
+import { uploadProductMedia } from '@/lib/product-media/upload-client'
 
 export interface PendingImage {
   id: string
@@ -157,38 +157,14 @@ export const ProductMediaUploader = forwardRef<ProductMediaUploaderRef, ProductM
     }
 
     const uploadSingleFile = async (item: PendingImage, targetProductId: string) => {
-      const formData = new FormData()
-      formData.append('product_id', targetProductId)
-      formData.append('asset_id', item.assetId)
-      formData.append('file', item.file)
-
-      console.log('[media.upload] start', {
-        productId: targetProductId,
-        assetId: item.assetId,
-        fileName: item.file.name,
-        fileSize: item.file.size,
-        fileType: item.file.type,
-      })
-
-      const response = await fetchWithRetry(
-        '/api/merchant/media/upload',
+      const res = await uploadProductMedia(
         {
-          method: 'POST',
-          body: formData,
+          productId: targetProductId,
+          assetId: item.assetId,
+          file: item.file,
         },
         {
-          timeoutMs: 45_000,
-          maxAttempts: 3,
-          baseDelayMs: 800,
           onRetry: ({ attempt, maxAttempts, reason }) => {
-            console.warn('[media.upload] retry', {
-              productId: targetProductId,
-              assetId: item.assetId,
-              attempt,
-              maxAttempts,
-              reason,
-            })
-
             setPendingFiles((prev) =>
               prev.map((f) =>
                 f.id === item.id
@@ -204,51 +180,11 @@ export const ProductMediaUploader = forwardRef<ProductMediaUploaderRef, ProductM
         }
       )
 
-      let body: Record<string, unknown> = {}
-      try {
-        body = await response.json()
-      } catch {
-        // Keep generic status below
+      if (!res.success) {
+        throw new Error(res.error || (isZh ? '上传文件失败' : 'Upload failed'))
       }
 
-      if (!response.ok) {
-        let message = ''
-        if (typeof body.error === 'string') {
-          message = body.error
-        } else if (response.status === 400) {
-          message = isZh ? '请求参数错误或文件无效' : 'Invalid input parameters or file'
-        } else if (response.status === 401) {
-          message = isZh ? '登录会话已失效，请重新登录' : 'Session expired, please log in'
-        } else if (response.status === 403) {
-          message = isZh ? '无权为此商品上传素材' : 'Permission denied for this product'
-        } else if (response.status === 404) {
-          message = isZh ? '未找到对应商品' : 'Product not found'
-        } else if (response.status === 409) {
-          message = isZh ? '素材 ID 已存在于其他商品' : 'Asset ID belongs to another product'
-        } else if (response.status === 413) {
-          message = isZh ? '文件超过 10MB 限制' : 'File exceeds 10MB limit'
-        } else {
-          message = isZh
-            ? `上传失败 (${response.status})，已自动重试`
-            : `Upload failed (${response.status}) after retries`
-        }
-
-        console.error('[media.upload] failed', {
-          productId: targetProductId,
-          assetId: item.assetId,
-          status: response.status,
-          message,
-        })
-
-        throw new Error(message)
-      }
-
-      console.log('[media.upload] success', {
-        productId: targetProductId,
-        assetId: item.assetId,
-      })
-
-      return body
+      return { asset: res.asset }
     }
 
     const uploadPendingFiles = useCallback(

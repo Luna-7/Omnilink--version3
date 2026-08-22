@@ -10,7 +10,7 @@ import { ProductIdentitySection } from './ProductIdentitySection'
 import { ProductMediaSection } from './ProductMediaSection'
 import { ProductCommercialSection } from './ProductCommercialSection'
 import { ProductDescriptionSection } from './ProductDescriptionSection'
-import { ProductAttributesSection, CustomAttribute } from './ProductAttributesSection'
+import { ProductAttributesSection, CustomAttribute, AcceptedAttribute } from './ProductAttributesSection'
 import { ProductVariantsSection } from './ProductVariantsSection'
 import { ProductPackagingSection, PackagingState } from './ProductPackagingSection'
 import { ProductKnowledgeSection } from './ProductKnowledgeSection'
@@ -40,7 +40,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   // Primary form fields
   const [name, setName] = useState(initialData?.name || '')
   const [sku, setSku] = useState(initialData?.sku || '')
-  const [category, setCategory] = useState(initialData?.category || 'Electronics & Acoustics')
+  const [category, setCategory] = useState(initialData?.category || '')
   const [price, setPrice] = useState<string | number>(initialData?.price ?? '')
   const [currency, setCurrency] = useState(initialData?.currency || 'CNY')
   const [inventory, setInventory] = useState<string | number>(initialData?.inventory ?? 100)
@@ -77,6 +77,9 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const mediaUploaderRef = useRef<ProductMediaUploaderRef>(null)
   const [existingAssets, setExistingAssets] = useState<ExistingAsset[]>([])
 
+  // AI Attributes state
+  const [initialAiAttributes, setInitialAiAttributes] = useState<AcceptedAttribute[]>([])
+
   // Status flags
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -88,11 +91,33 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     if (!productId) return
     setIsLoading(true)
     try {
-      const [assetsRes, optionsRes, variantsRes] = await Promise.all([
+      const [productRes, assetsRes, optionsRes, variantsRes] = await Promise.all([
+        fetch(`/api/products/${productId}`),
         fetch(`/api/assets?product_id=${productId}`),
         fetch(`/api/products/${productId}/options`),
         fetch(`/api/products/${productId}/variants`),
       ])
+
+      if (productRes.ok) {
+        const productData = await productRes.json()
+        const prod = productData.product
+        if (prod?.raw_data) {
+          const rawAttrs = prod.raw_data.attributes || prod.raw_data.ai_draft?.attributes
+          if (Array.isArray(rawAttrs)) {
+            const parsedAttrs: AcceptedAttribute[] = rawAttrs.map((a: any, i: number) => ({
+              id: `attr-init-${i}`,
+              key: a.key || `key_${i}`,
+              label: a.label || a.key || `Attribute ${i + 1}`,
+              value: String(a.value || ''),
+              type: a.type || 'text',
+              unit: a.unit || null,
+              confidence: typeof a.confidence === 'number' ? a.confidence : 0.9,
+              source: 'ai',
+            }))
+            setInitialAiAttributes(parsedAttrs)
+          }
+        }
+      }
 
       if (assetsRes.ok) {
         const assetsData = await assetsRes.json()
@@ -117,7 +142,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         setVariants(variantsData.variants || [])
       }
     } catch (err) {
-      console.error('Failed to load existing product assets or variants:', err)
+      console.error('Failed to load existing product details, assets or variants:', err)
     } finally {
       setIsLoading(false)
     }
@@ -405,6 +430,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
       {/* 5. Attributes Section */}
       <ProductAttributesSection
         productId={productId}
+        category={category}
         coreMaterial={coreMaterial}
         setCoreMaterial={setCoreMaterial}
         coreDimensions={coreDimensions}
@@ -415,6 +441,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         setCoreOrigin={setCoreOrigin}
         customAttributes={customAttributes}
         setCustomAttributes={setCustomAttributes}
+        initialAiAttributes={initialAiAttributes}
         disabled={isSaving}
       />
 

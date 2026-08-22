@@ -58,6 +58,23 @@ export async function POST(request: NextRequest) {
     if (!storeId) {
       return NextResponse.json({ error: 'No store for this merchant' }, { status: 404 })
     }
+
+    // Retrieve store's base_currency as the single source of truth
+    const { data: store, error: storeError } = await supabase
+      .from('stores')
+      .select('id, base_currency, currency')
+      .eq('id', storeId)
+      .single()
+
+    if (storeError || !store) {
+      return NextResponse.json(
+        { error: 'Store not found or store base currency unavailable' },
+        { status: 404 },
+      )
+    }
+
+    const storeBaseCurrency = store.base_currency || store.currency || 'CNY'
+
     const body = await request.json()
     if (!body?.name || body?.price == null) {
       return NextResponse.json(
@@ -68,6 +85,8 @@ export async function POST(request: NextRequest) {
     const insert: ProductInsert = {
       store_id: storeId,
       ...pickInsert(body),
+      // Enforce store base currency as single source of truth (must be after pickInsert)
+      currency: storeBaseCurrency,
       // Demo fallback (#60 P1): when the caller omits semantic_data we
       // still write a minimal valid JSON so the storefront AI JSON,
       // storefront product card, and agent-query pipelines all have

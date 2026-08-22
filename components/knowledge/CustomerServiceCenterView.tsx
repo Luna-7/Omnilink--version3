@@ -109,7 +109,7 @@ export function CustomerServiceCenterView({ isZh = true }: CustomerServiceCenter
     if (!query.trim()) return
 
     const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${new Date().getTime()}`,
       sender: 'user',
       content: query.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

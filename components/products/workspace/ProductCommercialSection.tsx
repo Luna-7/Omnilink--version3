@@ -17,13 +17,16 @@ interface ProductCommercialSectionProps {
 export function ProductCommercialSection({
   price,
   setPrice,
-  currency,
+  currency = 'CNY',
   setCurrency,
   inventory,
   setInventory,
   disabled = false,
 }: ProductCommercialSectionProps) {
   const { isZh } = useLanguage()
+  const isUSD = currency === 'USD'
+  const symbol = isUSD ? '$' : '¥'
+  const currencyLabel = isUSD ? 'USD (美元 $)' : 'CNY (人民币 ¥)'
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
@@ -38,8 +41,8 @@ export function ProductCommercialSection({
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {isZh
-                ? '商品售价、结算币种与基础货架库存数'
-                : 'Selling price, settlement currency, and available stock units'}
+                ? '商品售价、店铺基础货币与基础货架库存数'
+                : 'Selling price, store base currency, and available stock units'}
             </p>
           </div>
         </div>
@@ -52,7 +55,9 @@ export function ProductCommercialSection({
             {isZh ? '基础售价 *' : 'Price *'}
           </label>
           <div className="relative">
-            <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">
+              {symbol}
+            </span>
             <input
               id="workspace-price"
               type="number"
@@ -68,24 +73,26 @@ export function ProductCommercialSection({
           </div>
         </div>
 
-        {/* Currency */}
+        {/* Store Base Currency (Read-Only) */}
         <div>
-          <label htmlFor="workspace-currency" className="block text-xs font-semibold text-slate-800 mb-1.5">
-            {isZh ? '结算币种' : 'Currency'}
-          </label>
-          <select
-            id="workspace-currency"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            disabled={disabled}
-            className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 disabled:opacity-50 transition-all"
+          <div className="flex items-center justify-between mb-1.5">
+            <label htmlFor="workspace-currency-display" className="block text-xs font-semibold text-slate-800">
+              {isZh ? '结算币种 (Store Base Currency)' : 'Store Base Currency'}
+            </label>
+          </div>
+          <div
+            id="workspace-currency-display"
+            className="w-full h-10 px-3.5 rounded-xl bg-slate-100/90 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center justify-between select-none"
+            title={isZh ? '币种继承自店铺基础货币，可在店铺设置中修改' : 'Inherited from Store Base Currency'}
           >
-            <option value="CNY">CNY (人民币 ¥)</option>
-            <option value="USD">USD (美元 $)</option>
-            <option value="EUR">EUR (欧元 €)</option>
-            <option value="GBP">GBP (英镑 £)</option>
-            <option value="JPY">JPY (日元 ¥)</option>
-          </select>
+            <span>{currencyLabel}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium">
+              {isZh ? '店铺统一' : 'Store Base'}
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">
+            {isZh ? '继承自店铺基础货币设置' : 'Inherited from Store Base Currency'}
+          </p>
         </div>
 
         {/* Inventory */}

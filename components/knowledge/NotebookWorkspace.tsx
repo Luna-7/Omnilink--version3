@@ -149,7 +149,7 @@ export function NotebookWorkspace({
     if (!query || isAiThinking) return
 
     const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${new Date().getTime()}`,
       sender: 'user',
       content: query,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

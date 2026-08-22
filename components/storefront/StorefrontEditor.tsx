@@ -43,7 +43,6 @@ import {
   CHINESE_FONTS,
 } from '@/lib/storefront/theme-overrides'
 import {
-  Globe,
   Type,
   ArrowLeft,
   Eye,
@@ -68,6 +67,7 @@ import {
   AlignCenter,
   AlignRight,
   CheckCircle2,
+  RotateCcw,
 } from 'lucide-react'
 import { resolveStorefrontLanguage } from '@/lib/storefront/locale'
 
@@ -323,6 +323,8 @@ interface StorefrontEditorProps {
     id: string
     store_name: string
     store_slug: string
+    base_currency?: string
+    currency?: string
   }
   initialSchema?: StorefrontSchema
   products?: StorefrontProduct[]
@@ -421,6 +423,9 @@ export default function StorefrontEditor({
   const selectSection = (id: string) => {
     setSelectedSectionId(id)
     setActiveSubTab('content')
+    if (activePage !== 'homepage') {
+      setActivePage('homepage')
+    }
   }
 
   const touch = (prev: StorefrontSchema): StorefrontSchema => ({
@@ -465,6 +470,9 @@ export default function StorefrontEditor({
     }
     setSchema((prev) => touch({ ...prev, sections: [...prev.sections, newSection] }))
     setSelectedSectionId(newSection.id)
+    if (activePage !== 'homepage') {
+      setActivePage('homepage')
+    }
     showToast(isZh ? `已添加「${SECTION_LABELS[type].zh}」` : `${SECTION_LABELS[type].en} added`)
   }
 
@@ -482,6 +490,9 @@ export default function StorefrontEditor({
     }
     setSchema((prev) => touch({ ...prev, sections: [...prev.sections, copy] }))
     setSelectedSectionId(copy.id)
+    if (activePage !== 'homepage') {
+      setActivePage('homepage')
+    }
     showToast(isZh ? '已复制分区' : 'Section duplicated')
   }
 
@@ -495,13 +506,33 @@ export default function StorefrontEditor({
     showToast(isZh ? '已删除分区' : 'Section deleted')
   }
 
-  const updateSectionContent = (id: string, content: Partial<StorefrontSection['content']>) => {
+  const updateSectionContent = (id: string, contentUpdate: Partial<StorefrontSection['content']>) => {
     setSchema((prev) =>
       touch({
         ...prev,
-        sections: prev.sections.map((s) =>
-          s.id === id ? { ...s, content: { ...s.content, ...content } } : s
-        ),
+        sections: prev.sections.map((s) => {
+          if (s.id !== id) return s
+          const newContent = { ...s.content, ...contentUpdate }
+          // 清除子语言覆盖中对应的同名键，确保商家的即时修改立刻在任何语言预览中生效
+          if (newContent.zh && typeof newContent.zh === 'object') {
+            const zh = { ...(newContent.zh as Record<string, unknown>) }
+            for (const key of Object.keys(contentUpdate)) {
+              delete zh[key]
+            }
+            newContent.zh = zh
+          }
+          if (newContent.en && typeof newContent.en === 'object') {
+            const en = { ...(newContent.en as Record<string, unknown>) }
+            for (const key of Object.keys(contentUpdate)) {
+              delete en[key]
+            }
+            newContent.en = en
+          }
+          return {
+            ...s,
+            content: newContent,
+          }
+        }),
       })
     )
   }
@@ -727,30 +758,15 @@ export default function StorefrontEditor({
                   <Palette size={13} />
                   <span>{isZh ? '全局主题' : 'Global Theme'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSectionId('global_settings')
-                    setActiveTab('global')
-                  }}
-                  className={`w-full px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-                    selectedSectionId === 'global_settings'
-                      ? 'bg-black text-white shadow-sm font-bold'
-                      : 'text-gray-700 hover:bg-black/5'
-                  }`}
-                >
-                  <Globe size={13} />
-                  <span>{isZh ? '全店信息' : 'Store Metadata'}</span>
-                </button>
               </div>
             </div>
 
-            {/* 左栏头部：首页分区结构 */}
+            {/* 左栏头部：分区结构 */}
             <div className="p-3 border-b border-black/[0.04] flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <Layers size={13} className="text-gray-400" />
                 <span className="text-xs font-bold text-gray-800">
-                  {isZh ? '首页分区结构' : 'Homepage Sections'}
+                  {isZh ? '分区结构' : 'Sections Structure'}
                 </span>
               </div>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/5 text-gray-500">
@@ -872,6 +888,7 @@ export default function StorefrontEditor({
           <PreviewCanvas
             schema={schema}
             storeSlug={store.store_slug}
+            storeBaseCurrency={(store.base_currency === 'USD' || store.currency === 'USD') ? 'USD' : 'CNY'}
             products={displayProducts}
             activePage={activePage}
             onPageChange={setActivePage}
@@ -910,11 +927,6 @@ export default function StorefrontEditor({
                       <Palette size={13} className="text-gray-500" />
                       <span>{isZh ? '全局主题设计' : 'Global Theme'}</span>
                     </>
-                  ) : selectedSectionId === 'global_settings' ? (
-                    <>
-                      <Globe size={13} className="text-gray-500" />
-                      <span>{isZh ? '店铺基本配置' : 'Store Metadata'}</span>
-                    </>
                   ) : selectedSection ? (
                     <>
                       <Layers size={13} className="text-gray-500" />
@@ -946,12 +958,6 @@ export default function StorefrontEditor({
                     isZh={isZh}
                     colorPickerId={colorPickerId}
                     onUpdateTheme={updateThemeConfig}
-                  />
-                ) : selectedSectionId === 'global_settings' ? (
-                  <GlobalInfoPanel
-                    schema={schema}
-                    isZh={isZh}
-                    onUpdateGlobalInfo={updateGlobalInfo}
                   />
                 ) : selectedSection ? (
                   <SectionProperties
@@ -1121,6 +1127,186 @@ function SectionProperties({
               max={24}
               onChange={(v) => onUpdateContent({ count: v })}
             />
+          )}
+
+          {t === 'featured_products' && (
+            <div className="space-y-2 pt-2 border-t border-gray-200">
+              <ToggleField
+                label={isZh ? '显示商品价格' : 'Show product price'}
+                checked={c.showPrice !== false}
+                onChange={(v) => onUpdateContent({ showPrice: v })}
+              />
+            </div>
+          )}
+
+          {t === 'testimonials' && (
+            <div className="space-y-3 pt-2 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-900">
+                  {isZh ? '顾客评测列表' : 'Testimonials List'}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const list = Array.isArray(c.testimonialsList) ? [...c.testimonialsList] : []
+                    list.push({
+                      name: isZh ? '新顾客' : 'New Customer',
+                      role: isZh ? '认证买家' : 'Verified Buyer',
+                      quote: isZh ? '品质非常出色，包装严实，非常满意的体验！' : 'Superb craftsmanship and seamless experience.',
+                      rating: 5,
+                    })
+                    onUpdateContent({ testimonialsList: list })
+                  }}
+                  className="text-[11px] font-bold text-[#FB7185] hover:text-[#E11D48] flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus size={12} />
+                  <span>{isZh ? '添加评测' : 'Add Testimonial'}</span>
+                </button>
+              </div>
+              {(c.testimonialsList || []).map((item, idx) => (
+                <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2 relative">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">#{idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = [...(c.testimonialsList || [])]
+                        list.splice(idx, 1)
+                        onUpdateContent({ testimonialsList: list })
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder={isZh ? '姓名' : 'Name'}
+                    value={item.name || ''}
+                    onChange={(e) => {
+                      const list = [...(c.testimonialsList || [])]
+                      list[idx] = { ...list[idx], name: e.target.value }
+                      onUpdateContent({ testimonialsList: list })
+                    }}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded bg-white"
+                  />
+                  <input
+                    type="text"
+                    placeholder={isZh ? '身份/称谓' : 'Role'}
+                    value={item.role || ''}
+                    onChange={(e) => {
+                      const list = [...(c.testimonialsList || [])]
+                      list[idx] = { ...list[idx], role: e.target.value }
+                      onUpdateContent({ testimonialsList: list })
+                    }}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded bg-white"
+                  />
+                  <textarea
+                    placeholder={isZh ? '评测评价' : 'Quote'}
+                    value={item.quote || ''}
+                    onChange={(e) => {
+                      const list = [...(c.testimonialsList || [])]
+                      list[idx] = { ...list[idx], quote: e.target.value }
+                      onUpdateContent({ testimonialsList: list })
+                    }}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded bg-white h-14 resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {t === 'faq' && (
+            <div className="space-y-3 pt-2 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-900">
+                  {isZh ? '问答列表' : 'FAQ Items'}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const list = Array.isArray(c.faqList) ? [...c.faqList] : []
+                    list.push({
+                      question: isZh ? '新的常见问题' : 'New Question',
+                      answer: isZh ? '在此输入详细回答内容。' : 'Provide clear answer here.',
+                    })
+                    onUpdateContent({ faqList: list })
+                  }}
+                  className="text-[11px] font-bold text-[#FB7185] hover:text-[#E11D48] flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus size={12} />
+                  <span>{isZh ? '添加问答' : 'Add Question'}</span>
+                </button>
+              </div>
+              {(c.faqList || []).map((item, idx) => (
+                <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2 relative">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Q{idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = [...(c.faqList || [])]
+                        list.splice(idx, 1)
+                        onUpdateContent({ faqList: list })
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder={isZh ? '问题' : 'Question'}
+                    value={item.question || ''}
+                    onChange={(e) => {
+                      const list = [...(c.faqList || [])]
+                      list[idx] = { ...list[idx], question: e.target.value }
+                      onUpdateContent({ faqList: list })
+                    }}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded bg-white font-semibold"
+                  />
+                  <textarea
+                    placeholder={isZh ? '回答' : 'Answer'}
+                    value={item.answer || ''}
+                    onChange={(e) => {
+                      const list = [...(c.faqList || [])]
+                      list[idx] = { ...list[idx], answer: e.target.value }
+                      onUpdateContent({ faqList: list })
+                    }}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded bg-white h-14 resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {t === 'footer' && (
+            <div className="space-y-3 pt-2 border-t border-gray-200">
+              <ToggleField
+                label={isZh ? '显示信任背书徽章' : 'Show trust badges'}
+                checked={c.showTrustBadges !== false}
+                onChange={(v) => onUpdateContent({ showTrustBadges: v })}
+              />
+              {c.showTrustBadges !== false && (
+                <>
+                  <TextField
+                    label={isZh ? '信任徽章 1' : 'Trust Badge 1'}
+                    value={c.trustBadge1 as string || ''}
+                    onChange={(v) => onUpdateContent({ trustBadge1: v })}
+                  />
+                  <TextField
+                    label={isZh ? '信任徽章 2' : 'Trust Badge 2'}
+                    value={c.trustBadge2 as string || ''}
+                    onChange={(v) => onUpdateContent({ trustBadge2: v })}
+                  />
+                  <TextField
+                    label={isZh ? '信任徽章 3' : 'Trust Badge 3'}
+                    value={c.trustBadge3 as string || ''}
+                    onChange={(v) => onUpdateContent({ trustBadge3: v })}
+                  />
+                </>
+              )}
+            </div>
           )}
 
           {hasPrimaryButton && (
@@ -1301,26 +1487,13 @@ function ThemePanel({
 
   return (
     <div className="space-y-4">
-      {/* 语言与字体一栏 (Language & Font in single horizontal row) */}
+      {/* 默认字体设置 */}
       <div className="space-y-1.5 pb-1">
         <label className="text-[11px] font-semibold text-gray-500">
-          {isZh ? '展示语言与字体' : 'Language & Font'}
+          {isZh ? '界面展示字体' : 'Font Family'}
         </label>
         <div className="flex items-center gap-1.5">
-          {/* 展示语言 (Language toggle) */}
-          <button
-            type="button"
-            onClick={() => {
-              const nextLang = currentLanguage === 'zh' ? 'en' : 'zh'
-              onUpdateTheme({ language: nextLang, fontFamily: undefined })
-            }}
-            className="px-2 py-1.5 rounded-lg border border-gray-100 bg-white hover:bg-gray-50/80 text-[11px] font-semibold text-gray-700 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1"
-          >
-            <Globe size={11} className="text-gray-400" />
-            <span>{currentLanguage === 'zh' ? '中文' : 'English'}</span>
-          </button>
-
-          {/* 字体选择下拉框 (白色半透明下拉框) */}
+          {/* 字体选择下拉框 */}
           <div className="relative flex-1">
             <select
               value={schema.theme?.fontFamily || (currentLanguage === 'zh' ? CHINESE_FONTS[0].value : ENGLISH_FONTS[0].value)}
@@ -1344,9 +1517,11 @@ function ThemePanel({
             <button
               type="button"
               onClick={() => onUpdateTheme({ fontFamily: undefined })}
-              className="px-1 py-1 text-[10px] font-semibold text-gray-400 hover:text-gray-600 cursor-pointer"
+              className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 hover:text-black flex items-center gap-1 cursor-pointer transition-colors"
+              title={isZh ? '恢复默认字体' : 'Restore Default Font'}
             >
-              {isZh ? '默认' : 'Reset'}
+              <RotateCcw size={10} />
+              <span>{isZh ? '恢复默认字体' : 'Restore Default Font'}</span>
             </button>
           )}
         </div>
@@ -1361,9 +1536,11 @@ function ThemePanel({
           <button
             type="button"
             onClick={() => onUpdateTheme({ accent: undefined })}
-            className="text-[10px] font-semibold text-gray-400 hover:text-gray-600"
+            className="text-[10px] font-semibold text-gray-500 hover:text-black flex items-center gap-1 cursor-pointer transition-colors"
+            title={isZh ? '恢复默认主题色' : 'Restore Default Accent'}
           >
-            {isZh ? '重置' : 'Reset'}
+            <RotateCcw size={10} />
+            <span>{isZh ? '恢复默认颜色' : 'Restore Default Accent'}</span>
           </button>
         </div>
 

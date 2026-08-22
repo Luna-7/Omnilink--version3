@@ -341,7 +341,7 @@ export function InternalResearchView({
 
     const ext = quickUploadName.split('.').pop()?.toLowerCase() || 'pdf'
     const newSource: KnowledgeSource = {
-      id: `src-quick-${Date.now()}`,
+      id: `src-quick-${new Date().getTime()}`,
       name: quickUploadName.trim(),
       type: ext === 'xlsx' || ext === 'csv' ? 'structured' : ext === 'md' ? 'markdown' : 'pdf',
       size: '1.8 MB',
@@ -426,7 +426,7 @@ export function InternalResearchView({
     const isMultiBase = selectedBaseIds.length > 1
     if (isMultiBase && !isProUser) {
       const userMsg: ChatMessage = {
-        id: `msg-${Date.now()}`,
+        id: `msg-${new Date().getTime()}`,
         sender: 'user',
         content: query,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -435,7 +435,7 @@ export function InternalResearchView({
         ...prev,
         userMsg,
         {
-          id: `msg-locked-${Date.now()}`,
+          id: `msg-locked-${new Date().getTime()}`,
           sender: 'assistant',
           content:
             '🔒 **多知识库联合检索受限**\n\n您当前勾选了 ' +
@@ -451,7 +451,7 @@ export function InternalResearchView({
     }
 
     const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${new Date().getTime()}`,
       sender: 'user',
       content: query,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

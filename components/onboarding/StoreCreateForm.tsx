@@ -76,7 +76,7 @@ export function StoreCreateForm() {
             />
           </div>
 
-          {/* 3. 商品类型 / 主营品类 (通用模板 + 自定义) */}
+          {/* 3. 店铺主营行业 (Primary Industry) */}
           <ProductCategorySelector
             value={productCategory}
             onChange={setProductCategory}

@@ -3,8 +3,6 @@ import { PageHeader, GlassCard, SectionTitle } from '@/components/dashboard/kit'
 const CURRENCIES = [
   { code: 'CNY', label: '人民币（¥）' },
   { code: 'USD', label: '美元（$）' },
-  { code: 'EUR', label: '欧元（€）' },
-  { code: 'JPY', label: '日元（¥）' },
 ]
 
 export default function CurrencyPage() {

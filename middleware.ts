@@ -30,7 +30,25 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  let supabaseUrl = 'https://placeholder.supabase.co'
+  try {
+    const parsed = new URL(rawUrl)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      supabaseUrl = rawUrl
+    }
+  } catch {
+    if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && rawUrl.includes('.')) {
+      try {
+        const withProtocol = `https://${rawUrl}`
+        new URL(withProtocol)
+        supabaseUrl = withProtocol
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 
   const supabase = createServerClient(

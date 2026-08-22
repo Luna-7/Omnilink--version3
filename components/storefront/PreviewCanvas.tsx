@@ -6,6 +6,8 @@ import type { StorefrontSchema } from '@/lib/storefront/schema'
 import type { StorefrontProduct, StorefrontStore, OrderConfirmationDTO } from '@/lib/storefront/types'
 import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
 import { resolveStorefrontLanguage } from '@/lib/storefront/locale'
+import { PREVIEW_MARKETS, getMarketByCode, type PreviewMarket } from '@/lib/storefront/markets'
+import { convertPrice } from '@/lib/store/currency'
 import ThemeRoot from '@/components/theme/ThemeRoot'
 import DynamicSectionRenderer from '@/components/storefront/DynamicSectionRenderer'
 import Navbar from '@/components/theme/core/Navbar'
@@ -79,219 +81,18 @@ export const DEVICE_PRESETS: Record<DeviceMode, DevicePreset> = {
   },
 }
 
-/** 默认预览商品列表（当店铺尚未录入商品时使用） */
-export const DEFAULT_PREVIEW_PRODUCTS: StorefrontProduct[] = [
-  {
-    id: 'prod-kinfolk-01',
-    name: 'The Kinfolk Round 01',
-    slug: 'kinfolk-round-01',
-    price: 185,
-    currency: 'USD',
-    imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: 'Handcrafted Japanese beta-titanium core with organic tortoiseshell acetate rims.',
-    attributes: {
-      Material: 'Japanese Titanium',
-      Shape: 'Round Classic',
-      Optics: 'Anti-Reflective UV400',
-    },
-    options: [
-      {
-        id: 'opt-color',
-        name: 'Color',
-        code: 'color',
-        values: ['Classic Tortoise', 'Midnight Obsidian', 'Champagne Gold'],
-      },
-      {
-        id: 'opt-size',
-        name: 'Size',
-        code: 'size',
-        values: ['Standard 48mm', 'Large 52mm'],
-      },
-    ],
-    variants: [
-      {
-        id: 'var-kf-1',
-        price: 185,
-        currency: 'USD',
-        sku: 'KF-RND-TRT-48',
-        optionValues: {
-          Color: 'Classic Tortoise',
-          Size: 'Standard 48mm',
-        },
-      },
-      {
-        id: 'var-kf-2',
-        price: 195,
-        currency: 'USD',
-        sku: 'KF-RND-OBS-48',
-        optionValues: {
-          Color: 'Midnight Obsidian',
-          Size: 'Standard 48mm',
-        },
-      },
-      {
-        id: 'var-kf-3',
-        price: 210,
-        currency: 'USD',
-        sku: 'KF-RND-GLD-52',
-        optionValues: {
-          Color: 'Champagne Gold',
-          Size: 'Large 52mm',
-        },
-      },
-    ],
-    badges: ['Best Seller', 'Artisan Edition'],
-  },
-  {
-    id: 'prod-velvet-02',
-    name: 'The Velvet Horizon 02',
-    slug: 'velvet-horizon-02',
-    price: 210,
-    currency: 'USD',
-    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: 'Deep midnight obsidian & burgundy sculpted bio-acetate frame with rose gold accents.',
-    attributes: {
-      Material: 'Mazzucchelli Bio-Acetate',
-      Shape: 'Square Architectural',
-      Optics: 'High-Index Clarity',
-    },
-    badges: ['Limited Batch'],
-  },
-  {
-    id: 'prod-prism-03',
-    name: 'The Prism Mood 03',
-    slug: 'prism-mood-03',
-    price: 195,
-    currency: 'USD',
-    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: 'Ultra-lightweight champagne gold wireframe with spectrum-tint optical lenses.',
-    attributes: {
-      Material: 'Beta-Titanium Alloy',
-      Shape: 'Panto Minimal',
-      Optics: 'Blue-Light Guard',
-    },
-    badges: ['New Arrival'],
-  },
-  {
-    id: 'prod-paper-04',
-    name: 'The Paper Geometric 04',
-    slug: 'paper-geometric-04',
-    price: 220,
-    currency: 'USD',
-    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: 'Dual-tone enamel rimmed geometric wireframe engineered for weightless ergonomics.',
-    attributes: {
-      Material: 'Cold-Formed Alloy',
-      Shape: 'Hexagonal',
-      Optics: 'Gradient Polarized',
-    },
-    badges: ["Editor's Pick"],
-  },
-]
+import {
+  STOREFRONT_DEMO_PRODUCTS_ZH,
+  STOREFRONT_DEMO_PRODUCTS_EN,
+  getStorefrontDemoProducts,
+} from '@/lib/storefront/demo-products'
 
-export const DEFAULT_PREVIEW_PRODUCTS_ZH: StorefrontProduct[] = [
-  {
-    id: 'prod-kinfolk-01',
-    name: 'The Kinfolk 经典圆框 01',
-    slug: 'kinfolk-round-01',
-    price: 899,
-    currency: 'CNY',
-    imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: '手工日本 β 钛金属镜芯结合有机玳瑁板材镜圈。',
-    attributes: {
-      材质: '日本钛金属',
-      框型: '经典复古圆框',
-      光学: '抗反射 UV400 防蓝光',
-    },
-    badges: ['畅销推荐', '匠心高定'],
-  },
-  {
-    id: 'prod-velvet-02',
-    name: 'The Velvet 深邃地平线 02',
-    slug: 'velvet-horizon-02',
-    price: 1290,
-    currency: 'CNY',
-    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: '深邃夜黑与勃艮第红雕琢生物板材镜框，配玫瑰金点缀。',
-    attributes: {
-      材质: 'Mazzucchelli 生物板材',
-      框型: '建筑几何方框',
-      光学: '高折射率高清镜片',
-    },
-    badges: ['限量版'],
-  },
-  {
-    id: 'prod-prism-03',
-    name: 'The Prism 极光风尚 03',
-    slug: 'prism-mood-03',
-    price: 980,
-    currency: 'CNY',
-    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: '超轻香槟金细金属框，配备渐变光谱光学防蓝光镜片。',
-    attributes: {
-      材质: 'β-钛合金',
-      框型: '轻盈极简',
-      光学: '防蓝光护眼',
-    },
-    badges: ['新品上市'],
-  },
-  {
-    id: 'prod-paper-04',
-    name: 'The Paper 几何切角 04',
-    slug: 'paper-geometric-04',
-    price: 1150,
-    currency: 'CNY',
-    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1508296695146-257a814070b4?q=80&w=800&auto=format&fit=crop',
-    ],
-    href: '#products',
-    description: '双色珐琅包边几何金属细框，人体工学无感佩戴设计。',
-    attributes: {
-      材质: '冷锻合金',
-      框型: '六边形',
-      光学: '渐变偏光',
-    },
-    badges: ['编辑推荐'],
-  },
-]
+/** 默认预览商品列表（与商品管理核心品类实时对齐） */
+export const DEFAULT_PREVIEW_PRODUCTS: StorefrontProduct[] = STOREFRONT_DEMO_PRODUCTS_EN
+export const DEFAULT_PREVIEW_PRODUCTS_ZH: StorefrontProduct[] = STOREFRONT_DEMO_PRODUCTS_ZH
 
 export function getPreviewProductsForLanguage(lang: 'en' | 'zh'): StorefrontProduct[] {
-  return lang === 'zh' ? DEFAULT_PREVIEW_PRODUCTS_ZH : DEFAULT_PREVIEW_PRODUCTS
+  return getStorefrontDemoProducts(lang)
 }
 
 /** 默认预览订单详情 */
@@ -349,6 +150,7 @@ const DEFAULT_PREVIEW_ORDER: OrderConfirmationDTO = {
 interface PreviewCanvasProps {
   schema: StorefrontSchema
   storeSlug?: string
+  storeBaseCurrency?: 'CNY' | 'USD'
   products?: StorefrontProduct[]
   activePage?: StorefrontEditorPage
   onPageChange?: (page: StorefrontEditorPage) => void
@@ -357,6 +159,10 @@ interface PreviewCanvasProps {
   cartPreviewMode?: 'filled' | 'empty'
   deviceMode?: DeviceMode
   onDeviceModeChange?: (mode: DeviceMode) => void
+  previewMarket?: 'CN' | 'US'
+  onMarketChange?: (market: 'CN' | 'US') => void
+  previewLanguage?: 'zh' | 'en'
+  onLanguageChange?: (lang: 'zh' | 'en') => void
   showControlBar?: boolean
   className?: string
   rightPanelOpen?: boolean
@@ -365,6 +171,7 @@ interface PreviewCanvasProps {
 export default function PreviewCanvas({
   schema,
   storeSlug,
+  storeBaseCurrency = 'CNY',
   products = [],
   activePage: externalActivePage,
   onPageChange,
@@ -373,6 +180,10 @@ export default function PreviewCanvas({
   cartPreviewMode = 'filled',
   deviceMode: externalDeviceMode,
   onDeviceModeChange,
+  previewMarket: externalPreviewMarket,
+  onMarketChange,
+  previewLanguage: externalPreviewLanguage,
+  onLanguageChange,
   showControlBar = true,
   className = '',
   rightPanelOpen = false,
@@ -412,6 +223,25 @@ export default function PreviewCanvas({
       onDeviceModeChange(mode)
     } else {
       setInternalDeviceMode(mode)
+    }
+  }
+
+  // 独立市场 (Market) 控制：Demo 仅支持 CN / US
+  const [internalMarket] = useState<'CN' | 'US'>('CN')
+  const currentMarketCode = externalPreviewMarket ?? internalMarket
+  const currentMarket = getMarketByCode(currentMarketCode)
+
+  // 独立语言 (Language) 控制：zh / en
+  const [internalLang, setInternalLang] = useState<'zh' | 'en'>(
+    resolveStorefrontLanguage(schema.theme?.language, isZh ? 'zh' : 'en')
+  )
+  const effectiveLanguage = externalPreviewLanguage ?? internalLang
+
+  const handleLanguageSelect = (lang: 'zh' | 'en') => {
+    if (onLanguageChange) {
+      onLanguageChange(lang)
+    } else {
+      setInternalLang(lang)
     }
   }
 
@@ -493,17 +323,27 @@ export default function PreviewCanvas({
     handleFit()
   }, [rightPanelOpen, handleFit])
 
-  const effectiveLanguage = resolveStorefrontLanguage(schema.theme?.language, isZh ? 'zh' : 'en')
+  // 目标市场货币 (Target Market Currency)
+  const targetCurrency = currentMarket.currency
 
   const displayProducts = useMemo(() => {
-    if (products.length > 0) {
-      return products.map((p) => ({
-        ...p,
-        currency: effectiveLanguage === 'zh' ? 'CNY' : 'USD',
+    const rawList = products.length > 0 ? products : getPreviewProductsForLanguage(effectiveLanguage)
+    return rawList.map((p) => {
+      const sourceCurrency = p.currency || storeBaseCurrency || 'CNY'
+      const targetPrice = convertPrice(p.price ?? 0, sourceCurrency, targetCurrency)
+      const convertedVariants = p.variants?.map((v) => ({
+        ...v,
+        price: convertPrice(v.price ?? 0, v.currency || sourceCurrency, targetCurrency),
+        currency: targetCurrency,
       }))
-    }
-    return getPreviewProductsForLanguage(effectiveLanguage)
-  }, [products, effectiveLanguage])
+      return {
+        ...p,
+        price: targetPrice,
+        currency: targetCurrency,
+        variants: convertedVariants,
+      }
+    })
+  }, [products, effectiveLanguage, storeBaseCurrency, targetCurrency])
 
   const activeProduct = useMemo(() => {
     if (selectedProductId) {
@@ -521,11 +361,11 @@ export default function PreviewCanvas({
       description: effectiveLanguage === 'zh' ? '高定质感选品展厅' : 'Curated boutique collection',
       logoUrl: null,
       themeId: schema.theme.themeId,
-      currency: effectiveLanguage === 'zh' ? 'CNY' : 'USD',
+      currency: targetCurrency,
       contact: schema.contact || schema.globalInfo?.contact,
       social: schema.social || schema.globalInfo?.social,
     }
-  }, [schema, storeSlug, effectiveLanguage])
+  }, [schema, storeSlug, effectiveLanguage, targetCurrency])
 
   const orderedSections = useMemo(() => {
     return [...schema.sections]
@@ -605,8 +445,9 @@ export default function PreviewCanvas({
             </div>
           )}
 
-          {/* 右侧：设备切换与极简滑块缩放控制 (Device Toggle & Elegant Slider) */}
-          <div className="flex items-center gap-3">
+          {/* 右侧：设备切换与极简滑块缩放控制 */}
+          <div className="flex items-center gap-2 sm:gap-3">
+
             {/* 设备切换 */}
             <div className="flex items-center gap-0.5 bg-black/[0.04] p-0.5 rounded-lg border border-black/[0.01]">
               <button

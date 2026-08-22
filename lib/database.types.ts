@@ -726,6 +726,7 @@ export type Database = {
       }
       stores: {
         Row: {
+          base_currency: string
           created_at: string | null
           currency: string | null
           description: string | null
@@ -740,6 +741,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          base_currency?: string
           created_at?: string | null
           currency?: string | null
           description?: string | null
@@ -754,6 +756,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          base_currency?: string
           created_at?: string | null
           currency?: string | null
           description?: string | null

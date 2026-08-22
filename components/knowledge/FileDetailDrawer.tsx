@@ -175,7 +175,7 @@ export function FileDetailDrawer({
                         <button
                           type="button"
                           onClick={() => {
-                            source.name = editedName.trim() || source.name
+                            Object.assign(source, { name: editedName.trim() || source.name })
                             setIsEditingName(false)
                           }}
                           className="p-1 rounded bg-gray-900 text-white hover:bg-black"

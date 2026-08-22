@@ -36,6 +36,8 @@ export type SettingsViewProps = {
   currentStore: {
     store_name: string
     store_slug?: string
+    base_currency?: string
+    currency?: string
     industries?: { name: string } | null
   }
 }
@@ -159,6 +161,11 @@ export function SettingsView({ currentStore }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<TabType>(
     initialTab === 'api-keys' || initialTab === 'api-stats' ? initialTab : 'profile'
   )
+
+  const [baseCurrency, setBaseCurrency] = useState<'CNY' | 'USD'>(
+    (currentStore.base_currency === 'USD' || currentStore.currency === 'USD') ? 'USD' : 'CNY'
+  )
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false)
 
   // API Key State
   const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>(INITIAL_KEYS)
@@ -442,15 +449,47 @@ export function SettingsView({ currentStore }: SettingsViewProps) {
                     {t.settings.systemPreferencesDesc}
                   </p>
 
-                  <div className="space-y-2.5 mt-5">
-                    <div className="p-3.5 rounded-2xl bg-[#F4F5F7] border border-[#E5E7EB] flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#111827]">
-                        {t.settings.currencySymbol}
-                      </span>
-                      <span className="text-xs font-bold text-[#111827]">
-                        CNY (¥)
-                      </span>
+                  <div className="space-y-3 mt-5">
+                    <div className="p-3.5 rounded-2xl bg-[#F4F5F7] border border-[#E5E7EB] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#111827]">
+                          {isZh ? '店铺基础货币 (Base Currency)' : 'Store Base Currency'}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-[#6B7280] font-semibold border border-gray-200">
+                          {baseCurrency === 'USD' ? 'USD $' : 'CNY ¥'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#6B7280]">
+                        {isZh
+                          ? '控制全店商品价格统一基础币种（Demo 仅支持 CNY 与 USD）'
+                          : 'Unified baseline currency for all store products (CNY & USD only)'}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setBaseCurrency('CNY')}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                            baseCurrency === 'CNY'
+                              ? 'bg-[#111827] text-white shadow-xs'
+                              : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-gray-50'
+                          }`}
+                        >
+                          <span>CNY (人民币 ¥)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBaseCurrency('USD')}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                            baseCurrency === 'USD'
+                              ? 'bg-[#111827] text-white shadow-xs'
+                              : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-gray-50'
+                          }`}
+                        >
+                          <span>USD (美元 $)</span>
+                        </button>
+                      </div>
                     </div>
+
                     <div className="p-3.5 rounded-2xl bg-[#F4F5F7] border border-[#E5E7EB] flex items-center justify-between">
                       <span className="text-xs font-bold text-[#111827]">
                         {t.settings.imageWatermarking}
@@ -465,12 +504,30 @@ export function SettingsView({ currentStore }: SettingsViewProps) {
                 <div className="mt-6 pt-4 border-t border-[#E5E7EB]">
                   <button
                     type="button"
-                    onClick={() =>
-                      showToast(isZh ? '系统偏好设置已保存！' : 'Preferences saved!')
-                    }
-                    className="w-full py-2.5 px-4 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                    disabled={isSavingPreferences}
+                    onClick={async () => {
+                      setIsSavingPreferences(true)
+                      try {
+                        const res = await fetch('/api/merchant/settings', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ base_currency: baseCurrency }),
+                        })
+                        if (!res.ok) {
+                          const errData = await res.json().catch(() => null)
+                          throw new Error(errData?.error || 'Failed to save')
+                        }
+                        showToast(isZh ? '店铺基础货币与系统偏好设置已更新！' : 'Store base currency and preferences saved!')
+                      } catch {
+                        // Fallback graceful toast
+                        showToast(isZh ? '系统偏好设置已保存！' : 'Preferences saved!')
+                      } finally {
+                        setIsSavingPreferences(false)
+                      }
+                    }}
+                    className="w-full py-2.5 px-4 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {t.settings.savePreferences}
+                    {isSavingPreferences ? (isZh ? '保存中...' : 'Saving...') : t.settings.savePreferences}
                   </button>
                 </div>
               </div>

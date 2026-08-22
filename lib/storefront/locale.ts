@@ -89,8 +89,7 @@ export function translateText(
 
 /**
  * 针对 Template Demo Content，解析当前语言下对应的特定 locale-aware 内容 (例如 content.zh / content.en)。
- * 如果 section.content 下没有指定语言的扩展对象，直接使用原生 content (作为 fallback)。
- * 绝对不使用全局文本匹配字典，绝不改动或翻译商家真实 Canonical 数据。
+ * 核心原则：商家编辑的顶层 Canonical 内容拥有最高优先级，绝对不被内置预设覆盖。
  */
 export function resolveSectionContent(
   content: StorefrontSection['content'] | undefined,
@@ -99,20 +98,20 @@ export function resolveSectionContent(
   if (!content) return {}
   const localeContent = (content[lang] && typeof content[lang] === 'object' ? content[lang] : null) as Partial<StorefrontSection['content']> | null
   if (localeContent) {
-    return {
-      ...content,
-      ...localeContent,
+    // 顶层 content 的字段优先于预设 localeContent，确保任何编辑即时生效
+    const merged: Record<string, unknown> = { ...localeContent }
+    for (const [key, val] of Object.entries(content)) {
+      if (key !== 'en' && key !== 'zh' && val !== undefined && val !== null && val !== '') {
+        merged[key] = val
+      }
     }
+    return merged as StorefrontSection['content']
   }
   return content
 }
 
 /**
- * 将某个 Section 的系统按钮或 Template Demo Content 进行本地化转换
- * 规则：
- * 1. 优先解析 Template Demo Content 中自带的 locale-aware 字段 (content.en / content.zh)
- * 2. 商家真实 Canonical 数据没有 locale-aware 字段，直接原样使用
- * 3. 仅针对系统固定按钮 Action Label 进行 System UI 辅助映射
+ * 将某个 Section 的内容进行本地化解析并保留商家实时编辑
  */
 export function localizeSectionContent(
   section: StorefrontSection,
@@ -121,20 +120,9 @@ export function localizeSectionContent(
   if (!section || !section.content) return section
 
   const resolvedContent = resolveSectionContent(section.content, lang)
-  const content: Record<string, unknown> = { ...resolvedContent }
-
-  if (lang === 'zh') {
-    if (typeof content.buttonText === 'string') {
-      content.buttonText = translateText(content.buttonText as string, lang)
-    }
-    if (typeof content.secondaryButtonText === 'string') {
-      content.secondaryButtonText = translateText(content.secondaryButtonText as string, lang)
-    }
-  }
-
   return {
     ...section,
-    content: content as unknown as StorefrontSection['content'],
+    content: resolvedContent,
   }
 }
 

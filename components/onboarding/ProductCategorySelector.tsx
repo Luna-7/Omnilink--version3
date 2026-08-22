@@ -33,12 +33,15 @@ export function ProductCategorySelector({ value, onChange }: ProductCategorySele
       <div>
         <label className="text-xs font-bold text-[#111827] flex items-center gap-1.5">
           <Tag size={13} className="text-[#E11D48]" />
-          <span>主营商品类型 / 品类</span>
+          <span>主营行业 (Primary Industry)</span>
         </label>
+        <p className="text-[11px] text-[#6B7280] mt-1 leading-relaxed">
+          用于确定店铺默认行业、AI 推荐方向和语义体系，不代表单个商品分类。(Used to determine the store&apos;s default industry and AI recommendations. This is not an individual product category.)
+        </p>
       </div>
 
-      {/* 椭圆形按钮 / 品类胶囊选择网格 */}
-      <div className="flex flex-wrap gap-2">
+      {/* 椭圆形按钮 / 主营行业胶囊选择网格 */}
+      <div className="flex flex-wrap gap-2 pt-1">
         {PRODUCT_CATEGORY_OPTIONS.map((opt) => {
           const isSelected = selectedCategory === opt.name
           return (

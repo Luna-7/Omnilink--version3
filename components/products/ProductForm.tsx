@@ -278,9 +278,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
           >
             <option value="CNY">CNY (人民币 ¥)</option>
             <option value="USD">USD (美元 $)</option>
-            <option value="EUR">EUR (欧元 €)</option>
-            <option value="GBP">GBP (英镑 £)</option>
-            <option value="JPY">JPY (日元 ¥)</option>
           </select>
         </div>
 
