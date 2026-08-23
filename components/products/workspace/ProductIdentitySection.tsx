@@ -66,8 +66,8 @@ export function ProductIdentitySection({
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold text-xs">
-            1
+          <div className="w-8 h-8 rounded-[4px] bg-blue-50 text-[#024AD8] flex items-center justify-center font-mono font-bold text-xs">
+            01
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">

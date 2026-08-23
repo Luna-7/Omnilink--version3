@@ -148,17 +148,17 @@ export function ProductVariantsSection({
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold text-xs">
-            6
+          <div className="w-8 h-8 rounded-[4px] bg-blue-50 text-[#024AD8] flex items-center justify-center font-mono font-bold text-xs">
+            06
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              {isZh ? '多规格与变体矩阵 (Variants)' : 'Variants Matrix'}
+              {isZh ? '规格与变体 (Specifications & Variants)' : 'Specifications & Variants'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {isZh
-                ? '当商品存在颜色、尺寸、版本等组合时启用'
-                : 'Enable when the product has multiple color, size, or edition combinations'}
+                ? '当商品存在颜色、尺寸、版本等多维度组合时启用变体矩阵'
+                : 'Enable when the product has color, size, or edition variant combinations'}
             </p>
           </div>
         </div>
@@ -172,7 +172,7 @@ export function ProductVariantsSection({
                 if (options.length === 0) addOption()
               }}
               disabled={disabled}
-              className="px-3.5 py-1.5 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              className="px-3.5 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-medium flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
             >
               <Plus size={13} />
               <span>{isZh ? '启用多规格 (Enable Variants)' : 'Enable Variants'}</span>

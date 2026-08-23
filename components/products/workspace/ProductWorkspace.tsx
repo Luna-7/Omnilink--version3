@@ -30,6 +30,7 @@ interface ProductWorkspaceProps {
     inventory: number
     sku?: string
     category?: string
+    status?: 'active' | 'draft' | 'archived'
   }
 }
 
@@ -45,6 +46,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const [currency, setCurrency] = useState(initialData?.currency || 'CNY')
   const [inventory, setInventory] = useState<string | number>(initialData?.inventory ?? 100)
   const [description, setDescription] = useState(initialData?.description || '')
+  const [status, setStatus] = useState<'active' | 'draft' | 'archived'>(initialData?.status || 'active')
 
   // Unified Canonical Attribute View Model State
   const [attributeValues, setAttributeValues] = useState<ProductAttributeValue[]>([])
@@ -97,6 +99,12 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         fetch(`/api/products/${productId}/options`),
         fetch(`/api/products/${productId}/variants`),
       ])
+
+      if (productRes && productRes.ok) {
+        const pData = await productRes.json().catch(() => null)
+        if (pData?.product?.status) setStatus(pData.product.status)
+        else if (pData?.status) setStatus(pData.status)
+      }
 
       if (canonicalRes && canonicalRes.ok) {
         const canonicalData = await canonicalRes.json().catch(() => null)
@@ -339,43 +347,271 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   }
 
   return (
-    <form onSubmit={handleSave} className="max-w-6xl mx-auto space-y-6 pb-20">
-      {/* Fixed/Sticky Top Navigation Header */}
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200/80 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3.5 mb-6 flex items-center justify-between shadow-2xs">
+    <form onSubmit={handleSave} className="max-w-7xl mx-auto space-y-6 pb-24">
+      {/* Top Fixed Header Bar */}
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/90 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3.5 mb-6 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/products"
-            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-700 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-[4px] bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-700 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
           >
             <ArrowLeft size={16} />
           </Link>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 leading-none">
-              {productId
-                ? name || (isZh ? '编辑商品' : 'Edit Product')
-                : isZh
-                ? '新建商品 (New Product Workspace)'
-                : 'New Product Workspace'}
-            </h1>
-            <p className="text-[11px] text-slate-500 mt-1">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base font-bold text-slate-900 leading-none">
+                {productId
+                  ? name || (isZh ? '未命名商品' : 'Untitled Product')
+                  : isZh
+                  ? '新建商品 (New Product)'
+                  : 'New Product'}
+              </h1>
+              {/* SKU Badge */}
+              <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-mono">
+                SKU: {sku || '—'}
+              </span>
+              {/* Product Status Badge */}
+              {status === 'active' && (
+                <span className="px-2 py-0.5 rounded-[4px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                  {isZh ? '已上架 (Active)' : 'Active'}
+                </span>
+              )}
+              {status === 'draft' && (
+                <span className="px-2 py-0.5 rounded-[4px] bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">
+                  {isZh ? '草稿箱 (Draft)' : 'Draft'}
+                </span>
+              )}
+              {status === 'archived' && (
+                <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-bold">
+                  {isZh ? '已归档 (Archived)' : 'Archived'}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500">
               {isZh
-                ? '模块化录入商品全域主档、多媒体资产与多规格变体'
-                : 'Modular workspace for product master data, media assets, and variants'}
+                ? '全域商品主档、规格语义层与多维度变体控制中心'
+                : 'Master product record, specification semantics, and variant matrix control center'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Save Status Indicator */}
+          {isSaving ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-blue-50 text-[#024AD8] text-xs font-semibold border border-blue-200">
+              <Loader2 size={12} className="animate-spin" />
+              <span>{isZh ? '正在保存...' : 'Saving...'}</span>
+            </span>
+          ) : error ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-rose-50 text-[#D32F2F] text-xs font-semibold border border-rose-200">
+              <AlertCircle size={12} />
+              <span>{isZh ? '保存失败' : 'Save Failed'}</span>
+            </span>
+          ) : success ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+              <CheckCircle2 size={12} />
+              <span>{isZh ? '已保存' : 'Saved'}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
+              <span>{isZh ? '就绪' : 'Ready'}</span>
+            </span>
+          )}
+
+          {/* Cancel Button (HP Secondary) */}
           <Link
             href="/dashboard/products"
-            className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors hidden sm:inline-block"
+            className="px-3.5 py-1.5 rounded-[4px] border border-[#D1D1D1] bg-white text-[#1C1C1C] text-xs font-medium hover:bg-[#F7F7F7] hover:border-[#B0B0B0] transition-all hidden sm:inline-block focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
+          >
+            {isZh ? '取消' : 'Cancel'}
+          </Link>
+
+          {/* Save Button (HP Primary Blue) */}
+          <button
+            type="submit"
+            disabled={isSaving || isLoading}
+            className="px-4 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed text-white text-xs font-medium transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
+          >
+            {isSaving ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Save size={13} />
+            )}
+            <span>
+              {isSaving
+                ? isZh
+                  ? '正在保存...'
+                  : 'Saving...'
+                : productId
+                ? isZh
+                  ? '保存修改'
+                  : 'Save Changes'
+                : isZh
+                ? '立即创建商品'
+                : 'Create Product'}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Non-blocking Banners */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-[#D32F2F] text-xs flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <span className="font-semibold">{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError('')}
+            className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
+          >
+            {isZh ? '忽略' : 'Dismiss'}
+          </button>
+        </div>
+      )}
+
+      {success && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+            <span className="font-semibold">{success}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccess('')}
+            className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+          >
+            {isZh ? '关闭' : 'Close'}
+          </button>
+        </div>
+      )}
+
+      {/* Unified 9-Section Surface Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 01 Product Identity */}
+        <div className="lg:col-span-2">
+          <ProductIdentitySection
+            name={name}
+            setName={setName}
+            sku={sku}
+            setSku={setSku}
+            category={category}
+            setCategory={setCategory}
+            disabled={isSaving}
+          />
+        </div>
+
+        {/* 02 Product Media */}
+        <div className="lg:col-span-1">
+          <ProductMediaSection
+            productId={productId}
+            existingAssets={existingAssets}
+            mediaUploaderRef={mediaUploaderRef}
+          />
+        </div>
+
+        {/* 03 Commercial */}
+        <div className="lg:col-span-1">
+          <ProductCommercialSection
+            price={price}
+            setPrice={setPrice}
+            currency={currency}
+            setCurrency={setCurrency}
+            inventory={inventory}
+            setInventory={setInventory}
+            status={status}
+            setStatus={setStatus}
+            disabled={isSaving}
+          />
+        </div>
+
+        {/* 04 Description */}
+        <div className="lg:col-span-2">
+          <ProductDescriptionSection
+            description={description}
+            setDescription={setDescription}
+            productName={name}
+            category={category}
+            disabled={isSaving}
+          />
+        </div>
+
+        {/* 05 Product Specifications (Canonical Attributes ViewModel & Rule Engine) */}
+        <div className="lg:col-span-2">
+          <ProductAttributesSection
+            productId={productId}
+            category={category}
+            attributeValues={attributeValues}
+            onChangeAttributeValues={setAttributeValues}
+            isLoading={isLoading || attributesLoading}
+            isLegacyFallback={isUsingLegacyFallback}
+            error={attributesError}
+            onRetry={loadProductDetails}
+            disabled={isSaving}
+          />
+        </div>
+
+        {/* 06 Variants */}
+        <div className="lg:col-span-2">
+          <ProductVariantsSection
+            productId={productId}
+            options={options}
+            setOptions={setOptions}
+            variants={variants}
+            setVariants={setVariants}
+            disabled={isSaving}
+          />
+        </div>
+
+        {/* 07 Packaging */}
+        <div className="lg:col-span-1">
+          <ProductPackagingSection
+            packaging={packaging}
+            setPackaging={setPackaging}
+            disabled={isSaving}
+          />
+        </div>
+
+        {/* 08 Product Knowledge */}
+        <div className="lg:col-span-1">
+          <ProductKnowledgeSection productId={productId} />
+        </div>
+
+        {/* 09 SEO & Meta */}
+        <div className="lg:col-span-2">
+          <ProductSeoSection
+            seoTitle={seoTitle}
+            setSeoTitle={setSeoTitle}
+            seoDescription={seoDescription}
+            setSeoDescription={setSeoDescription}
+            productName={name}
+            productDescription={description}
+            disabled={isSaving}
+          />
+        </div>
+      </div>
+
+      {/* Bottom Action Footer Bar */}
+      <div className="pt-6 border-t border-slate-200 flex items-center justify-between">
+        <Link
+          href="/dashboard/products"
+          className="text-xs font-semibold text-slate-600 hover:text-[#024AD8] transition-colors"
+        >
+          ← {isZh ? '返回商品列表' : 'Back to Product List'}
+        </Link>
+
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/products"
+            className="px-4 py-2 rounded-[4px] border border-[#D1D1D1] bg-white text-[#1C1C1C] text-xs font-medium hover:bg-[#F7F7F7] hover:border-[#B0B0B0] transition-all focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
           >
             {isZh ? '取消' : 'Cancel'}
           </Link>
           <button
             type="submit"
             disabled={isSaving || isLoading}
-            className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-6 py-2 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed text-white text-xs font-medium transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
           >
             {isSaving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -397,138 +633,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
             </span>
           </button>
         </div>
-      </div>
-
-      {/* Messages */}
-      {error && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">
-          <AlertCircle size={16} className="shrink-0" />
-          <span className="font-semibold">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5">
-          <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
-          <span className="font-semibold">{success}</span>
-        </div>
-      )}
-
-      {/* 1. Product Identity Section */}
-      <ProductIdentitySection
-        name={name}
-        setName={setName}
-        sku={sku}
-        setSku={setSku}
-        category={category}
-        setCategory={setCategory}
-        disabled={isSaving}
-      />
-
-      {/* 2. Media Section */}
-      <ProductMediaSection
-        productId={productId}
-        existingAssets={existingAssets}
-        mediaUploaderRef={mediaUploaderRef}
-      />
-
-      {/* 3. Commercial Section */}
-      <ProductCommercialSection
-        price={price}
-        setPrice={setPrice}
-        currency={currency}
-        setCurrency={setCurrency}
-        inventory={inventory}
-        setInventory={setInventory}
-        disabled={isSaving}
-      />
-
-      {/* 4. Description Section */}
-      <ProductDescriptionSection
-        description={description}
-        setDescription={setDescription}
-        productName={name}
-        category={category}
-        disabled={isSaving}
-      />
-
-      {/* 5. Attributes Section */}
-      <ProductAttributesSection
-        productId={productId}
-        category={category}
-        attributeValues={attributeValues}
-        onChangeAttributeValues={setAttributeValues}
-        isLoading={isLoading || attributesLoading}
-        isLegacyFallback={isUsingLegacyFallback}
-        error={attributesError}
-        onRetry={loadProductDetails}
-        disabled={isSaving}
-      />
-
-      {/* 6. Variants Section */}
-      <ProductVariantsSection
-        productId={productId}
-        options={options}
-        setOptions={setOptions}
-        variants={variants}
-        setVariants={setVariants}
-        disabled={isSaving}
-      />
-
-      {/* 7. Packaging Section */}
-      <ProductPackagingSection
-        packaging={packaging}
-        setPackaging={setPackaging}
-        disabled={isSaving}
-      />
-
-      {/* 8. Product Knowledge Section */}
-      <ProductKnowledgeSection productId={productId} />
-
-      {/* 9. AI / SEO Section */}
-      <ProductSeoSection
-        seoTitle={seoTitle}
-        setSeoTitle={setSeoTitle}
-        seoDescription={seoDescription}
-        setSeoDescription={setSeoDescription}
-        productName={name}
-        productDescription={description}
-        disabled={isSaving}
-      />
-
-      {/* Bottom Action Footer Bar */}
-      <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
-        <Link
-          href="/dashboard/products"
-          className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
-        >
-          ← {isZh ? '返回商品列表' : 'Back to Products'}
-        </Link>
-
-        <button
-          type="submit"
-          disabled={isSaving || isLoading}
-          className="h-11 px-8 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-        >
-          {isSaving ? (
-            <Loader2 size={15} className="animate-spin" />
-          ) : (
-            <Save size={15} />
-          )}
-          <span>
-            {isSaving
-              ? isZh
-                ? '正在保存...'
-                : 'Saving...'
-              : productId
-              ? isZh
-                ? '保存修改'
-                : 'Save Changes'
-              : isZh
-              ? '立即创建商品'
-              : 'Create Product'}
-          </span>
-        </button>
       </div>
     </form>
   )

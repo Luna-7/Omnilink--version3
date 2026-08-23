@@ -11,6 +11,8 @@ interface ProductCommercialSectionProps {
   setCurrency: (val: string) => void
   inventory: string | number
   setInventory: (val: string | number) => void
+  status?: 'active' | 'draft' | 'archived'
+  setStatus?: (val: 'active' | 'draft' | 'archived') => void
   disabled?: boolean
 }
 
@@ -21,6 +23,8 @@ export function ProductCommercialSection({
   setCurrency,
   inventory,
   setInventory,
+  status = 'active',
+  setStatus,
   disabled = false,
 }: ProductCommercialSectionProps) {
   const { isZh } = useLanguage()
@@ -32,8 +36,8 @@ export function ProductCommercialSection({
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold text-xs">
-            3
+          <div className="w-8 h-8 rounded-[4px] bg-blue-50 text-[#024AD8] flex items-center justify-center font-mono font-bold text-xs">
+            03
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
@@ -41,14 +45,14 @@ export function ProductCommercialSection({
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {isZh
-                ? '商品售价、店铺基础货币与基础货架库存数'
-                : 'Selling price, store base currency, and available stock units'}
+                ? '商品售价、店铺基础货币、可售库存量与在售状态'
+                : 'Selling price, store base currency, available stock units, and sales status'}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Price */}
         <div>
           <label htmlFor="workspace-price" className="block text-xs font-semibold text-slate-800 mb-1.5">
@@ -109,8 +113,26 @@ export function ProductCommercialSection({
             step="1"
             placeholder="100"
             disabled={disabled}
-            className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 disabled:opacity-50 transition-all"
+            className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#024AD8] disabled:opacity-50 transition-all"
           />
+        </div>
+
+        {/* Product Sales Status */}
+        <div>
+          <label htmlFor="workspace-status" className="block text-xs font-semibold text-slate-800 mb-1.5">
+            {isZh ? '商品状态' : 'Product Status'}
+          </label>
+          <select
+            id="workspace-status"
+            value={status}
+            onChange={(e) => setStatus && setStatus(e.target.value as 'active' | 'draft' | 'archived')}
+            disabled={disabled}
+            className="w-full h-10 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#024AD8] disabled:opacity-50 transition-all cursor-pointer"
+          >
+            <option value="active">{isZh ? '已上架 (Active)' : 'Active'}</option>
+            <option value="draft">{isZh ? '草稿箱 (Draft)' : 'Draft'}</option>
+            <option value="archived">{isZh ? '已归档 (Archived)' : 'Archived'}</option>
+          </select>
         </div>
       </div>
     </div>
