@@ -18,9 +18,21 @@ import { useLanguage } from '@/context/LanguageContext'
 import { fetchWithRetry } from '@/lib/network/retry-client'
 import {
   getCategoryTemplate,
-  ProductCategoryTemplate,
   AttributeTemplateField,
 } from '@/lib/product/category-templates'
+import {
+  buildAttributeSchemaState,
+  AttributeSchemaState,
+} from '@/lib/product/attribute-schema-state'
+import {
+  resolveCategoryAttributeRules,
+  AttributeRuleDefinition,
+} from '@/lib/product/attribute-rules'
+import { resolveCategorySemanticMappings } from '@/lib/product/category-semantic-mapping'
+import { getCategoryConditionalRules } from '@/lib/product/category-conditional-rules'
+import { resolveEffectiveAttributeRules } from '@/lib/product/effective-attribute-rules'
+import type { CanonicalProductAttribute } from '@/lib/products/canonical-attributes'
+import type { AttributeCompletenessItem } from '@/lib/product/attribute-completeness'
 
 /**
  * Canonical Product Attribute View Model (Frontend UI Contract)
@@ -111,42 +123,114 @@ export function ProductAttributesSection({
   const [globalValidationError, setGlobalValidationError] = useState<string | null>(null)
   const [ruleConflictNotice, setRuleConflictNotice] = useState<string | null>(null)
 
-  // 4. Derive Template Field Map and Unmatched / Other Attributes from attributeValues
-  const { templateFieldMap, otherAttributesList } = useMemo(() => {
-    const fieldMap: Record<string, ProductAttributeValue> = {}
-    const others: ProductAttributeValue[] = []
-    
-    // Map template field keys (case-insensitive) and names
-    const templateFieldKeyMap = new Map<string, string>()
-    const templateNameMap = new Map<string, string>()
-
-    if (template?.fields) {
-      template.fields.forEach((f) => {
-        templateFieldKeyMap.set(f.key.toLowerCase(), f.key)
-        templateNameMap.set(f.nameZh.toLowerCase(), f.key)
-        templateNameMap.set(f.nameEn.toLowerCase(), f.key)
-      })
+  // 4. Resolve Category Attribute Rules Map
+  const rules = useMemo(() => {
+    if (!template || !template.fields || template.fields.length === 0) {
+      return new Map<string, AttributeRuleDefinition>()
     }
 
-    attributeValues.forEach((attr) => {
-      const lowerKey = (attr.fieldKey || '').toLowerCase()
-      let matchedCanonicalKey: string | undefined
+    const semanticFields = template.fields.map((f, idx) => ({
+      id: `sf-${category}-${idx}`,
+      field_name: f.key,
+      field_type: f.type,
+      display_name: isZh ? f.nameZh : f.nameEn,
+      required: false,
+      allowed_values: f.options,
+      validation_rules: f.options ? { enum: f.options } : {},
+    }))
 
-      if (templateFieldKeyMap.has(lowerKey)) {
-        matchedCanonicalKey = templateFieldKeyMap.get(lowerKey)
-      } else if (attr.label && templateNameMap.has(attr.label.toLowerCase())) {
-        matchedCanonicalKey = templateNameMap.get(attr.label.toLowerCase())
-      }
+    const { mappings } = resolveCategorySemanticMappings(
+      category,
+      template.fields,
+      semanticFields,
+    )
 
-      if (matchedCanonicalKey) {
-        fieldMap[matchedCanonicalKey] = attr
-      } else {
-        others.push(attr)
-      }
+    const { rules: resolvedRules } = resolveCategoryAttributeRules(
+      template.fields,
+      semanticFields,
+      mappings,
+    )
+
+    return resolvedRules
+  }, [category, template, isZh])
+
+  // 5. Resolve Conditional Rules & Effective Attribute Rules
+  const conditionalRules = useMemo(() => {
+    return getCategoryConditionalRules(category)
+  }, [category])
+
+  const { effectiveRules, conditionalResolution } = useMemo(() => {
+    const canonicalAttrs: CanonicalProductAttribute[] = attributeValues.map((attr) => ({
+      fieldKey: attr.fieldKey,
+      label: attr.label,
+      value: attr.value,
+      type: attr.type,
+      unit: attr.unit,
+      required: attr.required,
+      allowedValues: attr.allowedValues,
+      min: attr.min,
+      max: attr.max,
+      source: attr.source,
+      confidence: attr.confidence,
+      isStandard: attr.isStandard ?? rules.has(attr.fieldKey),
+    }))
+
+    const { rules: effRules, conditionalState } = resolveEffectiveAttributeRules(
+      canonicalAttrs,
+      rules,
+      conditionalRules,
+    )
+
+    return {
+      effectiveRules: effRules,
+      conditionalResolution: conditionalState,
+    }
+  }, [attributeValues, rules, conditionalRules])
+
+  // 6. Consume AttributeSchemaState
+  const schemaState: AttributeSchemaState = useMemo(() => {
+    const canonicalAttrs: CanonicalProductAttribute[] = attributeValues.map((attr) => ({
+      fieldKey: attr.fieldKey,
+      label: attr.label,
+      value: attr.value,
+      type: attr.type,
+      unit: attr.unit,
+      required: attr.required,
+      allowedValues: attr.allowedValues,
+      min: attr.min,
+      max: attr.max,
+      source: attr.source,
+      confidence: attr.confidence,
+      isStandard: attr.isStandard ?? rules.has(attr.fieldKey),
+    }))
+
+    return buildAttributeSchemaState(canonicalAttrs, effectiveRules)
+  }, [attributeValues, effectiveRules, rules])
+
+  // Lookups derived directly from schemaState
+  const completenessItemMap = useMemo(() => {
+    const map = new Map<string, AttributeCompletenessItem>()
+    schemaState.completeness.items.forEach((item) => {
+      map.set(item.fieldKey.toLowerCase(), item)
     })
+    return map
+  }, [schemaState.completeness.items])
 
-    return { templateFieldMap: fieldMap, otherAttributesList: others }
-  }, [attributeValues, template])
+  const standardAttributeMap = useMemo(() => {
+    const map = new Map<string, CanonicalProductAttribute>()
+    schemaState.standardAttributes.forEach((attr) => {
+      map.set(attr.fieldKey.toLowerCase(), attr)
+    })
+    return map
+  }, [schemaState.standardAttributes])
+
+  const templateFieldMap = useMemo(() => {
+    const map = new Map<string, AttributeTemplateField>()
+    if (template?.fields) {
+      template.fields.forEach((f) => map.set(f.key.toLowerCase(), f))
+    }
+    return map
+  }, [template])
 
   // Handle Category Changes without silently deleting data
   useEffect(() => {
@@ -196,12 +280,12 @@ export function ProductAttributesSection({
     }, 100)
   }
 
-  // Handle template field modification
-  const handleTemplateFieldChange = (
+  // Handle standard rule field modification
+  const handleStandardFieldChange = (
     fieldKey: string,
     value: string,
-    fieldDef?: AttributeTemplateField,
-    ruleProps?: Partial<ProductAttributeValue>
+    rule: AttributeRuleDefinition,
+    labelName?: string,
   ) => {
     setIsDirty(true)
 
@@ -222,20 +306,21 @@ export function ProductAttributesSection({
     } else {
       deletedKeysRef.current.delete(fieldKey)
     }
+
     const existingIndex = attributeValues.findIndex(
       (a) => a.fieldKey.toLowerCase() === fieldKey.toLowerCase()
     )
 
     const updatedAttr: ProductAttributeValue = {
       fieldKey,
-      label: fieldDef ? (isZh ? fieldDef.nameZh : fieldDef.nameEn) : fieldKey,
+      label: labelName || fieldKey,
       value,
-      type: ruleProps?.type || fieldDef?.type || 'text',
-      unit: ruleProps?.unit !== undefined ? ruleProps.unit : fieldDef?.unit || null,
-      required: ruleProps?.required ?? false,
-      allowedValues: ruleProps?.allowedValues || fieldDef?.options,
-      min: ruleProps?.min,
-      max: ruleProps?.max,
+      type: rule.type,
+      unit: rule.unit || null,
+      required: rule.required,
+      allowedValues: rule.allowedValues,
+      min: rule.min,
+      max: rule.max,
       source: 'manual',
       confidence: 1.0,
       isStandard: true,
@@ -491,6 +576,8 @@ export function ProductAttributesSection({
     )
   }
 
+  const completeness = schemaState.completeness
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
       {/* Header */}
@@ -545,6 +632,102 @@ export function ProductAttributesSection({
           </span>
         </button>
       </div>
+
+      {/* Schema Summary UI */}
+      {rules.size > 0 && (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/90 space-y-3.5 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-900 text-sm">
+                {category || (isZh ? '通用分类' : 'General Category')}
+              </span>
+              {template && (
+                <span className="px-2 py-0.5 rounded-[4px] bg-blue-50 text-[#024AD8] text-[10px] font-bold border border-blue-200">
+                  {isZh ? template.titleZh : template.titleEn}
+                </span>
+              )}
+            </div>
+
+            {/* Status Badge */}
+            <div>
+              {completeness.invalidFields > 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-rose-50 text-[#D32F2F] font-bold text-xs border border-rose-200">
+                  <AlertCircle size={13} />
+                  <span>{isZh ? '属性存在错误' : 'Attribute Errors'}</span>
+                </span>
+              ) : completeness.requiredFields > completeness.completedRequiredFields ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-amber-50 text-amber-700 font-bold text-xs border border-amber-200">
+                  <AlertTriangle size={13} />
+                  <span>{isZh ? '待完善' : 'Incomplete'}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">
+                  <CheckCircle2 size={13} />
+                  <span>{isZh ? '已满足要求' : 'Requirements Met'}</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            {/* Attribute Completeness (属性完整度) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-slate-600 font-medium">
+                <span>{isZh ? '属性完整度' : 'Attribute Completeness'}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {completeness.completedFields} / {completeness.totalFields}
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    completeness.invalidFields > 0
+                      ? 'bg-[#D32F2F]'
+                      : completeness.isComplete
+                      ? 'bg-emerald-500'
+                      : 'bg-[#024AD8]'
+                  }`}
+                  style={{ width: `${completeness.percentage}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Required Attributes (必填属性) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-slate-600 font-medium">
+                <span>{isZh ? '必填属性' : 'Required Attributes'}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {completeness.completedRequiredFields} / {completeness.requiredFields}
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    completeness.completedRequiredFields === completeness.requiredFields
+                      ? 'bg-emerald-500'
+                      : 'bg-amber-500'
+                  }`}
+                  style={{ width: `${completeness.requiredPercentage}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invalid State Banner (Non-blocking) */}
+      {completeness.invalidFields > 0 && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-[#D32F2F] text-xs flex items-center justify-between gap-2 transition-all">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="text-[#D32F2F] shrink-0" />
+            <span className="font-semibold">
+              {isZh
+                ? `属性存在错误：当前有 ${completeness.invalidFields} 个属性未通过规则校验，请检查下方高亮字段`
+                : `Attribute errors detected: ${completeness.invalidFields} field(s) failed rule validation. Please review highlighted inputs below.`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Global Validation Error Banner */}
       {globalValidationError && (
@@ -695,128 +878,197 @@ export function ProductAttributesSection({
       {/* Main Content Area (Rendered when not in loading state) */}
       {!isLoading && (
         <>
-          {/* 1. Category Template Fields Grid */}
-          {template ? (
+          {/* 1. Standard Specifications (标准规格) */}
+          {rules.size > 0 ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="px-2 py-0.5 rounded-[4px] bg-blue-50 text-[#024AD8] text-[11px] font-bold border border-blue-200">
-                    {isZh ? template.titleZh : template.titleEn}
-                  </div>
-                  <span className="text-xs text-slate-500">
-                    {isZh ? template.descriptionZh : template.descriptionEn}
+                  <h3 className="text-xs font-bold text-slate-900">
+                    {isZh ? '标准规格' : 'Standard Specifications'}
+                  </h3>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-[4px] bg-blue-50 text-[#024AD8] border border-blue-200">
+                    {rules.size} {isZh ? '项' : 'fields'}
                   </span>
                 </div>
               </div>
 
-              {/* Template Fields Grid */}
+              {/* Standard Specification Fields Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 p-4 rounded-xl bg-slate-50/70 border border-slate-200">
-                {template.fields.map((field) => {
-                  const valData = templateFieldMap[field.key] || {
-                    fieldKey: field.key,
-                    value: '',
-                    type: field.type,
-                    unit: field.unit || null,
-                    required: false,
-                    allowedValues: field.options,
-                    source: 'manual' as const,
-                    confidence: 1.0,
-                    isStandard: true,
+                {Array.from(rules.entries()).map(([fieldKey, baseRule]) => {
+                  const effRule = effectiveRules.get(fieldKey) || baseRule
+                  const condState =
+                    conditionalResolution.states.get(fieldKey) ||
+                    conditionalResolution.states.get(fieldKey.toLowerCase())
+
+                  // Conditional Visibility: Hide field in UI without clearing value
+                  if (condState && condState.visible === false) {
+                    return null
                   }
 
-                  const effectiveType = valData.type || field.type || 'text'
-                  const effectiveRequired = Boolean(valData.required)
-                  const effectiveUnit = valData.unit || field.unit || null
-                  const effectiveAllowedValues = valData.allowedValues || field.options || []
-                  const effectiveMin = valData.min
-                  const effectiveMax = valData.max
+                  const tmplField = templateFieldMap.get(fieldKey.toLowerCase())
+                  const valData = standardAttributeMap.get(fieldKey.toLowerCase())
+                  const item = completenessItemMap.get(fieldKey.toLowerCase())
 
-                  const label = isZh ? field.nameZh : field.nameEn
-                  const placeholder = isZh ? field.placeholderZh : field.placeholderEn
-                  const fieldError = fieldErrors[field.key]
+                  const value = valData?.value ?? ''
+                  const confidence = valData?.confidence ?? 1.0
+                  const source = valData?.source ?? 'manual'
+
+                  const label = tmplField
+                    ? isZh
+                      ? tmplField.nameZh
+                      : tmplField.nameEn
+                    : effRule.fieldKey
+                  const placeholder = isZh
+                    ? effRule.placeholderZh || tmplField?.placeholderZh
+                    : effRule.placeholderEn || tmplField?.placeholderEn
+
+                  const fieldError = fieldErrors[fieldKey]
+                  const isInvalid = Boolean(fieldError) || (item ? !item.valid && Boolean(value) : false)
+
+                  const isRequired = effRule.required
+                  const isConditionalRequired = Boolean(
+                    condState?.required &&
+                      condState?.triggeredRuleIds &&
+                      condState.triggeredRuleIds.length > 0,
+                  )
+                  const isTriggered = Boolean(
+                    condState?.triggeredRuleIds && condState.triggeredRuleIds.length > 0,
+                  )
 
                   return (
                     <div
-                      key={field.key}
-                      id={`attr-field-${field.key}`}
+                      key={fieldKey}
+                      id={`attr-field-${fieldKey}`}
                       className={`space-y-1.5 bg-white p-3 rounded-xl border transition-all ${
-                        fieldError
+                        isInvalid
                           ? 'border-[#D32F2F] bg-rose-50/30 ring-1 ring-[#D32F2F]'
                           : 'border-slate-200/80 shadow-2xs'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-1.5">
                         <label
-                          htmlFor={`attr-input-${field.key}`}
-                          className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5"
+                          htmlFor={`attr-input-${fieldKey}`}
+                          className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 truncate"
                         >
-                          <span>{label}</span>
-                          {effectiveRequired && (
-                            <span className="px-1.5 py-0.2 rounded-[4px] bg-rose-50 text-[#D32F2F] text-[10px] font-bold border border-rose-200">
+                          <span className="truncate">{label}</span>
+                          {isConditionalRequired ? (
+                            <span
+                              className="px-1.5 py-0.2 rounded-[4px] bg-blue-50 text-[#024AD8] text-[10px] font-bold border border-blue-200 shrink-0"
+                              title={
+                                isZh
+                                  ? '根据当前选择，此属性为必填'
+                                  : 'Required based on current selection'
+                              }
+                            >
+                              {isZh
+                                ? '根据当前选择，此属性为必填'
+                                : 'Required (Conditional)'}
+                            </span>
+                          ) : isRequired ? (
+                            <span className="px-1.5 py-0.2 rounded-[4px] bg-rose-50 text-[#D32F2F] text-[10px] font-bold border border-rose-200 shrink-0">
                               {isZh ? '必填' : 'Required'}
                             </span>
+                          ) : null}
+                          {isTriggered && !isConditionalRequired && (
+                            <span className="px-1.5 py-0.2 rounded-[4px] bg-[#EFF4FF] text-[#024AD8] text-[10px] font-medium border border-blue-200 shrink-0">
+                              {isZh ? '条件生效' : 'Condition Active'}
+                            </span>
                           )}
-                          {effectiveUnit && (
-                            <span className="text-[10px] text-slate-400 font-normal">({effectiveUnit})</span>
+                          {effRule.unit && (
+                            <span className="text-[10px] text-slate-400 font-normal shrink-0">
+                              ({effRule.unit})
+                            </span>
                           )}
                         </label>
-                        {valData.value ? (
-                          renderConfidenceBadge(valData.confidence, valData.source)
-                        ) : (
-                          <span className="text-[10px] text-slate-400">{isZh ? '待填写' : 'Empty'}</span>
-                        )}
+
+                        {/* Field State Indicator */}
+                        <div className="shrink-0 flex items-center gap-1">
+                          {isInvalid ? (
+                            <span className="px-1.5 py-0.5 rounded-[4px] bg-rose-50 text-[#D32F2F] text-[10px] font-bold border border-rose-200 flex items-center gap-1">
+                              <AlertCircle size={10} />
+                              <span>{isZh ? '格式错误' : 'Invalid'}</span>
+                            </span>
+                          ) : item?.issue === 'required' ? (
+                            <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200 flex items-center gap-1">
+                              <AlertTriangle size={10} />
+                              <span>{isZh ? '缺失必填' : 'Missing'}</span>
+                            </span>
+                          ) : item?.completed ? (
+                            <span className="px-1.5 py-0.5 rounded-[4px] bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
+                              <CheckCircle2 size={10} />
+                              <span>✓</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              {isZh ? '选填' : 'Optional'}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {effectiveType === 'select' ? (
+                      {/* Input Control by Rule Type */}
+                      {effRule.type === 'select' ? (
                         <select
-                          id={`attr-input-${field.key}`}
-                          value={valData.value}
+                          id={`attr-input-${fieldKey}`}
+                          aria-label={label}
+                          aria-required={isRequired}
+                          aria-invalid={isInvalid}
+                          aria-describedby={
+                            isInvalid ? `attr-error-${fieldKey}` : undefined
+                          }
+                          value={value}
                           onChange={(e) =>
-                            handleTemplateFieldChange(field.key, e.target.value, field, {
-                              type: 'select',
-                              required: effectiveRequired,
-                              allowedValues: effectiveAllowedValues,
-                              unit: effectiveUnit,
-                            })
+                            handleStandardFieldChange(
+                              fieldKey,
+                              e.target.value,
+                              effRule,
+                              label,
+                            )
                           }
                           disabled={disabled}
                           className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
-                            fieldError
+                            isInvalid
                               ? 'bg-rose-50/40 border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
                               : 'bg-slate-50 border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
                           }`}
                         >
                           <option value="">{isZh ? '-- 请选择 --' : '-- Select --'}</option>
-                          {effectiveAllowedValues.map((opt) => (
+                          {(effRule.allowedValues || []).map((opt) => (
                             <option key={opt} value={opt}>
                               {opt}
                             </option>
                           ))}
                         </select>
-                      ) : effectiveType === 'boolean' ? (
-                        <div id={`attr-input-${field.key}`} tabIndex={0} className="flex items-center gap-2 pt-1">
+                      ) : effRule.type === 'boolean' ? (
+                        <div
+                          id={`attr-input-${fieldKey}`}
+                          tabIndex={0}
+                          aria-label={label}
+                          aria-required={isRequired}
+                          aria-invalid={isInvalid}
+                          aria-describedby={
+                            isInvalid ? `attr-error-${fieldKey}` : undefined
+                          }
+                          className="flex items-center justify-between pt-1"
+                        >
                           <button
                             type="button"
                             onClick={() =>
-                              handleTemplateFieldChange(
-                                field.key,
-                                valData.value === 'true' ? 'false' : 'true',
-                                field,
-                                {
-                                  type: 'boolean',
-                                  required: effectiveRequired,
-                                  unit: effectiveUnit,
-                                }
+                              handleStandardFieldChange(
+                                fieldKey,
+                                value === 'true' ? 'false' : 'true',
+                                effRule,
+                                label,
                               )
                             }
                             disabled={disabled}
                             className={`h-7 px-3 rounded-[4px] text-xs font-medium transition-all cursor-pointer ${
-                              valData.value === 'true'
+                              value === 'true'
                                 ? 'bg-[#024AD8] text-white hover:bg-[#003198]'
                                 : 'bg-white border border-[#D1D1D1] text-[#1C1C1C] hover:bg-[#F7F7F7]'
                             }`}
                           >
-                            {valData.value === 'true'
+                            {value === 'true'
                               ? isZh
                                 ? '已启用 / 支持'
                                 : 'Supported / Yes'
@@ -824,36 +1076,42 @@ export function ProductAttributesSection({
                               ? '未启用 / 否'
                               : 'No'}
                           </button>
+                          {value && renderConfidenceBadge(confidence, source)}
                         </div>
                       ) : (
                         <div className="relative">
                           <input
-                            id={`attr-input-${field.key}`}
-                            type={effectiveType === 'number' ? 'number' : 'text'}
-                            min={effectiveMin}
-                            max={effectiveMax}
-                            step={effectiveType === 'number' ? 'any' : undefined}
-                            value={valData.value}
+                            id={`attr-input-${fieldKey}`}
+                            aria-label={label}
+                            aria-required={isRequired}
+                            aria-invalid={isInvalid}
+                            aria-describedby={
+                              isInvalid ? `attr-error-${fieldKey}` : undefined
+                            }
+                            type={effRule.type === 'number' ? 'number' : 'text'}
+                            min={effRule.min}
+                            max={effRule.max}
+                            step={effRule.type === 'number' ? 'any' : undefined}
+                            value={value}
                             onChange={(e) =>
-                              handleTemplateFieldChange(field.key, e.target.value, field, {
-                                type: effectiveType,
-                                required: effectiveRequired,
-                                unit: effectiveUnit,
-                                min: effectiveMin,
-                                max: effectiveMax,
-                              })
+                              handleStandardFieldChange(
+                                fieldKey,
+                                e.target.value,
+                                effRule,
+                                label,
+                              )
                             }
                             disabled={disabled}
                             placeholder={
                               placeholder ||
-                              (effectiveMin !== undefined && effectiveMax !== undefined
-                                ? `${effectiveMin} ~ ${effectiveMax}`
+                              (effRule.min !== undefined && effRule.max !== undefined
+                                ? `${effRule.min} ~ ${effRule.max}`
                                 : isZh
                                 ? '输入参数值...'
                                 : 'Enter value...')
                             }
                             className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
-                              fieldError
+                              isInvalid
                                 ? 'bg-rose-50/40 border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
                                 : 'bg-slate-50 border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
                             }`}
@@ -861,11 +1119,38 @@ export function ProductAttributesSection({
                         </div>
                       )}
 
-                      {/* Inline Field Error */}
-                      {fieldError && (
-                        <p className="text-[11px] text-[#D32F2F] font-medium mt-1 flex items-center gap-1">
+                      {/* Confidence Badge for non-boolean populated fields */}
+                      {effRule.type !== 'boolean' && value && (
+                        <div className="pt-0.5 flex justify-end">
+                          {renderConfidenceBadge(confidence, source)}
+                        </div>
+                      )}
+
+                      {/* Inline Error Message */}
+                      {isInvalid && (
+                        <p
+                          id={`attr-error-${fieldKey}`}
+                          className="text-[11px] text-[#D32F2F] font-medium mt-1 flex items-center gap-1"
+                        >
                           <AlertCircle size={12} className="shrink-0" />
-                          <span>{fieldError}</span>
+                          <span>
+                            {fieldError ||
+                              (effRule.type === 'number'
+                                ? isZh
+                                  ? `数值不符合要求${
+                                      effRule.min !== undefined && effRule.max !== undefined
+                                        ? ` (范围: ${effRule.min} ~ ${effRule.max})`
+                                        : ''
+                                    }`
+                                  : 'Invalid number value'
+                                : effRule.type === 'select'
+                                ? isZh
+                                  ? '选项不在允许的值范围内'
+                                  : 'Selected option is not in allowed values'
+                                : isZh
+                                ? '输入值无效'
+                                : 'Invalid value')}
+                          </span>
                         </p>
                       )}
                     </div>
@@ -874,42 +1159,37 @@ export function ProductAttributesSection({
               </div>
             </div>
           ) : (
+            /* Empty Category Template Banner */
             <div className="py-6 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 space-y-1.5">
               <Sliders size={20} className="mx-auto text-slate-400 mb-1" />
               <h4 className="text-xs font-bold text-slate-700">
-                {isZh ? '自由扩展属性 (Custom Attributes)' : 'Custom Attributes'}
+                {isZh ? '当前分类暂无标准属性模板' : 'No Standard Attribute Template For Category'}
               </h4>
               <p className="text-[11px] text-slate-500 max-w-md mx-auto">
                 {isZh
-                  ? '当前品类暂无专用规范模板，可在下方自由添加商品属性。'
-                  : 'No dedicated attribute template for this category yet. You may add custom product specifications below.'}
+                  ? '当前品类暂无预定义的标准规范模板，可在下方自由添加扩展属性。'
+                  : 'There is no standard predefined template for this category. You may freely add custom attributes below.'}
               </p>
             </div>
           )}
 
-          {/* 2. Other & Custom Attributes (Preserves unmatched attributes on category change) */}
+          {/* 2. Other Attributes (其他属性) */}
           <div className="space-y-3 pt-3 border-t border-slate-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-slate-700" />
                 <h3 className="text-xs font-bold text-slate-900">
-                  {template
-                    ? isZh
-                      ? '其他与自定义规格 (Other & Custom Attributes)'
-                      : 'Other & Custom Attributes'
-                    : isZh
-                    ? '已添加自定义属性 (Custom Attributes List)'
-                    : 'Custom Attributes List'}
+                  {isZh ? '其他属性' : 'Other Attributes'}
                 </h3>
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-[4px] bg-slate-100 text-slate-600">
-                  {otherAttributesList.length}
+                  {schemaState.otherAttributes.length}
                 </span>
               </div>
             </div>
 
-            {otherAttributesList.length > 0 ? (
+            {schemaState.otherAttributes.length > 0 ? (
               <div className="space-y-2">
-                {otherAttributesList.map((attr) => {
+                {schemaState.otherAttributes.map((attr) => {
                   const otherError = fieldErrors[attr.fieldKey]
                   return (
                     <div
@@ -934,6 +1214,11 @@ export function ProductAttributesSection({
                         <div className="col-span-4">
                           <input
                             id={`attr-input-${attr.fieldKey}`}
+                            aria-label={attr.label || attr.fieldKey}
+                            aria-invalid={Boolean(otherError)}
+                            aria-describedby={
+                              otherError ? `attr-error-${attr.fieldKey}` : undefined
+                            }
                             type={attr.type === 'number' ? 'number' : 'text'}
                             value={attr.value}
                             onChange={(e) => handleUpdateOtherValue(attr.fieldKey, e.target.value)}
@@ -959,6 +1244,7 @@ export function ProductAttributesSection({
                         <div className="col-span-1 text-right">
                           <button
                             type="button"
+                            aria-label={`Remove ${attr.label || attr.fieldKey}`}
                             onClick={() => handleRemoveOther(attr.fieldKey)}
                             className="p-1 text-slate-400 hover:text-[#D32F2F] rounded-[4px] cursor-pointer transition-colors"
                             title={isZh ? '移除' : 'Remove'}
@@ -969,7 +1255,10 @@ export function ProductAttributesSection({
                       </div>
 
                       {otherError && (
-                        <p className="text-[11px] text-[#D32F2F] font-medium mt-1.5 flex items-center gap-1">
+                        <p
+                          id={`attr-error-${attr.fieldKey}`}
+                          className="text-[11px] text-[#D32F2F] font-medium mt-1.5 flex items-center gap-1"
+                        >
                           <AlertCircle size={12} className="shrink-0" />
                           <span>{otherError}</span>
                         </p>
@@ -980,7 +1269,7 @@ export function ProductAttributesSection({
               </div>
             ) : (
               <p className="text-center py-2 text-[11px] text-slate-400">
-                {isZh ? '暂无额外属性。可在下方自由添加。' : 'No additional attributes. Add below if needed.'}
+                {isZh ? '暂无其他属性。可在下方自由添加。' : 'No additional attributes. Add below if needed.'}
               </p>
             )}
 
@@ -997,6 +1286,7 @@ export function ProductAttributesSection({
                 <div className="col-span-4">
                   <input
                     type="text"
+                    aria-label={isZh ? '新属性名' : 'New attribute key'}
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
                     placeholder={
@@ -1011,6 +1301,7 @@ export function ProductAttributesSection({
                 <div className="col-span-4">
                   <input
                     type="text"
+                    aria-label={isZh ? '新属性值' : 'New attribute value'}
                     value={newValue}
                     onChange={(e) => setNewValue(e.target.value)}
                     placeholder={isZh ? '属性值 (如: IP68)' : 'Value (e.g. IP68)'}
@@ -1021,6 +1312,7 @@ export function ProductAttributesSection({
                 <div className="col-span-2">
                   <select
                     value={newType}
+                    aria-label={isZh ? '新属性类型' : 'New attribute type'}
                     onChange={(e) => setNewType(e.target.value as any)}
                     className="w-full h-8 px-2 rounded-[4px] bg-white border border-slate-200 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
                   >

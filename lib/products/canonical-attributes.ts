@@ -20,6 +20,12 @@ import {
 import {
   ProductAttributeValidationError,
 } from '@/lib/product/errors'
+import {
+  getCategoryConditionalRules,
+} from '@/lib/product/category-conditional-rules'
+import {
+  resolveEffectiveAttributeRules,
+} from '@/lib/product/effective-attribute-rules'
 
 export interface CanonicalProductAttribute {
   fieldKey: string
@@ -34,6 +40,9 @@ export interface CanonicalProductAttribute {
   source?: 'ai' | 'manual' | 'system'
   confidence?: number
   isStandard: boolean
+  visible?: boolean
+  conditional?: boolean
+  triggeredRuleIds?: string[]
 }
 
 export interface CanonicalProductAttributesResponse {
@@ -549,6 +558,34 @@ export async function getCanonicalProductAttributes(
     }
   }
 
+  // Resolve Conditional Attribute States
+  const conditionalRules = getCategoryConditionalRules(category)
+  const { conditionalState } = resolveEffectiveAttributeRules(
+    attributes,
+    rulesResult.rules,
+    conditionalRules,
+  )
+
+  for (const attr of attributes) {
+    const normKey = normalizeMappingKey(attr.fieldKey)
+    const mapping =
+      templateMappingByTemplateKey.get(normKey) ||
+      templateMappingBySemanticName.get(normKey)
+    const resolvedTemplateKey = mapping?.templateKey ?? attr.fieldKey
+
+    const state = conditionalState.states.get(resolvedTemplateKey) || conditionalState.states.get(normKey)
+    if (state) {
+      attr.visible = state.visible
+      attr.required = state.required
+      attr.conditional = state.triggeredRuleIds.length > 0
+      attr.triggeredRuleIds = state.triggeredRuleIds
+    } else {
+      attr.visible = true
+      attr.conditional = false
+      attr.triggeredRuleIds = []
+    }
+  }
+
   const presentKeys = new Set(
     attributes.map((attr) => normalizeMappingKey(attr.fieldKey)),
   )
@@ -607,10 +644,18 @@ export async function saveCanonicalProductAttributes(
     console.debug('[category-attribute-rules:save]', categoryRules.diagnostics)
   }
 
+  // Resolve Effective Rules with Conditional Rules for validation
+  const conditionalRules = getCategoryConditionalRules(targetCategory)
+  const { rules: effectiveRules } = resolveEffectiveAttributeRules(
+    input.attributes,
+    categoryRules.rules,
+    conditionalRules,
+  )
+
   // Canonical Rule Validation
   const validation = validateProductAttributes(
     input.attributes,
-    categoryRules.rules,
+    effectiveRules,
   )
 
   if (!validation.valid) {
