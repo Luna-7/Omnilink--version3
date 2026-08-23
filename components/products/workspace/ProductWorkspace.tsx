@@ -18,7 +18,10 @@ import { ProductSeoSection } from './ProductSeoSection'
 
 import { ProductMediaUploaderRef, ExistingAsset } from '@/components/products/ProductMediaUploader'
 import type { ProductOption, ProductVariant } from '@/lib/products/variants/types'
-import { updateProductAction } from '@/app/actions/products'
+import { createProductSaveController, type ProductSaveSnapshot } from '@/lib/products/product-save-state'
+import { getProductSaveMessage, ProductSaveError } from '@/lib/products/product-save-errors'
+import { saveProductManagement } from '@/lib/products/product-management-save'
+import type { ProductManagementModel } from '@/lib/products/product-management-model'
 
 interface ProductWorkspaceProps {
   productId?: string
@@ -79,48 +82,57 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const mediaUploaderRef = useRef<ProductMediaUploaderRef>(null)
   const [existingAssets, setExistingAssets] = useState<ExistingAsset[]>([])
 
+  // Save State Controller
+  const saveControllerRef = useRef(createProductSaveController(productId ? 'ready' : 'dirty'))
+  const [saveSnapshot, setSaveSnapshot] = useState<ProductSaveSnapshot>(saveControllerRef.current.reset())
+
   // Status flags
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Fetch assets and variant data if editing existing product
+  // Fetch product model and details via canonical loader endpoint
   const loadProductDetails = useCallback(async () => {
     if (!productId) return
     setIsLoading(true)
     setAttributesLoading(true)
     setAttributesError(null)
     try {
-      const [productRes, canonicalRes, assetsRes, optionsRes, variantsRes] = await Promise.all([
-        fetch(`/api/products/${productId}`),
-        fetch(`/api/merchant/products/${productId}/canonical-attributes`),
+      const [mgmtRes, assetsRes, optionsRes, variantsRes] = await Promise.all([
+        fetch(`/api/merchant/products/${productId}/management`),
         fetch(`/api/assets?product_id=${productId}`),
         fetch(`/api/products/${productId}/options`),
         fetch(`/api/products/${productId}/variants`),
       ])
 
-      if (productRes && productRes.ok) {
-        const pData = await productRes.json().catch(() => null)
-        if (pData?.product?.status) setStatus(pData.product.status)
-        else if (pData?.status) setStatus(pData.status)
-      }
-
-      if (canonicalRes && canonicalRes.ok) {
-        const canonicalData = await canonicalRes.json().catch(() => null)
-        if (canonicalData && Array.isArray(canonicalData.attributes)) {
-          setAttributeValues(canonicalData.attributes)
+      if (mgmtRes.ok) {
+        const { model } = (await mgmtRes.json()) as { model: ProductManagementModel }
+        if (model) {
+          setName(model.name)
+          setSku(model.sku || '')
+          setDescription(model.description || '')
+          setPrice(model.price)
+          setCurrency(model.currency)
+          setInventory(model.inventory)
+          setStatus(model.status)
+          setCategory(model.category || '')
+          setAttributeValues(model.attributes || [])
           initialAttributeKeysRef.current = new Set(
-            canonicalData.attributes.map((a: ProductAttributeValue) => a.fieldKey.toLowerCase())
+            (model.attributes || []).map((a) => a.fieldKey.toLowerCase())
           )
-          if (canonicalData.category) {
-            setCategory((prev) => prev || canonicalData.category)
+          setIsUsingLegacyFallback(Boolean(model.metadata?.isLegacy))
+          if (model.packaging) {
+            setPackaging((prev) => ({ ...prev, ...(model.packaging as any) }))
           }
-          setIsUsingLegacyFallback(Boolean(canonicalData.is_legacy))
+          if (model.seo) {
+            setSeoTitle(model.seo.title || '')
+            setSeoDescription(model.seo.description || '')
+          }
+          setSaveSnapshot(saveControllerRef.current.reset())
         }
-      } else if (canonicalRes && !canonicalRes.ok) {
-        const errBody = await canonicalRes.json().catch(() => ({}))
-        setAttributesError(errBody?.error || (isZh ? '加载商品属性失败' : 'Failed to load product attributes'))
+      } else {
+        setAttributesError(isZh ? '加载商品详情失败' : 'Failed to load product model')
       }
 
       if (assetsRes.ok) {
@@ -146,7 +158,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         setVariants(variantsData.variants || [])
       }
     } catch (err) {
-      console.error('Failed to load existing product details, assets or variants:', err)
+      console.error('Failed to load existing product details:', err)
       setAttributesError(isZh ? '加载商品详情失败' : 'Failed to load product details')
     } finally {
       setIsLoading(false)
@@ -164,62 +176,51 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     }
   }, [productId, loadProductDetails])
 
-  // Save / Create handler
+  // Save / Create handler via saveProductManagement
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setError('')
     setSuccess('')
 
     if (!name.trim()) {
-      setError(isZh ? '请填写商品名称' : 'Product name is required')
+      const msg = isZh ? '请填写商品名称' : 'Product name is required'
+      setError(msg)
+      setSaveSnapshot(saveControllerRef.current.markFailed(msg))
       return
     }
 
     if (price === '' || price == null || isNaN(Number(price))) {
-      setError(isZh ? '请填写有效的基础售价' : 'Valid price is required')
+      const msg = isZh ? '请填写有效的基础售价' : 'Valid price is required'
+      setError(msg)
+      setSaveSnapshot(saveControllerRef.current.markFailed(msg))
       return
     }
 
     setIsSaving(true)
-
-    // Build payload (Pure basic product data without legacy raw_data.attributes)
-    const payload = {
-      name: name.trim(),
-      sku: sku.trim() || null,
-      description: description.trim() || null,
-      price: Number(price || 0),
-      currency: currency || 'CNY',
-      inventory: Number(inventory || 0),
-      raw_data: {
-        category,
-        packaging,
-        seo: { title: seoTitle, description: seoDescription },
-      },
-    }
+    setSaveSnapshot(saveControllerRef.current.startSaving())
 
     try {
       let targetProductId = productId
 
-      if (productId) {
-        // Edit flow via Server Action / API
-        const formData = new FormData()
-        formData.append('sku', String(sku || '').trim())
-        formData.append('name', String(name || '').trim())
-        formData.append('description', String(description || '').trim())
-        formData.append('price', String(price || 0))
-        formData.append('currency', String(currency || 'CNY'))
-        formData.append('inventory', String(inventory || 0))
-
-        const actionRes = await updateProductAction(productId, formData)
-        if (!actionRes.success) {
-          throw new Error(actionRes.error || (isZh ? '更新商品失败' : 'Failed to update product'))
-        }
-      } else {
-        // Create flow via POST /api/merchant/products
+      if (!targetProductId) {
+        // Create Product Shell
         const createRes = await fetch('/api/merchant/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            name: name.trim(),
+            sku: sku.trim() || null,
+            description: description.trim() || null,
+            price: Number(price || 0),
+            currency: currency || 'CNY',
+            inventory: Number(inventory || 0),
+            status,
+            raw_data: {
+              category,
+              packaging,
+              seo: { title: seoTitle, description: seoDescription },
+            },
+          }),
         })
 
         if (!createRes.ok) {
@@ -231,48 +232,47 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         targetProductId = createData.product?.id || createData.id
       }
 
+      if (!targetProductId) {
+        throw new Error(isZh ? '无法获取目标商品ID' : 'Target product ID is missing')
+      }
+
       // Compute valid attributes and explicit deletions
       const currentKeys = new Set(attributeValues.map((a) => a.fieldKey.toLowerCase()))
       const missingKeys = Array.from(initialAttributeKeysRef.current).filter((k) => !currentKeys.has(k))
       const emptyKeys = attributeValues.filter((a) => !a.value || !a.value.trim()).map((a) => a.fieldKey)
       const allDeletions = Array.from(new Set([...missingKeys, ...emptyKeys]))
-      const validAttributes = attributeValues.filter((a) => a.value && a.value.trim().length > 0)
+      const validAttributes = attributeValues
+        .filter((a) => a.value && a.value.trim().length > 0)
+        .map((a) => ({
+          ...a,
+          isStandard: Boolean(a.isStandard),
+        }))
 
-      // Persist canonical attributes to the canonical layer
-      if (targetProductId) {
-        const canonicalRes = await fetch(`/api/merchant/products/${targetProductId}/canonical-attributes`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            category,
-            attributes: validAttributes,
-            deletions: allDeletions.length > 0 ? allDeletions : undefined,
-          }),
-        })
+      // Save Product Management (Basic + Canonical Attributes)
+      const saveResult = await saveProductManagement({
+        productId: targetProductId,
+        basic: {
+          name: name.trim(),
+          sku: sku.trim() || null,
+          description: description.trim() || null,
+          price: Number(price || 0),
+          currency: currency || 'CNY',
+          inventory: Number(inventory || 0),
+          status,
+        },
+        category: category || null,
+        attributes: validAttributes,
+        deletions: allDeletions.length > 0 ? allDeletions : undefined,
+        packaging: packaging as unknown as Record<string, unknown>,
+        seo: { title: seoTitle, description: seoDescription },
+      })
 
-        if (!canonicalRes.ok) {
-          const body = await canonicalRes.json().catch(() => ({}))
-          if (canonicalRes.status === 422 && body?.issues) {
-            const firstIssue = body.issues[0]
-            throw new Error(
-              isZh
-                ? `商品属性校验失败: ${firstIssue?.message || '请检查标红属性'}`
-                : `Product attribute validation failed: ${firstIssue?.message || 'Please check attributes'}`
-            )
-          }
-          throw new Error(
-            body?.error || (isZh ? '商品属性保存失败，请重试' : 'Failed to save product attributes, please retry')
-          )
-        }
-
-        const canonicalData = await canonicalRes.json()
-        if (canonicalData?.canonical?.attributes) {
-          setAttributeValues(canonicalData.canonical.attributes)
-          initialAttributeKeysRef.current = new Set(
-            canonicalData.canonical.attributes.map((a: ProductAttributeValue) => a.fieldKey.toLowerCase())
-          )
-          setIsUsingLegacyFallback(Boolean(canonicalData.canonical.is_legacy))
-        }
+      if (saveResult.canonical?.attributes) {
+        setAttributeValues(saveResult.canonical.attributes)
+        initialAttributeKeysRef.current = new Set(
+          saveResult.canonical.attributes.map((a: ProductAttributeValue) => a.fieldKey.toLowerCase())
+        )
+        setIsUsingLegacyFallback(Boolean(saveResult.canonical.is_legacy))
       }
 
       // Handle media file upload if there are pending files
@@ -325,6 +325,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         }
       }
 
+      setSaveSnapshot(saveControllerRef.current.markSaved())
       setSuccess(
         (productId
           ? isZh
@@ -340,7 +341,10 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         router.push('/dashboard/products')
       }, 1000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during save')
+      console.error('Failed saving product:', err)
+      const errorMsg = getProductSaveMessage(err)
+      setError(errorMsg)
+      setSaveSnapshot(saveControllerRef.current.markFailed(errorMsg))
     } finally {
       setIsSaving(false)
     }
@@ -397,20 +401,24 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
 
         <div className="flex items-center gap-3">
           {/* Save Status Indicator */}
-          {isSaving ? (
+          {isSaving || saveSnapshot.state === 'saving' ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-blue-50 text-[#024AD8] text-xs font-semibold border border-blue-200">
               <Loader2 size={12} className="animate-spin" />
               <span>{isZh ? '正在保存...' : 'Saving...'}</span>
             </span>
-          ) : error ? (
+          ) : saveSnapshot.state === 'failed' || error ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-rose-50 text-[#D32F2F] text-xs font-semibold border border-rose-200">
               <AlertCircle size={12} />
               <span>{isZh ? '保存失败' : 'Save Failed'}</span>
             </span>
-          ) : success ? (
+          ) : saveSnapshot.state === 'saved' || success ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
               <CheckCircle2 size={12} />
               <span>{isZh ? '已保存' : 'Saved'}</span>
+            </span>
+          ) : saveSnapshot.dirty ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
+              <span>{isZh ? '有未保存更改' : 'Unsaved Changes'}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">

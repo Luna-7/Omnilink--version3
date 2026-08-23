@@ -1,6 +1,7 @@
 import { getDemoProductById, DEMO_PRODUCTS, type DemoProduct } from '@/lib/products/demo-data'
 import { ProductDetailView } from '@/components/product/ProductDetailView'
 import { createClientServer } from '@/lib/supabase/server'
+import { loadProductManagementModel } from '@/lib/products/product-management-loader'
 
 export default async function ProductDetailPage({
   params,
@@ -14,7 +15,7 @@ export default async function ProductDetailPage({
     (p) => p.id === id || p.sku.toLowerCase() === id.toLowerCase()
   )
 
-  // 2. If not found in demo, check database
+  // 2. If not found in demo, check database via ProductManagementModel
   if (!product) {
     try {
       const supabase = await createClientServer()
@@ -25,6 +26,18 @@ export default async function ProductDetailPage({
         .maybeSingle()
 
       if (dbProduct) {
+        // Load canonical product management model
+        const model = await loadProductManagementModel(id)
+
+        const attributeRecord: Record<string, any> = {}
+        if (model.attributes && Array.isArray(model.attributes)) {
+          for (const attr of model.attributes) {
+            if (attr.fieldKey && attr.value) {
+              attributeRecord[attr.label || attr.fieldKey] = attr.value
+            }
+          }
+        }
+
         product = {
           id: dbProduct.id,
           name: dbProduct.name,
@@ -67,7 +80,7 @@ export default async function ProductDetailPage({
               option_values: { spec: '默认规格 (Standard)' },
             },
           ],
-          semantic_data: (dbProduct.semantic_data as any) || {
+          semantic_data: {
             brand: 'OmniBrand',
             category: dbProduct.category || 'General Products',
             confidence: 0.95,
@@ -75,10 +88,7 @@ export default async function ProductDetailPage({
             key_features_en: ['AI agent discoverable', 'Structured attributes', 'Omni-channel ready'],
             target_audience: '大众消费群体',
             target_audience_en: 'General Consumers',
-            attributes: {
-              status: 'Ready',
-              sku: dbProduct.sku || 'SKU',
-            },
+            attributes: attributeRecord,
             ai_search_terms: ['商品', '推荐商品'],
             agent_reasoning: '该商品已完成基础结构化提取，支持大模型检索。',
             agent_reasoning_en: 'Base structured extraction completed, ready for LLM queries.',
