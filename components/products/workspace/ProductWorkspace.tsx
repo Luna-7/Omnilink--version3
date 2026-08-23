@@ -10,7 +10,7 @@ import { ProductIdentitySection } from './ProductIdentitySection'
 import { ProductMediaSection } from './ProductMediaSection'
 import { ProductCommercialSection } from './ProductCommercialSection'
 import { ProductDescriptionSection } from './ProductDescriptionSection'
-import { ProductAttributesSection, CustomAttribute, AcceptedAttribute } from './ProductAttributesSection'
+import { ProductAttributesSection, ProductAttributeValue, CustomAttribute, AcceptedAttribute } from './ProductAttributesSection'
 import { ProductVariantsSection } from './ProductVariantsSection'
 import { ProductPackagingSection, PackagingState } from './ProductPackagingSection'
 import { ProductKnowledgeSection } from './ProductKnowledgeSection'
@@ -46,12 +46,11 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const [inventory, setInventory] = useState<string | number>(initialData?.inventory ?? 100)
   const [description, setDescription] = useState(initialData?.description || '')
 
-  // Core Attributes & Custom Attributes
-  const [coreMaterial, setCoreMaterial] = useState('')
-  const [coreDimensions, setCoreDimensions] = useState('')
-  const [coreWeight, setCoreWeight] = useState('')
-  const [coreOrigin, setCoreOrigin] = useState('')
-  const [customAttributes, setCustomAttributes] = useState<CustomAttribute[]>([])
+  // Unified Canonical Attribute View Model State
+  const [attributeValues, setAttributeValues] = useState<ProductAttributeValue[]>([])
+  const [attributesLoading, setAttributesLoading] = useState(false)
+  const [attributesError, setAttributesError] = useState<string | null>(null)
+  const [isUsingLegacyFallback, setIsUsingLegacyFallback] = useState(false)
 
   // Options & Variants
   const [options, setOptions] = useState<ProductOption[]>([])
@@ -77,9 +76,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const mediaUploaderRef = useRef<ProductMediaUploaderRef>(null)
   const [existingAssets, setExistingAssets] = useState<ExistingAsset[]>([])
 
-  // AI Attributes state
-  const [initialAiAttributes, setInitialAiAttributes] = useState<AcceptedAttribute[]>([])
-
   // Status flags
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -90,32 +86,118 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const loadProductDetails = useCallback(async () => {
     if (!productId) return
     setIsLoading(true)
+    setAttributesLoading(true)
+    setAttributesError(null)
     try {
-      const [productRes, assetsRes, optionsRes, variantsRes] = await Promise.all([
+      const [productRes, canonicalRes, assetsRes, optionsRes, variantsRes] = await Promise.all([
         fetch(`/api/products/${productId}`),
+        fetch(`/api/merchant/products/${productId}/canonical-attributes`).catch(() => null),
         fetch(`/api/assets?product_id=${productId}`),
         fetch(`/api/products/${productId}/options`),
         fetch(`/api/products/${productId}/variants`),
       ])
 
+      let loadedCanonical = false
+
+      if (canonicalRes && canonicalRes.ok) {
+        const canonicalData = await canonicalRes.json().catch(() => null)
+        if (canonicalData && Array.isArray(canonicalData.attributes)) {
+          setAttributeValues(canonicalData.attributes)
+          if (canonicalData.category) {
+            setCategory((prev) => prev || canonicalData.category)
+          }
+          setIsUsingLegacyFallback(false)
+          loadedCanonical = true
+        }
+      }
+
       if (productRes.ok) {
         const productData = await productRes.json()
         const prod = productData.product
-        if (prod?.raw_data) {
-          const rawAttrs = prod.raw_data.attributes || prod.raw_data.ai_draft?.attributes
-          if (Array.isArray(rawAttrs)) {
-            const parsedAttrs: AcceptedAttribute[] = rawAttrs.map((a: any, i: number) => ({
-              id: `attr-init-${i}`,
-              key: a.key || `key_${i}`,
-              label: a.label || a.key || `Attribute ${i + 1}`,
-              value: String(a.value || ''),
-              type: a.type || 'text',
-              unit: a.unit || null,
-              confidence: typeof a.confidence === 'number' ? a.confidence : 0.9,
-              source: 'ai',
-            }))
-            setInitialAiAttributes(parsedAttrs)
+        if (prod && !loadedCanonical) {
+          setIsUsingLegacyFallback(true)
+          const loadedAttrs: ProductAttributeValue[] = []
+
+          // 1. Primary Hydration source: Semantic attributes if available
+          if (prod.semantic_data?.attributes && typeof prod.semantic_data.attributes === 'object') {
+            Object.entries(prod.semantic_data.attributes).forEach(([k, v]) => {
+              if (v != null && String(v).trim()) {
+                loadedAttrs.push({
+                  fieldKey: k,
+                  label: k,
+                  value: String(v),
+                  type: typeof v === 'number' ? 'number' : typeof v === 'boolean' ? 'boolean' : 'text',
+                  source: 'system',
+                  confidence: prod.semantic_data?.confidence || 1.0,
+                })
+              }
+            })
           }
+
+          // 2. Legacy / AI fallback hydration: raw_data.attributes
+          if (prod.raw_data) {
+            const rawAttrs = prod.raw_data.attributes || prod.raw_data.ai_draft?.attributes
+            if (Array.isArray(rawAttrs)) {
+              rawAttrs.forEach((a: any, i: number) => {
+                const key = a.fieldKey || a.key || `attr_${i}`
+                if (!loadedAttrs.some((item) => item.fieldKey.toLowerCase() === key.toLowerCase())) {
+                  loadedAttrs.push({
+                    fieldKey: key,
+                    label: a.label || a.key || `Attribute ${i + 1}`,
+                    value: String(a.value ?? ''),
+                    type: a.type || 'text',
+                    unit: a.unit || null,
+                    confidence: typeof a.confidence === 'number' ? a.confidence : 0.9,
+                    source: a.source || 'ai',
+                  })
+                }
+              })
+            }
+
+            // Core attributes fallback
+            if (prod.raw_data.core_attributes) {
+              const core = prod.raw_data.core_attributes
+              const coreMap: Record<string, string> = {
+                material: 'material',
+                dimensions: 'dimensions',
+                weight: 'weight',
+                country_of_origin: 'country_of_origin',
+              }
+              Object.entries(coreMap).forEach(([prop, canonicalKey]) => {
+                const val = core[prop]
+                if (val && !loadedAttrs.some((item) => item.fieldKey.toLowerCase() === canonicalKey.toLowerCase())) {
+                  loadedAttrs.push({
+                    fieldKey: canonicalKey,
+                    label: prop,
+                    value: String(val),
+                    type: 'text',
+                    source: 'manual',
+                    confidence: 1.0,
+                  })
+                }
+              })
+            }
+
+            // Custom attributes fallback
+            if (Array.isArray(prod.raw_data.custom_attributes)) {
+              prod.raw_data.custom_attributes.forEach((c: any) => {
+                const name = c.name || c.id || ''
+                const key = name.toLowerCase().replace(/\s+/g, '_')
+                if (name && !loadedAttrs.some((item) => item.fieldKey.toLowerCase() === key)) {
+                  loadedAttrs.push({
+                    fieldKey: key,
+                    label: name,
+                    value: String(c.value ?? ''),
+                    type: c.type || 'text',
+                    source: 'manual',
+                    confidence: 1.0,
+                  })
+                }
+              })
+            }
+          }
+
+          setAttributeValues(loadedAttrs)
         }
       }
 
@@ -176,6 +258,19 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
 
     setIsSaving(true)
 
+    // Derive attribute fields from canonical attributeValues
+    const materialAttr = attributeValues.find((a) => a.fieldKey.toLowerCase().includes('material'))?.value || ''
+    const dimAttr = attributeValues.find((a) => a.fieldKey.toLowerCase().includes('dimension'))?.value || ''
+    const weightAttr = attributeValues.find((a) => a.fieldKey.toLowerCase().includes('weight'))?.value || ''
+    const originAttr = attributeValues.find((a) => a.fieldKey.toLowerCase().includes('origin'))?.value || ''
+
+    const semanticAttrsRecord: Record<string, string> = {}
+    attributeValues.forEach((a) => {
+      if (a.value && a.value.trim()) {
+        semanticAttrsRecord[a.fieldKey] = a.value.trim()
+      }
+    })
+
     // Build payload
     const payload = {
       name: name.trim(),
@@ -187,24 +282,20 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
       raw_data: {
         category,
         core_attributes: {
-          material: coreMaterial,
-          dimensions: coreDimensions,
-          weight: coreWeight,
-          country_of_origin: coreOrigin,
+          material: materialAttr,
+          dimensions: dimAttr,
+          weight: weightAttr,
+          country_of_origin: originAttr,
         },
-        custom_attributes: customAttributes,
+        custom_attributes: attributeValues.map((a) => ({
+          id: a.fieldKey,
+          name: a.label || a.fieldKey,
+          value: a.value,
+          type: a.type,
+        })),
+        attributes: attributeValues,
         packaging,
         seo: { title: seoTitle, description: seoDescription },
-      },
-      semantic_data: {
-        category,
-        attributes: {
-          material: coreMaterial,
-          dimensions: coreDimensions,
-          weight: coreWeight,
-          origin: coreOrigin,
-        },
-        confidence: 0.98,
       },
     }
 
@@ -240,6 +331,22 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
 
         const createData = await createRes.json()
         targetProductId = createData.product?.id || createData.id
+      }
+
+      // Persist canonical attributes to the canonical layer
+      if (targetProductId && attributeValues.length > 0) {
+        try {
+          await fetch(`/api/merchant/products/${targetProductId}/canonical-attributes`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              category,
+              attributes: attributeValues,
+            }),
+          })
+        } catch (cErr) {
+          console.warn('Failed to sync canonical attributes during main save:', cErr)
+        }
       }
 
       // Handle media file upload if there are pending files
@@ -431,17 +538,12 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
       <ProductAttributesSection
         productId={productId}
         category={category}
-        coreMaterial={coreMaterial}
-        setCoreMaterial={setCoreMaterial}
-        coreDimensions={coreDimensions}
-        setCoreDimensions={setCoreDimensions}
-        coreWeight={coreWeight}
-        setCoreWeight={setCoreWeight}
-        coreOrigin={coreOrigin}
-        setCoreOrigin={setCoreOrigin}
-        customAttributes={customAttributes}
-        setCustomAttributes={setCustomAttributes}
-        initialAiAttributes={initialAiAttributes}
+        attributeValues={attributeValues}
+        onChangeAttributeValues={setAttributeValues}
+        isLoading={isLoading || attributesLoading}
+        isLegacyFallback={isUsingLegacyFallback}
+        error={attributesError}
+        onRetry={loadProductDetails}
         disabled={isSaving}
       />
 

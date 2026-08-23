@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, ownsProduct } from '@/lib/api/auth'
-import { getSchemaByIndustrySlug, saveProductSemantics, saveUnknownFields } from '@/lib/semantic/processor'
-import { mapDraftAttributes, InputAttribute } from '@/lib/product-ai/attribute-mapper'
+import { saveCanonicalProductAttributes, CanonicalProductAttribute } from '@/lib/products/canonical-attributes'
 
 export async function POST(
   request: NextRequest,
@@ -21,17 +20,6 @@ export async function POST(
   }
 
   try {
-    const { data: product, error: productError } = await supabase
-      .from('products')
-      .select('id, store_id, stores(industry_id, industries(slug))')
-      .eq('id', productId)
-      .single()
-
-    if (productError || !product) {
-      console.log('[product.attributes.apply] failed', { reason: 'Product lookup failed' })
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
-    }
-
     const body = await request.json()
     const rawAttributes = body?.attributes
 
@@ -49,17 +37,17 @@ export async function POST(
       )
     }
 
-    const validAttributes: InputAttribute[] = []
+    const validAttributes: CanonicalProductAttribute[] = []
     for (const attr of rawAttributes) {
       if (!attr || typeof attr !== 'object') continue
 
-      const key = String(attr.key || '').trim()
+      const fieldKey = String(attr.key || attr.fieldKey || attr.field_key || '').trim()
       const label = attr.label ? String(attr.label).trim() : undefined
       const value = String(attr.value ?? '').trim()
       const type = attr.type
       const confidence = typeof attr.confidence === 'number' ? attr.confidence : 1.0
 
-      if (!key || key.length < 1 || key.length > 80) {
+      if (!fieldKey || fieldKey.length < 1 || fieldKey.length > 80) {
         return NextResponse.json({ error: 'Attribute key must be 1-80 characters' }, { status: 400 })
       }
       if (label && label.length > 100) {
@@ -76,78 +64,34 @@ export async function POST(
       }
 
       validAttributes.push({
-        key,
+        fieldKey,
         label,
         value,
-        type: type as InputAttribute['type'],
+        type: (type as CanonicalProductAttribute['type']) || 'text',
         unit: attr.unit ? String(attr.unit) : null,
+        source: attr.source === 'manual' || attr.source === 'system' ? attr.source : 'ai',
         confidence,
+        isStandard: true,
       })
     }
 
-    const storeObj = product.stores as { industries?: { slug?: string } | null } | null
-    const industrySlug = storeObj?.industries?.slug || 'eyewear'
-
-    let schemaId = await getSchemaByIndustrySlug(industrySlug, '1.0')
-    if (!schemaId) {
-      schemaId = await getSchemaByIndustrySlug('eyewear', '1.0')
-    }
-
-    if (!schemaId) {
-      console.log('[product.attributes.apply] failed', { reason: 'No schema found' })
-      return NextResponse.json({ error: 'Semantic schema not found' }, { status: 500 })
-    }
-
-    console.log('[product.attributes.apply] schema-resolved', { schemaId, industrySlug })
-
-    const mapping = await mapDraftAttributes(schemaId, validAttributes)
-    console.log('[product.attributes.apply] mapping-complete', {
-      acceptedCount: mapping.accepted.length,
-      unknownCount: mapping.unknownFields.length,
-      rejectedCount: mapping.rejected.length,
+    const result = await saveCanonicalProductAttributes(productId, {
+      category: typeof body?.category === 'string' ? body.category : undefined,
+      attributes: validAttributes,
     })
 
-    const overallConfidence = mapping.accepted.length > 0
-      ? mapping.accepted.reduce((sum, a) => sum + a.confidence, 0) / mapping.accepted.length
-      : 1.0
-
-    if (Object.keys(mapping.semanticData).length > 0) {
-      await saveProductSemantics(
-        productId,
-        schemaId,
-        mapping.semanticData,
-        overallConfidence,
-        'merchant-confirmed-ai-draft',
-      )
-
-      await supabase
-        .from('products')
-        .update({
-          semantic_data: mapping.semanticData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', productId)
-    }
-
-    if (mapping.unknownFields.length > 0) {
-      await saveUnknownFields(
-        productId,
-        schemaId,
-        mapping.unknownFields,
-      )
-    }
-
-    console.log('[product.attributes.apply] persisted', {
+    console.log('[product.attributes.apply] persisted-canonical', {
       productId,
-      schemaId,
-      accepted: mapping.accepted.length,
-      unknown: mapping.unknownFields.length,
-      rejected: mapping.rejected.length,
+      accepted: result.mapping.accepted.length,
+      unknown: result.mapping.unknownFields.length,
+      rejected: result.mapping.rejected.length,
+      canonicalCount: result.canonical.attributes.length,
     })
 
     return NextResponse.json({
       success: true,
-      mapping,
+      mapping: result.mapping,
+      canonical: result.canonical,
     })
   } catch (error) {
     console.log('[product.attributes.apply] failed', {
@@ -159,3 +103,4 @@ export async function POST(
     )
   }
 }
+
