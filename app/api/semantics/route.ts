@@ -1,31 +1,62 @@
-// DEFERRED (Demo #56 · P4/P9): legacy semantic / evidence / reasoning layer.
-// Depends on semantic_* tables that were NEVER created in the live DB
-// (12/14 missing → PGRST205). Not part of the Demo storefront/agent flow.
-// Semantic Source of Truth = products.semantic_data. Do not wire into Demo.
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/client'
-import { Database } from '@/lib/database.types'
+import {
+  saveCanonicalProductAttributes,
+  CanonicalProductAttribute,
+} from '@/lib/products/canonical-attributes'
+import { ProductAttributeValidationError } from '@/lib/product/errors'
 
-type ProductSemanticsInsert = Database['public']['Tables']['product_semantics']['Insert']
-
-// POST /api/semantics - Create semantic data for a product
+// POST /api/semantics - Create/update semantic data for a product via Canonical Gateway
 export async function POST(request: NextRequest) {
   try {
-    const body: ProductSemanticsInsert = await request.json()
+    const body = await request.json()
+    const productId = body?.product_id
 
-    const { data: semantics, error } = await supabase
-      .from('product_semantics')
-      .insert(body)
-      .select()
-      .single()
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!productId) {
+      return NextResponse.json({ error: 'product_id is required' }, { status: 400 })
     }
 
-    return NextResponse.json({ semantics }, { status: 201 })
+    const rawAttributes = Array.isArray(body?.attributes)
+      ? body.attributes
+      : body?.semantic_data && typeof body.semantic_data === 'object'
+        ? Object.entries(body.semantic_data).map(([key, value]) => ({
+            key,
+            value: typeof value === 'object' && value !== null && 'value' in value ? (value as any).value : value,
+            type: typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : 'text',
+          }))
+        : []
+
+    const validAttributes: CanonicalProductAttribute[] = rawAttributes.map((attr: any) => ({
+      fieldKey: String(attr.key || attr.fieldKey || attr.field_name || '').trim(),
+      label: attr.label ? String(attr.label).trim() : undefined,
+      value: String(attr.value ?? '').trim(),
+      type: attr.type || 'text',
+      unit: attr.unit ? String(attr.unit) : null,
+      source: attr.source === 'ai' ? 'ai' : 'manual',
+      confidence: typeof attr.confidence === 'number' ? attr.confidence : 1.0,
+      isStandard: true,
+    })).filter((a: CanonicalProductAttribute) => Boolean(a.fieldKey))
+
+    const result = await saveCanonicalProductAttributes(productId, {
+      category: typeof body?.category === 'string' ? body.category : undefined,
+      attributes: validAttributes,
+    })
+
+    return NextResponse.json({ success: true, canonical: result.canonical }, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    if (error instanceof ProductAttributeValidationError) {
+      return NextResponse.json(
+        {
+          error: 'Product attribute validation failed',
+          issues: error.issues,
+        },
+        { status: 422 },
+      )
+    }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 },
+    )
   }
 }
 

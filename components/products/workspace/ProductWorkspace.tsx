@@ -244,6 +244,14 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
 
         if (!canonicalRes.ok) {
           const body = await canonicalRes.json().catch(() => ({}))
+          if (canonicalRes.status === 422 && body?.issues) {
+            const firstIssue = body.issues[0]
+            throw new Error(
+              isZh
+                ? `商品属性校验失败: ${firstIssue?.message || '请检查标红属性'}`
+                : `Product attribute validation failed: ${firstIssue?.message || 'Please check attributes'}`
+            )
+          }
           throw new Error(
             body?.error || (isZh ? '商品属性保存失败，请重试' : 'Failed to save product attributes, please retry')
           )

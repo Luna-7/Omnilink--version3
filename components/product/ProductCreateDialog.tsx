@@ -518,7 +518,15 @@ export function ProductCreateDialog() {
         let message = isZh ? '创建商品失败，请重试' : 'Unable to create product'
         try {
           const body = await res.json()
-          if (body?.error) message = body.error
+          if (body?.attribute_validation_failed && body?.product_id) {
+            setCreatedProductId(body.product_id)
+            const firstIssue = body.issues?.[0]?.message
+            message = isZh
+              ? `商品基础信息已创建，但属性校验未通过：${firstIssue || '请前往详情页核对属性'}`
+              : `Product created, but attribute validation failed: ${firstIssue || 'Please fix attributes in details'}`
+          } else if (body?.error) {
+            message = body.error
+          }
         } catch {
           // ignore
         }

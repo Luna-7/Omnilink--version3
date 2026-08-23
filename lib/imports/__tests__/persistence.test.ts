@@ -8,11 +8,9 @@
  * NOTE: Tests disabled until vitest is installed
  */
 
-// Tests disabled - vitest not installed
-// import { describe, it, expect, vi } from 'vitest'
-// import type { ImportAnalysis, ProductGroupCandidate, VariantCandidate } from '../types'
+import { describe, it, expect, vi } from 'vitest'
+import type { ImportAnalysis, ProductGroupCandidate, VariantCandidate } from '../types'
 
-/*
 // Mock Supabase client
 vi.mock('@/lib/supabase/server', () => ({
   createClientServer: vi.fn(() => ({
@@ -290,4 +288,3 @@ describe('Import Persistence - Result Structure', () => {
     expect(result.groupsFailed).toBe(0)
   })
 })
-*/

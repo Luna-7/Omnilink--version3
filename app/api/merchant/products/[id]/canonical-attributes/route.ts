@@ -13,6 +13,10 @@ import {
   saveCanonicalProductAttributes,
 } from '@/lib/products/canonical-attributes'
 
+import {
+  ProductAttributeValidationError,
+} from '@/lib/product/errors'
+
 export async function GET(
   _request: NextRequest,
   {
@@ -143,6 +147,16 @@ export async function PUT(
       canonical: result.canonical,
     })
   } catch (error) {
+    if (error instanceof ProductAttributeValidationError) {
+      return NextResponse.json(
+        {
+          error: 'Product attribute validation failed',
+          issues: error.issues,
+        },
+        { status: 422 },
+      )
+    }
+
     return NextResponse.json(
       {
         error:

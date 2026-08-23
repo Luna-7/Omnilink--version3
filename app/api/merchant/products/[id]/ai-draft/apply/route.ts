@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, ownsProduct } from '@/lib/api/auth'
 import { saveCanonicalProductAttributes, CanonicalProductAttribute } from '@/lib/products/canonical-attributes'
+import { ProductAttributeValidationError } from '@/lib/product/errors'
 
 export async function POST(
   request: NextRequest,
@@ -94,6 +95,16 @@ export async function POST(
       canonical: result.canonical,
     })
   } catch (error) {
+    if (error instanceof ProductAttributeValidationError) {
+      return NextResponse.json(
+        {
+          error: 'Product attribute validation failed',
+          issues: error.issues,
+        },
+        { status: 422 },
+      )
+    }
+
     console.log('[product.attributes.apply] failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
     })

@@ -6,7 +6,7 @@ type ProductUpdate = Database['public']['Tables']['products']['Update']
 
 const PRODUCT_UPDATE_KEYS: (keyof ProductUpdate)[] = [
   'sku', 'name', 'description', 'price', 'currency', 'inventory',
-  'status', 'raw_data', 'semantic_data',
+  'status', 'raw_data',
 ]
 
 function pickUpdate(body: unknown): ProductUpdate {

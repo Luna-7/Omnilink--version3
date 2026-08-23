@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, getOwnedStoreId } from '@/lib/api/auth'
 import type { Database } from '@/lib/database.types'
+import {
+  saveCanonicalProductAttributes,
+  CanonicalProductAttribute,
+} from '@/lib/products/canonical-attributes'
+import { ProductAttributeValidationError } from '@/lib/product/errors'
 
 type ProductInsert = Database['public']['Tables']['products']['Insert']
 
 const PRODUCT_INSERT_KEYS: (keyof ProductInsert)[] = [
   'sku', 'name', 'description', 'price', 'currency', 'inventory', 'status',
-  'raw_data', 'semantic_data',
+  'raw_data',
 ]
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
 
 function pickInsert(body: unknown): Partial<ProductInsert> {
   if (!body || typeof body !== 'object') return {}
@@ -87,15 +96,6 @@ export async function POST(request: NextRequest) {
       ...pickInsert(body),
       // Enforce store base currency as single source of truth (must be after pickInsert)
       currency: storeBaseCurrency,
-      // Demo fallback (#60 P1): when the caller omits semantic_data we
-      // still write a minimal valid JSON so the storefront AI JSON,
-      // storefront product card, and agent-query pipelines all have
-      // structured data to show. Source of truth remains
-      // products.semantic_data. This is explicitly a Demo fallback.
-      semantic_data:
-        (body as Record<string, unknown>)?.semantic_data && typeof (body as Record<string, unknown>).semantic_data === 'object'
-          ? ((body as Record<string, unknown>).semantic_data as Record<string, unknown>)
-          : { category: null, attributes: {}, confidence: 1 },
     } as ProductInsert
 
     const { data: product, error } = await supabase
@@ -106,7 +106,101 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-    return NextResponse.json({ product, ai_ready: false }, { status: 201 })
+
+    // Process attributes if present via Canonical Service
+    const targetCategory =
+      typeof body.category === 'string'
+        ? body.category
+        : isRecord(body.raw_data) && typeof body.raw_data.category === 'string'
+          ? body.raw_data.category
+          : undefined
+
+    const rawAttributes = Array.isArray(body.attributes)
+      ? body.attributes
+      : isRecord(body.raw_data) && Array.isArray(body.raw_data.attributes)
+        ? body.raw_data.attributes
+        : []
+
+    if (rawAttributes.length > 0) {
+      const validAttributes: CanonicalProductAttribute[] = []
+
+      for (const attr of rawAttributes) {
+        if (!attr || typeof attr !== 'object') continue
+        const fieldKey = String(
+          (attr as Record<string, unknown>).key ??
+          (attr as Record<string, unknown>).fieldKey ??
+          (attr as Record<string, unknown>).field_key ??
+          ''
+        ).trim()
+        const label = (attr as Record<string, unknown>).label
+          ? String((attr as Record<string, unknown>).label).trim()
+          : undefined
+        const value = String((attr as Record<string, unknown>).value ?? '').trim()
+        const type = (attr as Record<string, unknown>).type
+        const confidence =
+          typeof (attr as Record<string, unknown>).confidence === 'number'
+            ? ((attr as Record<string, unknown>).confidence as number)
+            : 1.0
+
+        if (fieldKey) {
+          validAttributes.push({
+            fieldKey,
+            label,
+            value,
+            type:
+              type === 'text' || type === 'number' || type === 'boolean' || type === 'select'
+                ? type
+                : 'text',
+            unit: (attr as Record<string, unknown>).unit
+              ? String((attr as Record<string, unknown>).unit)
+              : null,
+            source:
+              (attr as Record<string, unknown>).source === 'manual' ||
+              (attr as Record<string, unknown>).source === 'system'
+                ? ((attr as Record<string, unknown>).source as 'manual' | 'system')
+                : 'manual',
+            confidence,
+            isStandard: true,
+          })
+        }
+      }
+
+      if (validAttributes.length > 0) {
+        try {
+          const result = await saveCanonicalProductAttributes(product.id, {
+            category: targetCategory,
+            attributes: validAttributes,
+          })
+
+          return NextResponse.json(
+            {
+              success: true,
+              product,
+              canonical: result.canonical,
+              mapping: result.mapping,
+              ai_ready: false,
+            },
+            { status: 201 },
+          )
+        } catch (attrError) {
+          if (attrError instanceof ProductAttributeValidationError) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Product attribute validation failed',
+                product_id: product.id,
+                attribute_validation_failed: true,
+                issues: attrError.issues,
+              },
+              { status: 422 },
+            )
+          }
+          throw attrError
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, product, ai_ready: false }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },

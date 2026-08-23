@@ -12,6 +12,7 @@ import {
   Info,
   Loader2,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetchWithRetry } from '@/lib/network/retry-client'
@@ -23,6 +24,7 @@ import {
 
 /**
  * Canonical Product Attribute View Model (Frontend UI Contract)
+ * Directly consumes unified attribute rule definitions.
  */
 export interface ProductAttributeValue {
   fieldKey: string
@@ -30,8 +32,13 @@ export interface ProductAttributeValue {
   value: string
   type: 'text' | 'number' | 'boolean' | 'select'
   unit?: string | null
+  required?: boolean
+  allowedValues?: string[]
+  min?: number
+  max?: number
   source?: 'ai' | 'manual' | 'system'
   confidence?: number
+  isStandard?: boolean
 }
 
 // Backward-compatible type aliases for existing references
@@ -99,7 +106,12 @@ export function ProductAttributesSection({
   // 2. Dirty State Tracking (Unsaved modifications in UI session)
   const [isDirty, setIsDirty] = useState(false)
 
-  // 3. Derive Template Field Map and Unmatched / Other Attributes from attributeValues
+  // 3. Validation Errors State (per-field and section-level)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [globalValidationError, setGlobalValidationError] = useState<string | null>(null)
+  const [ruleConflictNotice, setRuleConflictNotice] = useState<string | null>(null)
+
+  // 4. Derive Template Field Map and Unmatched / Other Attributes from attributeValues
   const { templateFieldMap, otherAttributesList } = useMemo(() => {
     const fieldMap: Record<string, ProductAttributeValue> = {}
     const others: ProductAttributeValue[] = []
@@ -170,13 +182,41 @@ export function ProductAttributesSection({
     rejectedCount?: number
   } | null>(null)
 
+  // Helper to scroll and focus the first invalid field
+  const focusFirstInvalidField = (fieldKey: string) => {
+    setTimeout(() => {
+      const fieldContainer = document.getElementById(`attr-field-${fieldKey}`)
+      const inputElement = document.getElementById(`attr-input-${fieldKey}`)
+      if (fieldContainer) {
+        fieldContainer.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      if (inputElement) {
+        inputElement.focus()
+      }
+    }, 100)
+  }
+
   // Handle template field modification
   const handleTemplateFieldChange = (
     fieldKey: string,
     value: string,
-    fieldDef?: AttributeTemplateField
+    fieldDef?: AttributeTemplateField,
+    ruleProps?: Partial<ProductAttributeValue>
   ) => {
     setIsDirty(true)
+
+    // Clear specific field error upon user correction
+    if (fieldErrors[fieldKey]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[fieldKey]
+        return next
+      })
+    }
+    if (globalValidationError) {
+      setGlobalValidationError(null)
+    }
+
     if (!value || !value.trim()) {
       deletedKeysRef.current.add(fieldKey)
     } else {
@@ -190,10 +230,15 @@ export function ProductAttributesSection({
       fieldKey,
       label: fieldDef ? (isZh ? fieldDef.nameZh : fieldDef.nameEn) : fieldKey,
       value,
-      type: fieldDef?.type || 'text',
-      unit: fieldDef?.unit || null,
+      type: ruleProps?.type || fieldDef?.type || 'text',
+      unit: ruleProps?.unit !== undefined ? ruleProps.unit : fieldDef?.unit || null,
+      required: ruleProps?.required ?? false,
+      allowedValues: ruleProps?.allowedValues || fieldDef?.options,
+      min: ruleProps?.min,
+      max: ruleProps?.max,
       source: 'manual',
       confidence: 1.0,
+      isStandard: true,
     }
 
     if (existingIndex >= 0) {
@@ -244,6 +289,7 @@ export function ProductAttributesSection({
       type: newType,
       source: 'manual',
       confidence: 1.0,
+      isStandard: false,
     }
 
     onChangeAttributeValues([...attributeValues, newAttr])
@@ -254,6 +300,13 @@ export function ProductAttributesSection({
 
   const handleUpdateOtherValue = (fieldKey: string, val: string) => {
     setIsDirty(true)
+    if (fieldErrors[fieldKey]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[fieldKey]
+        return next
+      })
+    }
     if (!val || !val.trim()) {
       deletedKeysRef.current.add(fieldKey)
     } else {
@@ -303,6 +356,8 @@ export function ProductAttributesSection({
 
     setIsApplying(true)
     setApplyResult(null)
+    setFieldErrors({})
+    setGlobalValidationError(null)
 
     try {
       const payload = {
@@ -313,6 +368,10 @@ export function ProductAttributesSection({
           value: attr.value,
           type: attr.type,
           unit: attr.unit || null,
+          required: attr.required,
+          allowedValues: attr.allowedValues,
+          min: attr.min,
+          max: attr.max,
           source: attr.source || 'manual',
           confidence: attr.confidence ?? 1.0,
         })),
@@ -328,11 +387,36 @@ export function ProductAttributesSection({
         },
         {
           timeoutMs: 30_000,
-          maxAttempts: 3,
+          maxAttempts: 2,
         }
       )
 
       const body = await response.json().catch(() => ({}))
+
+      // Handle 422 Validation Error gracefully
+      if (response.status === 422 && body?.issues) {
+        const errorsMap: Record<string, string> = {}
+        for (const issue of body.issues) {
+          errorsMap[issue.fieldKey] = issue.message
+        }
+        setFieldErrors(errorsMap)
+        setGlobalValidationError(
+          isZh
+            ? '商品属性有未通过校验的字段，请检查修正后重试'
+            : 'Some product attributes failed validation. Please review and fix the highlighted fields.'
+        )
+        setApplyResult({
+          success: false,
+          message: isZh
+            ? '属性规则校验未通过'
+            : 'Product attribute validation failed',
+        })
+        setIsDirty(true)
+        if (body.issues.length > 0) {
+          focusFirstInvalidField(body.issues[0].fieldKey)
+        }
+        return
+      }
 
       if (!response.ok) {
         const errorMsg =
@@ -343,6 +427,8 @@ export function ProductAttributesSection({
       const mapping = body.mapping
       deletedKeysRef.current.clear()
       setIsDirty(false)
+      setFieldErrors({})
+      setGlobalValidationError(null)
 
       if (body.canonical?.attributes) {
         onChangeAttributeValues(body.canonical.attributes)
@@ -368,6 +454,7 @@ export function ProductAttributesSection({
         success: false,
         message: msg,
       })
+      setIsDirty(true)
     } finally {
       setIsApplying(false)
     }
@@ -458,6 +545,44 @@ export function ProductAttributesSection({
           </span>
         </button>
       </div>
+
+      {/* Global Validation Error Banner */}
+      {globalValidationError && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 transition-all">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="text-[#D32F2F] shrink-0" />
+            <span className="font-semibold">{globalValidationError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGlobalValidationError(null)}
+            className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
+          >
+            {isZh ? '我知道了' : 'Dismiss'}
+          </button>
+        </div>
+      )}
+
+      {/* Rule Conflict Notice Banner (Non-blocking) */}
+      {ruleConflictNotice && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 transition-all">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+            <span>
+              {isZh
+                ? '属性规则存在配置冲突，请联系管理员'
+                : 'Attribute rule configuration conflict detected, please contact administrator'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRuleConflictNotice(null)}
+            className="text-[11px] font-semibold text-amber-700 hover:text-amber-900 cursor-pointer"
+          >
+            {isZh ? '忽略' : 'Dismiss'}
+          </button>
+        </div>
+      )}
 
       {/* Category Change Notice */}
       {categoryChangeNotice && (
@@ -590,19 +715,49 @@ export function ProductAttributesSection({
                   const valData = templateFieldMap[field.key] || {
                     fieldKey: field.key,
                     value: '',
+                    type: field.type,
+                    unit: field.unit || null,
+                    required: false,
+                    allowedValues: field.options,
                     source: 'manual' as const,
                     confidence: 1.0,
+                    isStandard: true,
                   }
+
+                  const effectiveType = valData.type || field.type || 'text'
+                  const effectiveRequired = Boolean(valData.required)
+                  const effectiveUnit = valData.unit || field.unit || null
+                  const effectiveAllowedValues = valData.allowedValues || field.options || []
+                  const effectiveMin = valData.min
+                  const effectiveMax = valData.max
+
                   const label = isZh ? field.nameZh : field.nameEn
                   const placeholder = isZh ? field.placeholderZh : field.placeholderEn
+                  const fieldError = fieldErrors[field.key]
 
                   return (
-                    <div key={field.key} className="space-y-1.5 bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div
+                      key={field.key}
+                      id={`attr-field-${field.key}`}
+                      className={`space-y-1.5 bg-white p-3 rounded-xl border transition-all ${
+                        fieldError
+                          ? 'border-[#D32F2F] bg-rose-50/30 ring-1 ring-[#D32F2F]'
+                          : 'border-slate-200/80 shadow-2xs'
+                      }`}
+                    >
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+                        <label
+                          htmlFor={`attr-input-${field.key}`}
+                          className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5"
+                        >
                           <span>{label}</span>
-                          {field.unit && (
-                            <span className="text-[10px] text-slate-400 font-normal">({field.unit})</span>
+                          {effectiveRequired && (
+                            <span className="px-1.5 py-0.2 rounded-[4px] bg-rose-50 text-[#D32F2F] text-[10px] font-bold border border-rose-200">
+                              {isZh ? '必填' : 'Required'}
+                            </span>
+                          )}
+                          {effectiveUnit && (
+                            <span className="text-[10px] text-slate-400 font-normal">({effectiveUnit})</span>
                           )}
                         </label>
                         {valData.value ? (
@@ -612,35 +767,52 @@ export function ProductAttributesSection({
                         )}
                       </div>
 
-                      {field.type === 'select' ? (
+                      {effectiveType === 'select' ? (
                         <select
+                          id={`attr-input-${field.key}`}
                           value={valData.value}
-                          onChange={(e) => handleTemplateFieldChange(field.key, e.target.value, field)}
+                          onChange={(e) =>
+                            handleTemplateFieldChange(field.key, e.target.value, field, {
+                              type: 'select',
+                              required: effectiveRequired,
+                              allowedValues: effectiveAllowedValues,
+                              unit: effectiveUnit,
+                            })
+                          }
                           disabled={disabled}
-                          className="w-full h-8 px-2.5 rounded-[4px] bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
+                          className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
+                            fieldError
+                              ? 'bg-rose-50/40 border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
+                              : 'bg-slate-50 border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
+                          }`}
                         >
                           <option value="">{isZh ? '-- 请选择 --' : '-- Select --'}</option>
-                          {field.options?.map((opt) => (
+                          {effectiveAllowedValues.map((opt) => (
                             <option key={opt} value={opt}>
                               {opt}
                             </option>
                           ))}
                         </select>
-                      ) : field.type === 'boolean' ? (
-                        <div className="flex items-center gap-2 pt-1">
+                      ) : effectiveType === 'boolean' ? (
+                        <div id={`attr-input-${field.key}`} tabIndex={0} className="flex items-center gap-2 pt-1">
                           <button
                             type="button"
                             onClick={() =>
                               handleTemplateFieldChange(
                                 field.key,
                                 valData.value === 'true' ? 'false' : 'true',
-                                field
+                                field,
+                                {
+                                  type: 'boolean',
+                                  required: effectiveRequired,
+                                  unit: effectiveUnit,
+                                }
                               )
                             }
                             disabled={disabled}
                             className={`h-7 px-3 rounded-[4px] text-xs font-medium transition-all cursor-pointer ${
                               valData.value === 'true'
-                                ? 'bg-[#024AD8] text-white'
+                                ? 'bg-[#024AD8] text-white hover:bg-[#003198]'
                                 : 'bg-white border border-[#D1D1D1] text-[#1C1C1C] hover:bg-[#F7F7F7]'
                             }`}
                           >
@@ -656,14 +828,45 @@ export function ProductAttributesSection({
                       ) : (
                         <div className="relative">
                           <input
-                            type={field.type === 'number' ? 'number' : 'text'}
+                            id={`attr-input-${field.key}`}
+                            type={effectiveType === 'number' ? 'number' : 'text'}
+                            min={effectiveMin}
+                            max={effectiveMax}
+                            step={effectiveType === 'number' ? 'any' : undefined}
                             value={valData.value}
-                            onChange={(e) => handleTemplateFieldChange(field.key, e.target.value, field)}
+                            onChange={(e) =>
+                              handleTemplateFieldChange(field.key, e.target.value, field, {
+                                type: effectiveType,
+                                required: effectiveRequired,
+                                unit: effectiveUnit,
+                                min: effectiveMin,
+                                max: effectiveMax,
+                              })
+                            }
                             disabled={disabled}
-                            placeholder={placeholder || (isZh ? '输入参数值...' : 'Enter value...')}
-                            className="w-full h-8 px-2.5 rounded-[4px] bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
+                            placeholder={
+                              placeholder ||
+                              (effectiveMin !== undefined && effectiveMax !== undefined
+                                ? `${effectiveMin} ~ ${effectiveMax}`
+                                : isZh
+                                ? '输入参数值...'
+                                : 'Enter value...')
+                            }
+                            className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
+                              fieldError
+                                ? 'bg-rose-50/40 border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
+                                : 'bg-slate-50 border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
+                            }`}
                           />
                         </div>
+                      )}
+
+                      {/* Inline Field Error */}
+                      {fieldError && (
+                        <p className="text-[11px] text-[#D32F2F] font-medium mt-1 flex items-center gap-1">
+                          <AlertCircle size={12} className="shrink-0" />
+                          <span>{fieldError}</span>
+                        </p>
                       )}
                     </div>
                   )
@@ -706,52 +909,74 @@ export function ProductAttributesSection({
 
             {otherAttributesList.length > 0 ? (
               <div className="space-y-2">
-                {otherAttributesList.map((attr) => (
-                  <div
-                    key={attr.fieldKey}
-                    className="grid grid-cols-12 gap-2 items-center p-2.5 rounded-xl bg-slate-50 border border-slate-200"
-                  >
-                    <div className="col-span-3">
-                      <span className="text-[11px] font-bold text-slate-800 block truncate">
-                        {attr.label || attr.fieldKey}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400 block truncate">
-                        {attr.fieldKey}
-                      </span>
-                    </div>
+                {otherAttributesList.map((attr) => {
+                  const otherError = fieldErrors[attr.fieldKey]
+                  return (
+                    <div
+                      key={attr.fieldKey}
+                      id={`attr-field-${attr.fieldKey}`}
+                      className={`p-2.5 rounded-xl border transition-all ${
+                        otherError
+                          ? 'bg-rose-50/40 border-[#D32F2F] ring-1 ring-[#D32F2F]'
+                          : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-3">
+                          <span className="text-[11px] font-bold text-slate-800 block truncate">
+                            {attr.label || attr.fieldKey}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400 block truncate">
+                            {attr.fieldKey}
+                          </span>
+                        </div>
 
-                    <div className="col-span-4">
-                      <input
-                        type="text"
-                        value={attr.value}
-                        onChange={(e) => handleUpdateOtherValue(attr.fieldKey, e.target.value)}
-                        placeholder={isZh ? '属性值' : 'Value'}
-                        className="w-full h-8 px-2.5 rounded-[4px] bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
-                      />
-                    </div>
+                        <div className="col-span-4">
+                          <input
+                            id={`attr-input-${attr.fieldKey}`}
+                            type={attr.type === 'number' ? 'number' : 'text'}
+                            value={attr.value}
+                            onChange={(e) => handleUpdateOtherValue(attr.fieldKey, e.target.value)}
+                            placeholder={isZh ? '属性值' : 'Value'}
+                            className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
+                              otherError
+                                ? 'bg-white border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
+                                : 'bg-white border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
+                            }`}
+                          />
+                        </div>
 
-                    <div className="col-span-2 flex items-center justify-center">
-                      {renderConfidenceBadge(attr.confidence, attr.source)}
-                    </div>
+                        <div className="col-span-2 flex items-center justify-center">
+                          {renderConfidenceBadge(attr.confidence, attr.source)}
+                        </div>
 
-                    <div className="col-span-2 flex items-center justify-center">
-                      <span className="text-[10px] text-slate-500 font-medium">
-                        {attr.type}
-                      </span>
-                    </div>
+                        <div className="col-span-2 flex items-center justify-center">
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {attr.type}
+                          </span>
+                        </div>
 
-                    <div className="col-span-1 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOther(attr.fieldKey)}
-                        className="p-1 text-slate-400 hover:text-[#D32F2F] rounded-[4px] cursor-pointer transition-colors"
-                        title={isZh ? '移除' : 'Remove'}
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                        <div className="col-span-1 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOther(attr.fieldKey)}
+                            className="p-1 text-slate-400 hover:text-[#D32F2F] rounded-[4px] cursor-pointer transition-colors"
+                            title={isZh ? '移除' : 'Remove'}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {otherError && (
+                        <p className="text-[11px] text-[#D32F2F] font-medium mt-1.5 flex items-center gap-1">
+                          <AlertCircle size={12} className="shrink-0" />
+                          <span>{otherError}</span>
+                        </p>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <p className="text-center py-2 text-[11px] text-slate-400">
@@ -824,4 +1049,3 @@ export function ProductAttributesSection({
     </div>
   )
 }
-

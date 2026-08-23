@@ -7,6 +7,19 @@ import {
 } from '@/lib/semantic/processor'
 import { mapDraftAttributes, type InputAttribute } from '@/lib/product-ai/attribute-mapper'
 import { getCategoryTemplate } from '@/lib/product/category-templates'
+import {
+  resolveCategorySemanticMappings,
+  type CategorySemanticMappingResult,
+} from '@/lib/product/category-semantic-mapping'
+import {
+  resolveCategoryAttributeRules,
+} from '@/lib/product/attribute-rules'
+import {
+  validateProductAttributes,
+} from '@/lib/product/attribute-validation'
+import {
+  ProductAttributeValidationError,
+} from '@/lib/product/errors'
 
 export interface CanonicalProductAttribute {
   fieldKey: string
@@ -14,6 +27,10 @@ export interface CanonicalProductAttribute {
   value: string
   type: 'text' | 'number' | 'boolean' | 'select'
   unit?: string | null
+  required?: boolean
+  allowedValues?: string[]
+  min?: number
+  max?: number
   source?: 'ai' | 'manual' | 'system'
   confidence?: number
   isStandard: boolean
@@ -187,6 +204,52 @@ function getRawAttributes(rawData: unknown): CanonicalProductAttribute[] {
   return results
 }
 
+function normalizeMappingKey(
+  value: unknown,
+): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+}
+
+function buildMappedInputAttributes(
+  attributes: CanonicalProductAttribute[],
+  mappings: CategorySemanticMappingResult,
+): InputAttribute[] {
+  const mappingByTemplateKey = new Map(
+    mappings.mappings.map((mapping) => [
+      mapping.templateKey.toLowerCase(),
+      mapping,
+    ]),
+  )
+
+  return attributes.map((attribute) => {
+    const mapping = mappingByTemplateKey.get(
+      attribute.fieldKey.trim().toLowerCase(),
+    )
+
+    if (!mapping) {
+      return {
+        key: attribute.fieldKey,
+        label: attribute.label,
+        value: attribute.value,
+        type: attribute.type,
+        unit: attribute.unit ?? null,
+        confidence: attribute.confidence ?? 1,
+      }
+    }
+
+    return {
+      key: mapping.semanticFieldName,
+      label: attribute.label,
+      value: attribute.value,
+      type: attribute.type,
+      unit: attribute.unit ?? null,
+      confidence: attribute.confidence ?? 1,
+    }
+  })
+}
+
 function mergeLegacyAttributes(
   existing: CanonicalProductAttribute[],
   legacy: CanonicalProductAttribute[],
@@ -313,8 +376,39 @@ export async function getCanonicalProductAttributes(
 
   const templateMap = new Map(
     templateFields.map((field) => [
-      field.key.toLowerCase(),
+      normalizeMappingKey(field.key),
       field,
+    ]),
+  )
+
+  const mappingResult = resolveCategorySemanticMappings(
+    category || '',
+    templateFields,
+    fields,
+  )
+
+  const rulesResult = resolveCategoryAttributeRules(
+    templateFields,
+    fields,
+    mappingResult.mappings,
+  )
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[category-semantic-mapping]', mappingResult.diagnostics)
+    console.debug('[category-attribute-rules]', rulesResult.diagnostics)
+  }
+
+  const templateMappingByTemplateKey = new Map(
+    mappingResult.mappings.map((mapping) => [
+      normalizeMappingKey(mapping.templateKey),
+      mapping,
+    ]),
+  )
+
+  const templateMappingBySemanticName = new Map(
+    mappingResult.mappings.map((mapping) => [
+      normalizeMappingKey(mapping.semanticFieldName),
+      mapping,
     ]),
   )
 
@@ -334,13 +428,6 @@ export async function getCanonicalProductAttributes(
     source = 'legacy'
   }
 
-  const semanticFieldsByKey = new Map(
-    fields.map((field) => [
-      field.field_name.toLowerCase(),
-      field,
-    ]),
-  )
-
   const attributes: CanonicalProductAttribute[] = []
 
   for (const [key, rawValue] of Object.entries(
@@ -354,14 +441,25 @@ export async function getCanonicalProductAttributes(
       continue
     }
 
-    const semanticField =
-      semanticFieldsByKey.get(key.toLowerCase())
+    const canonicalKey = normalizeMappingKey(key)
 
-    const templateField =
-      templateMap.get(key.toLowerCase())
+    // Check if there is a category semantic mapping for this semantic_data key
+    const mapping =
+      templateMappingBySemanticName.get(canonicalKey) ||
+      templateMappingByTemplateKey.get(canonicalKey)
+
+    const semanticField = mapping
+      ? fields.find((f) => f.id === mapping.semanticFieldId)
+      : fields.find((f) => normalizeMappingKey(f.field_name) === canonicalKey)
+
+    const directTemplateField = templateMap.get(
+      normalizeMappingKey(mapping?.templateKey ?? key),
+    )
+
+    const templateField = directTemplateField
 
     attributes.push({
-      fieldKey: key,
+      fieldKey: mapping?.templateKey ?? key,
       label:
         templateField?.nameZh ||
         templateField?.nameEn ||
@@ -369,8 +467,8 @@ export async function getCanonicalProductAttributes(
         key,
       value: String(rawValue),
       type: normalizeType(
-        semanticField?.field_type ||
-          templateField?.type,
+        templateField?.type ||
+          semanticField?.field_type,
       ),
       unit:
         templateField?.unit ??
@@ -381,7 +479,7 @@ export async function getCanonicalProductAttributes(
           : 'system',
       confidence:
         productSemantic?.confidence ?? undefined,
-      isStandard: Boolean(templateField),
+      isStandard: Boolean(mapping),
     })
   }
 
@@ -395,20 +493,30 @@ export async function getCanonicalProductAttributes(
     // Keep unknown legacy/custom fields visible without overriding canonical fields
     const legacyAttributes = getRawAttributes(rawData)
     const canonicalKeys = new Set(
-      attributes.map((attr) => attr.fieldKey.toLowerCase()),
+      attributes.map((attr) => normalizeMappingKey(attr.fieldKey)),
     )
 
     for (const attr of legacyAttributes) {
-      if (!canonicalKeys.has(attr.fieldKey.toLowerCase())) {
+      if (!canonicalKeys.has(normalizeMappingKey(attr.fieldKey))) {
         attributes.push(attr)
       }
     }
   }
 
-  // Strict isStandard assignment: ONLY attributes matched in Category Template are standard
+  // Strict isStandard and Rule assignment based on formal Mapping & Rule Resolver
   for (const attr of attributes) {
-    const templateField = templateMap.get(attr.fieldKey.toLowerCase())
-    attr.isStandard = Boolean(templateField)
+    const normKey = normalizeMappingKey(attr.fieldKey)
+    const mapping =
+      templateMappingByTemplateKey.get(normKey) ||
+      templateMappingBySemanticName.get(normKey)
+
+    attr.isStandard = Boolean(mapping)
+
+    const resolvedTemplateKey = mapping?.templateKey ?? attr.fieldKey
+    const templateField = templateMap.get(
+      normalizeMappingKey(resolvedTemplateKey),
+    )
+
     if (templateField) {
       attr.label = templateField.nameZh || templateField.nameEn || attr.label || attr.fieldKey
       attr.type = normalizeType(templateField.type, attr.type)
@@ -416,16 +524,39 @@ export async function getCanonicalProductAttributes(
         attr.unit = templateField.unit
       }
     }
+
+    const rule =
+      rulesResult.rules.get(resolvedTemplateKey) ||
+      rulesResult.rules.get(normKey)
+
+    if (rule) {
+      attr.type = rule.type
+      attr.required = rule.required
+      if (rule.unit !== undefined) {
+        attr.unit = rule.unit
+      }
+      if (rule.allowedValues && rule.allowedValues.length > 0) {
+        attr.allowedValues = rule.allowedValues
+      }
+      if (rule.min !== undefined) {
+        attr.min = rule.min
+      }
+      if (rule.max !== undefined) {
+        attr.max = rule.max
+      }
+    } else {
+      attr.required = false
+    }
   }
 
   const presentKeys = new Set(
-    attributes.map((attr) => attr.fieldKey.toLowerCase()),
+    attributes.map((attr) => normalizeMappingKey(attr.fieldKey)),
   )
 
   const missingRequiredFields = fields
     .filter((field) => field.required)
     .filter(
-      (field) => !presentKeys.has(field.field_name.toLowerCase()),
+      (field) => !presentKeys.has(normalizeMappingKey(field.field_name)),
     )
     .map((field) => field.field_name)
 
@@ -452,19 +583,44 @@ export async function saveCanonicalProductAttributes(
     supabase,
     schemaId,
     schemaVersion,
+    fields,
     category: existingCategory,
     rawData,
   } = await loadProductContext(productId)
 
-  const incomingInputs: InputAttribute[] = input.attributes.map((attr) => ({
-    key: attr.fieldKey,
-    label: attr.label,
-    value: attr.value,
-    type: attr.type,
-    unit: attr.unit ?? null,
-    confidence:
-      typeof attr.confidence === 'number' ? attr.confidence : 1,
-  }))
+  const targetCategory = input.category || existingCategory || ''
+  const categoryTemplate = getCategoryTemplate(targetCategory)
+  const categoryMappings = resolveCategorySemanticMappings(
+    targetCategory,
+    categoryTemplate?.fields ?? [],
+    fields,
+  )
+
+  const categoryRules = resolveCategoryAttributeRules(
+    categoryTemplate?.fields ?? [],
+    fields,
+    categoryMappings.mappings,
+  )
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[category-semantic-mapping:save]', categoryMappings.diagnostics)
+    console.debug('[category-attribute-rules:save]', categoryRules.diagnostics)
+  }
+
+  // Canonical Rule Validation
+  const validation = validateProductAttributes(
+    input.attributes,
+    categoryRules.rules,
+  )
+
+  if (!validation.valid) {
+    throw new ProductAttributeValidationError(validation.issues)
+  }
+
+  const incomingInputs: InputAttribute[] = buildMappedInputAttributes(
+    input.attributes,
+    categoryMappings,
+  )
 
   const mapping = await mapDraftAttributes(
     schemaId,
@@ -549,6 +705,17 @@ export async function saveCanonicalProductAttributes(
   for (const accepted of mapping.accepted) {
     attributeMap.delete(accepted.semanticField.toLowerCase())
     attributeMap.delete(accepted.sourceKey.toLowerCase())
+  }
+
+  for (const mappingItem of categoryMappings.mappings) {
+    attributeMap.delete(mappingItem.templateKey.toLowerCase())
+    attributeMap.delete(mappingItem.semanticFieldName.toLowerCase())
+  }
+
+  for (const attr of input.attributes) {
+    if (categoryRules.rules.has(attr.fieldKey) || categoryRules.rules.has(attr.fieldKey.toLowerCase())) {
+      attributeMap.delete(attr.fieldKey.toLowerCase())
+    }
   }
 
   // Upsert unknown/custom fields

@@ -6,7 +6,7 @@
  */
 
 import type { NormalizedImportRow, ProductGroupCandidate, VariantCandidate, FieldConflict, OptionDefinition } from './types'
-import { canonicalizeOptionValues } from '@/lib/products/variants/validation'
+import { canonicalizeOptionValues } from '../products/variants/validation'
 import { normalizeOptionValue } from './variant-detection'
 
 /**
@@ -175,7 +175,7 @@ export function groupNormalizedRows(rows: NormalizedImportRow[]): ProductGroupCa
   groupsMap.forEach((groupRows, key) => {
     const conflicts = detectProductConflicts(groupRows)
     const options = extractOptionDefinitions(groupRows)
-    const variants = buildVariantCandidates(groupRows)
+    const variants = options.length > 0 ? buildVariantCandidates(groupRows) : []
     const duplicateSKUs = detectDuplicateSKUs(variants)
 
     // Determine if review is required
