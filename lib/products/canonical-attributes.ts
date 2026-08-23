@@ -26,12 +26,14 @@ export interface CanonicalProductAttributesResponse {
   schema_version: string | null
   attributes: CanonicalProductAttribute[]
   is_complete: boolean
+  is_legacy?: boolean
   missing_required_fields: string[]
 }
 
 export interface SaveCanonicalProductAttributesInput {
   category?: string | null
   attributes: CanonicalProductAttribute[]
+  deletions?: string[]
 }
 
 export interface SaveCanonicalProductAttributesResult {
@@ -385,51 +387,45 @@ export async function getCanonicalProductAttributes(
 
   // Compatibility fallback for older products.
   if (source === 'legacy') {
-    const legacyAttributes =
-      getRawAttributes(rawData)
-
-    const merged = mergeLegacyAttributes(
-      attributes,
-      legacyAttributes,
-    )
-
+    const legacyAttributes = getRawAttributes(rawData)
+    const merged = mergeLegacyAttributes(attributes, legacyAttributes)
     attributes.length = 0
     attributes.push(...merged)
   } else {
     // Keep unknown legacy/custom fields visible without overriding canonical fields
-    const legacyAttributes =
-      getRawAttributes(rawData)
-
+    const legacyAttributes = getRawAttributes(rawData)
     const canonicalKeys = new Set(
-      attributes.map((attr) =>
-        attr.fieldKey.toLowerCase(),
-      ),
+      attributes.map((attr) => attr.fieldKey.toLowerCase()),
     )
 
     for (const attr of legacyAttributes) {
-      if (
-        !canonicalKeys.has(
-          attr.fieldKey.toLowerCase(),
-        )
-      ) {
+      if (!canonicalKeys.has(attr.fieldKey.toLowerCase())) {
         attributes.push(attr)
       }
     }
   }
 
+  // Strict isStandard assignment: ONLY attributes matched in Category Template are standard
+  for (const attr of attributes) {
+    const templateField = templateMap.get(attr.fieldKey.toLowerCase())
+    attr.isStandard = Boolean(templateField)
+    if (templateField) {
+      attr.label = templateField.nameZh || templateField.nameEn || attr.label || attr.fieldKey
+      attr.type = normalizeType(templateField.type, attr.type)
+      if (templateField.unit) {
+        attr.unit = templateField.unit
+      }
+    }
+  }
+
   const presentKeys = new Set(
-    attributes.map((attr) =>
-      attr.fieldKey.toLowerCase(),
-    ),
+    attributes.map((attr) => attr.fieldKey.toLowerCase()),
   )
 
   const missingRequiredFields = fields
     .filter((field) => field.required)
     .filter(
-      (field) =>
-        !presentKeys.has(
-          field.field_name.toLowerCase(),
-        ),
+      (field) => !presentKeys.has(field.field_name.toLowerCase()),
     )
     .map((field) => field.field_name)
 
@@ -440,13 +436,14 @@ export async function getCanonicalProductAttributes(
     schema_version: schemaVersion,
     attributes,
     is_complete:
-      source === 'canonical' &&
-      missingRequiredFields.length === 0,
-    missing_required_fields:
-      missingRequiredFields,
+      source === 'canonical' && missingRequiredFields.length === 0,
+    is_legacy: source === 'legacy',
+    missing_required_fields: missingRequiredFields,
   }
 }
 
+// Note: This is an application-level merge and not a database-level atomic transaction.
+// TODO: Phase 3/DB hardening: transactional JSONB merge or RPC
 export async function saveCanonicalProductAttributes(
   productId: string,
   input: SaveCanonicalProductAttributesInput,
@@ -459,18 +456,15 @@ export async function saveCanonicalProductAttributes(
     rawData,
   } = await loadProductContext(productId)
 
-  const incomingInputs: InputAttribute[] =
-    input.attributes.map((attr) => ({
-      key: attr.fieldKey,
-      label: attr.label,
-      value: attr.value,
-      type: attr.type,
-      unit: attr.unit ?? null,
-      confidence:
-        typeof attr.confidence === 'number'
-          ? attr.confidence
-          : 1,
-    }))
+  const incomingInputs: InputAttribute[] = input.attributes.map((attr) => ({
+    key: attr.fieldKey,
+    label: attr.label,
+    value: attr.value,
+    type: attr.type,
+    unit: attr.unit ?? null,
+    confidence:
+      typeof attr.confidence === 'number' ? attr.confidence : 1,
+  }))
 
   const mapping = await mapDraftAttributes(
     schemaId,
@@ -488,23 +482,42 @@ export async function saveCanonicalProductAttributes(
     .limit(1)
     .maybeSingle()
 
-  const currentSemanticData =
-    normalizeSemanticMap(
-      currentSemantic?.semantic_data,
-    )
+  const currentSemanticData = normalizeSemanticMap(
+    currentSemantic?.semantic_data,
+  )
 
-  // Merge incoming standard semantic data into existing semantic data
+  // 1. Process explicit deletions on existing semantic data
+  const deletionSet = new Set<string>()
+  if (Array.isArray(input.deletions)) {
+    for (const delKey of input.deletions) {
+      if (typeof delKey === 'string' && delKey.trim().length > 0) {
+        deletionSet.add(delKey.trim().toLowerCase())
+      }
+    }
+  }
+
+  for (const key of Object.keys(currentSemanticData)) {
+    if (deletionSet.has(key.toLowerCase())) {
+      delete currentSemanticData[key]
+    }
+  }
+
+  // 2. Merge incoming updates: Set wins over Delete if same key exists in both
   const mergedSemanticData = {
     ...currentSemanticData,
     ...mapping.semanticData,
   }
 
-  if (Object.keys(mapping.semanticData).length > 0) {
+  const shouldUpdateSemanticStore =
+    Object.keys(mergedSemanticData).length > 0 ||
+    deletionSet.size > 0 ||
+    mapping.accepted.length > 0
+
+  if (shouldUpdateSemanticStore) {
     const acceptedConfidence =
       mapping.accepted.length > 0
         ? mapping.accepted.reduce(
-            (sum, item) =>
-              sum + item.confidence,
+            (sum, item) => sum + item.confidence,
             0,
           ) / mapping.accepted.length
         : 1
@@ -518,95 +531,87 @@ export async function saveCanonicalProductAttributes(
     )
   }
 
-  // Preserve unknown/custom attributes in the legacy raw_data
-  // compatibility layer until a dedicated custom-attribute store exists.
-  if (mapping.unknownFields.length > 0 || input.category !== undefined) {
-    const currentAttributes =
-      getRawAttributes(rawData)
+  // 3. Sync legacy raw_data compatibility layer (for non-standard/unknown attributes and categories)
+  const currentAttributes = getRawAttributes(rawData)
+  const attributeMap = new Map(
+    currentAttributes.map((attr) => [
+      attr.fieldKey.toLowerCase(),
+      attr,
+    ]),
+  )
 
-    const attributeMap = new Map(
-      currentAttributes.map((attr) => [
-        attr.fieldKey.toLowerCase(),
-        attr,
-      ]),
+  // Apply deletions to raw_data custom attributes as well
+  for (const delKey of deletionSet) {
+    attributeMap.delete(delKey)
+  }
+
+  // Remove accepted standard attributes from raw_data.attributes to prevent duplicates/pollution
+  for (const accepted of mapping.accepted) {
+    attributeMap.delete(accepted.semanticField.toLowerCase())
+    attributeMap.delete(accepted.sourceKey.toLowerCase())
+  }
+
+  // Upsert unknown/custom fields
+  for (const unknown of mapping.unknownFields) {
+    const rawValue = isRecord(unknown.raw_value)
+      ? unknown.raw_value
+      : {}
+
+    const existing = attributeMap.get(unknown.raw_field.toLowerCase())
+
+    attributeMap.set(unknown.raw_field.toLowerCase(), {
+      fieldKey: unknown.raw_field,
+      label:
+        typeof rawValue.label === 'string'
+          ? rawValue.label
+          : unknown.raw_field,
+      value:
+        typeof rawValue.value === 'string'
+          ? rawValue.value
+          : String(rawValue.value ?? ''),
+      type: normalizeType(rawValue.type),
+      unit:
+        typeof rawValue.unit === 'string'
+          ? rawValue.unit
+          : existing?.unit ?? null,
+      source: 'manual',
+      confidence: 1,
+      isStandard: false,
+    })
+  }
+
+  const nextRawData: JsonRecord = {
+    ...rawData,
+  }
+
+  if (input.category !== undefined) {
+    nextRawData.category = input.category || null
+  } else if (existingCategory) {
+    nextRawData.category = existingCategory
+  }
+
+  nextRawData.attributes = [...attributeMap.values()].map((attr) => ({
+    key: attr.fieldKey,
+    label: attr.label,
+    value: attr.value,
+    type: attr.type,
+    unit: attr.unit ?? null,
+    source: attr.source,
+    confidence: attr.confidence ?? 1,
+  }))
+
+  const { error } = await supabase
+    .from('products')
+    .update({
+      raw_data: nextRawData,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', productId)
+
+  if (error) {
+    throw new Error(
+      `Failed to save legacy attribute compatibility data: ${error.message}`,
     )
-
-    for (const unknown of mapping.unknownFields) {
-      const rawValue = isRecord(
-        unknown.raw_value,
-      )
-        ? unknown.raw_value
-        : {}
-
-      const existing = attributeMap.get(
-        unknown.raw_field.toLowerCase(),
-      )
-
-      attributeMap.set(
-        unknown.raw_field.toLowerCase(),
-        {
-          fieldKey: unknown.raw_field,
-          label:
-            typeof rawValue.label === 'string'
-              ? rawValue.label
-              : unknown.raw_field,
-          value:
-            typeof rawValue.value === 'string'
-              ? rawValue.value
-              : String(
-                  rawValue.value ?? '',
-                ),
-          type: normalizeType(
-            rawValue.type,
-          ),
-          unit:
-            typeof rawValue.unit === 'string'
-              ? rawValue.unit
-              : existing?.unit ?? null,
-          source: 'manual',
-          confidence: 1,
-          isStandard: false,
-        },
-      )
-    }
-
-    const nextRawData: JsonRecord = {
-      ...rawData,
-    }
-
-    if (input.category !== undefined) {
-      nextRawData.category =
-        input.category || null
-    } else if (existingCategory) {
-      nextRawData.category =
-        existingCategory
-    }
-
-    nextRawData.attributes = [
-      ...attributeMap.values(),
-    ].map((attr) => ({
-      key: attr.fieldKey,
-      label: attr.label,
-      value: attr.value,
-      type: attr.type,
-      unit: attr.unit ?? null,
-      source: attr.source,
-      confidence: attr.confidence ?? 1,
-    }))
-
-    const { error } = await supabase
-      .from('products')
-      .update({
-        raw_data: nextRawData,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', productId)
-
-    if (error) {
-      throw new Error(
-        `Failed to save legacy attribute compatibility data: ${error.message}`,
-      )
-    }
   }
 
   if (mapping.unknownFields.length > 0) {
@@ -617,18 +622,14 @@ export async function saveCanonicalProductAttributes(
     )
   }
 
-  const canonical =
-    await getCanonicalProductAttributes(
-      productId,
-    )
+  const canonical = await getCanonicalProductAttributes(productId)
 
   return {
     mapping,
     canonical: {
       ...canonical,
       schema_version:
-        canonical.schema_version ??
-        schemaVersion,
+        canonical.schema_version ?? schemaVersion,
     },
   }
 }

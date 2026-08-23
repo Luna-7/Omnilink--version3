@@ -161,6 +161,7 @@ export function ProductAttributesSection({
 
   // Apply API status state
   const [isApplying, setIsApplying] = useState(false)
+  const deletedKeysRef = useRef<Set<string>>(new Set())
   const [applyResult, setApplyResult] = useState<{
     success: boolean
     message: string
@@ -176,6 +177,11 @@ export function ProductAttributesSection({
     fieldDef?: AttributeTemplateField
   ) => {
     setIsDirty(true)
+    if (!value || !value.trim()) {
+      deletedKeysRef.current.add(fieldKey)
+    } else {
+      deletedKeysRef.current.delete(fieldKey)
+    }
     const existingIndex = attributeValues.findIndex(
       (a) => a.fieldKey.toLowerCase() === fieldKey.toLowerCase()
     )
@@ -230,6 +236,7 @@ export function ProductAttributesSection({
     }
 
     setIsDirty(true)
+    deletedKeysRef.current.delete(standardKey)
     const newAttr: ProductAttributeValue = {
       fieldKey: standardKey,
       label: keyClean,
@@ -247,6 +254,11 @@ export function ProductAttributesSection({
 
   const handleUpdateOtherValue = (fieldKey: string, val: string) => {
     setIsDirty(true)
+    if (!val || !val.trim()) {
+      deletedKeysRef.current.add(fieldKey)
+    } else {
+      deletedKeysRef.current.delete(fieldKey)
+    }
     const next = attributeValues.map((attr) =>
       attr.fieldKey === fieldKey ? { ...attr, value: val, source: 'manual' as const } : attr
     )
@@ -255,6 +267,7 @@ export function ProductAttributesSection({
 
   const handleRemoveOther = (fieldKey: string) => {
     setIsDirty(true)
+    deletedKeysRef.current.add(fieldKey)
     const next = attributeValues.filter((attr) => attr.fieldKey !== fieldKey)
     onChangeAttributeValues(next)
   }
@@ -276,7 +289,9 @@ export function ProductAttributesSection({
       return
     }
 
-    if (validAttributesForSubmission.length === 0) {
+    const deletions = Array.from(deletedKeysRef.current)
+
+    if (validAttributesForSubmission.length === 0 && deletions.length === 0) {
       setApplyResult({
         success: false,
         message: isZh
@@ -301,6 +316,7 @@ export function ProductAttributesSection({
           source: attr.source || 'manual',
           confidence: attr.confidence ?? 1.0,
         })),
+        deletions: deletions.length > 0 ? deletions : undefined,
       }
 
       const response = await fetchWithRetry(
@@ -325,7 +341,12 @@ export function ProductAttributesSection({
       }
 
       const mapping = body.mapping
+      deletedKeysRef.current.clear()
       setIsDirty(false)
+
+      if (body.canonical?.attributes) {
+        onChangeAttributeValues(body.canonical.attributes)
+      }
 
       setApplyResult({
         success: true,

@@ -116,6 +116,13 @@ export async function PUT(
       )
     }
 
+    const deletions = Array.isArray(body.deletions)
+      ? body.deletions.filter(
+          (k: unknown): k is string =>
+            typeof k === 'string' && k.trim().length > 0,
+        )
+      : undefined
+
     const result =
       await saveCanonicalProductAttributes(
         id,
@@ -126,6 +133,7 @@ export async function PUT(
               : undefined,
           attributes:
             body.attributes,
+          deletions,
         },
       )
 
