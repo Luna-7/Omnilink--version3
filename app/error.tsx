@@ -9,9 +9,20 @@ export default function ErrorBoundary({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const isRedirect =
+    error?.message === 'NEXT_REDIRECT' ||
+    error?.message?.includes('NEXT_REDIRECT') ||
+    (typeof error?.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))
+
   useEffect(() => {
-    console.error(error)
-  }, [error])
+    if (!isRedirect) {
+      console.error(error)
+    }
+  }, [error, isRedirect])
+
+  if (isRedirect) {
+    return null
+  }
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
@@ -38,3 +49,4 @@ export default function ErrorBoundary({
     </div>
   )
 }
+

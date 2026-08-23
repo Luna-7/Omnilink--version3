@@ -21,7 +21,7 @@ import { createClientServer } from '@/lib/supabase/server'
  * If confirmation is off, signUp() returns a session and we redirect.
  */
 
-export type AuthState = { error?: string; message?: string } | null
+export type AuthState = { error?: string; message?: string; redirectUrl?: string } | null
 
 export async function loginAction(
   _prev: AuthState,
@@ -54,8 +54,7 @@ export async function loginAction(
   }
 
   // signInWithPassword sets the sb-*-auth-token cookie via the SSR adapter.
-  // Existing users logging in are redirected directly to /dashboard as requested.
-  redirect('/dashboard')
+  return { redirectUrl: '/dashboard' }
 }
 
 export async function signupAction(
@@ -93,7 +92,7 @@ export async function signupAction(
   }
 
   // Email confirmation OFF: session is established immediately.
-  redirect('/onboarding')
+  return { redirectUrl: '/onboarding' }
 }
 
 export async function logoutAction(_formData: FormData): Promise<void> {

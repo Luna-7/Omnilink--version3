@@ -112,13 +112,12 @@ const DEFAULT_RADIUS = 8
 
 /** 强调色预设。 */
 const ACCENT_PRESETS: Array<{ name: string; value: string }> = [
+  { name: 'HP电光蓝', value: '#024ad8' },
+  { name: '深海蓝', value: '#0e3191' },
   { name: '电光紫', value: '#8B5CF6' },
-  { name: '深紫罗兰', value: '#7C3AED' },
   { name: '靛蓝', value: '#4F46E5' },
   { name: '天青', value: '#0EA5E9' },
   { name: '翡翠', value: '#10B981' },
-  { name: '琥珀', value: '#F59E0B' },
-  { name: '绯红', value: '#EF4444' },
   { name: '墨黑', value: '#111827' },
 ]
 

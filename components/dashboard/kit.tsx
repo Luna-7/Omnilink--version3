@@ -133,7 +133,7 @@ export function SectionTitle({
   )
 }
 
-/* 主药丸按钮 (Black primary button) */
+/* HP 主按钮 (Primary) */
 export function PrimaryLink({
   href,
   children,
@@ -147,7 +147,7 @@ export function PrimaryLink({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold text-white bg-[#111827] hover:bg-black shadow-sm transition-all',
+        'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[4px] text-xs font-medium text-white bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] transition-all focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2',
         className
       )}
     >
@@ -156,7 +156,7 @@ export function PrimaryLink({
   )
 }
 
-/* 次级药丸按钮 */
+/* HP 次级按钮 (Secondary) */
 export function GhostLink({
   href,
   children,
@@ -170,7 +170,7 @@ export function GhostLink({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold bg-white border border-[#E5E7EB] text-[#111827] hover:bg-[#F4F5F7] transition-all',
+        'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[4px] text-xs font-medium bg-white border border-[#D1D1D1] text-[#1C1C1C] hover:bg-[#F7F7F7] hover:border-[#B0B0B0] transition-all focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2',
         className
       )}
     >

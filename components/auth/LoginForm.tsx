@@ -28,6 +28,18 @@ export function LoginForm() {
     null
   )
 
+  React.useEffect(() => {
+    if (signinState?.redirectUrl) {
+      window.location.href = signinState.redirectUrl
+    }
+  }, [signinState])
+
+  React.useEffect(() => {
+    if (signupState?.redirectUrl) {
+      window.location.href = signupState.redirectUrl
+    }
+  }, [signupState])
+
   const error = mode === 'signin' ? signinState?.error : signupState?.error
   const message = signupState?.message ?? null
   const isPending = mode === 'signin' ? signinPending : signupPending
@@ -116,7 +128,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full mt-2 py-3 sm:py-3.5 px-5 rounded-xl bg-gradient-to-r from-[#E11D48] to-[#FB7185] hover:from-[#BE123C] hover:to-[#E11D48] active:scale-[0.99] text-white text-sm font-semibold shadow-[0_12px_24px_-4px_rgba(225,29,72,0.35)] hover:shadow-[0_14px_28px_-3px_rgba(225,29,72,0.45)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full mt-2 py-3 px-5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-sm font-medium transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
         >
           {isPending ? (
             <>
@@ -136,7 +148,7 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => setMode('signin')}
-                className="text-[#E11D48] hover:text-[#BE123C] font-semibold transition-colors cursor-pointer underline-offset-2 hover:underline"
+                className="text-[#024AD8] hover:text-[#003198] font-medium transition-colors cursor-pointer underline-offset-2 hover:underline"
               >
                 立即登录
               </button>
@@ -147,7 +159,7 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => setMode('signup')}
-                className="text-[#E11D48] hover:text-[#BE123C] font-semibold transition-colors cursor-pointer underline-offset-2 hover:underline"
+                className="text-[#024AD8] hover:text-[#003198] font-medium transition-colors cursor-pointer underline-offset-2 hover:underline"
               >
                 免费注册
               </button>

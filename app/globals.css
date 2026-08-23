@@ -12,15 +12,15 @@
   --font-heading: var(--font-heading), sans-serif;
   --font-display: var(--font-heading), sans-serif;
 
-  /* ===== Iridescent Palette (5 色) =====
-     主紫 / 副紫 / 主暖 / 深暖 / 纯橙 */
-  --color-iris: #3b3686;
-  --color-iris-light: #E8E6F4;
-  --color-reddish: #767ae6;
-  --color-apricot: #edbc40;
-  --color-apricot-light: #FDF3D7;
-  --color-deep-orange: #e28c33;
-  --color-pure-orange: #e0652b;
+  /* ===== HP Electric Blue Palette =====
+     #024ad8 Primary · #f7f7f7 Cloud · #ffffff Canvas · #636363 Graphite · #c2c2c2 Steel */
+  --color-iris: #024ad8;
+  --color-iris-light: #C9E0FC;
+  --color-reddish: #296ef9;
+  --color-apricot: #636363;
+  --color-apricot-light: #E8E8E8;
+  --color-deep-orange: #0e3191;
+  --color-pure-orange: #024ad8;
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -30,11 +30,11 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  --color-chart-5: #1a1a1a;
+  --color-chart-4: #3d3d3d;
+  --color-chart-3: #c2c2c2;
+  --color-chart-2: #636363;
+  --color-chart-1: #024ad8;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -51,36 +51,36 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-xl: 28px;
-  --radius-2xl: 32px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 12px;
 }
 
 :root {
-  /* ===== 画布 / 文字 / 黑白灰基底（保持原值，不参与换色） ===== */
-  --bg: #F4F5F7;
-  --bg-gradient: #F4F5F7;
-  --ink: #111827;
+  /* ===== HP Canvas #ffffff + Ink #1a1a1a + Cloud #f7f7f7 ===== */
+  --bg: #FFFFFF;
+  --bg-gradient: #FFFFFF;
+  --ink: #1A1A1A;
   --glass-bg: #FFFFFF;
-  --glass-border: #E5E7EB;
+  --glass-border: #E8E8E8;
 
-  /* ===== 5 色 调色板（Iridescent · Apricot · Orange） =====
-     Iris      #3b3686  · 主紫
-     Reddish   #767ae6  · 副紫（淡紫蓝）
-     Apricot   #edbc40  · 主暖金（取代荧光绿）
-     DeepOrange #e28c33 · 深橙
-     PureOrange #e0652b · 纯橙 */
-  --accent-iris: #3b3686;
-  --accent-iris-light: #E8E6F4;
-  --accent-reddish: #767ae6;
-  --accent-apricot: #edbc40;
-  --accent-apricot-light: #FDF3D7;
-  --accent-deep-orange: #e28c33;
-  --accent-pure-orange: #e0652b;
+  /* ===== HP Color Palette =====
+     Primary Electric Blue #024ad8
+     Primary Bright        #296ef9
+     Primary Deep          #0e3191
+     Graphite              #636363
+     Steel                 #c2c2c2 */
+  --accent-iris: #024ad8;
+  --accent-iris-light: #C9E0FC;
+  --accent-reddish: #296ef9;
+  --accent-apricot: #636363;
+  --accent-apricot-light: #E8E8E8;
+  --accent-deep-orange: #0e3191;
+  --accent-pure-orange: #024ad8;
 
-  /* 兼容层别名（保持旧变量名可继续工作，便于渐进替换） */
+  /* 兼容层别名 */
   --accent-purple: var(--accent-iris);
   --accent-purple-light: var(--accent-reddish);
   --accent-orange: var(--accent-pure-orange);
@@ -88,47 +88,47 @@
   --accent-lime-dark: var(--accent-deep-orange);
   --accent-lime-light: var(--accent-apricot-light);
 
-  /* ===== 亚克力玻璃系统（blur 20px · saturate 180%） ===== */
-  --acrylic-bg: rgba(255, 255, 255, 0.72);
-  --acrylic-blur: blur(20px) saturate(180%);
-  --acrylic-border: rgba(0, 0, 0, 0.06);
+  /* ===== 亚克力玻璃系统 ===== */
+  --acrylic-bg: rgba(255, 255, 255, 0.95);
+  --acrylic-blur: blur(8px);
+  --acrylic-border: rgba(0, 0, 0, 0.08);
 
   /* ===== 设计系统别名 ===== */
   --omni-purple: var(--accent-iris);
-  --glow-purple: 0 0 0 4px rgba(59, 54, 134, 0.18);
-  --glow-active-nav: 0 0 18px rgba(59, 54, 134, 0.15);
+  --glow-purple: 0 0 0 4px rgba(2, 74, 216, 0.15);
+  --glow-active-nav: 0 0 12px rgba(2, 74, 216, 0.12);
 
-  --background: #F4F5F7;
-  --foreground: #111827;
-  --card: #FFFFFF;
-  --card-foreground: #111827;
+  --background: #FFFFFF;
+  --foreground: #1A1A1A;
+  --card: #F7F7F7;
+  --card-foreground: #1A1A1A;
   --popover: #FFFFFF;
-  --popover-foreground: #111827;
+  --popover-foreground: #1A1A1A;
 
-  --primary: #111827;
+  --primary: #024ad8;
   --primary-foreground: #FFFFFF;
-  --secondary: #F4F5F7;
-  --secondary-foreground: #111827;
-  --muted: #E5E7EB;
-  --muted-foreground: #6B7280;
-  --destructive: var(--accent-deep-orange);
-  --border: #E5E7EB;
-  --input: #E5E7EB;
-  --ring: var(--accent-apricot);
+  --secondary: #F7F7F7;
+  --secondary-foreground: #1A1A1A;
+  --muted: #E8E8E8;
+  --muted-foreground: #636363;
+  --destructive: #b3262b;
+  --border: #E8E8E8;
+  --input: #E8E8E8;
+  --ring: #024ad8;
 
-  --radius: 1.25rem;
+  --radius: 0.5rem; /* 8px */
 
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #111827;
+  --sidebar-foreground: #1A1A1A;
+  --sidebar-primary: #024ad8;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F4F5F7;
-  --sidebar-accent-foreground: #111827;
-  --sidebar-border: #E5E7EB;
-  --sidebar-ring: var(--accent-apricot);
+  --sidebar-accent: #F7F7F7;
+  --sidebar-accent-foreground: #1A1A1A;
+  --sidebar-border: #E8E8E8;
+  --sidebar-ring: #024ad8;
 
-  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-  --shadow-card-hover: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  --shadow-card-hover: 0 2px 8px 0 rgba(26, 26, 26, 0.08);
 }
 
 
@@ -584,40 +584,32 @@
     color: var(--ink);
   }
 
-  /* Reference Image Style: Light Dreamy Diffused Gradient & Glassmorphism */
+  /* HP White Canvas & Cloud Gray Card Layering (8px lg Radius) */
   .crextio-canvas {
-    background-color: #FAF9FC;
-    background-image: 
-      radial-gradient(at 50% 15%, rgba(251, 113, 133, 0.24) 0px, transparent 45%),
-      radial-gradient(at 20% 45%, rgba(56, 189, 248, 0.26) 0px, transparent 50%),
-      radial-gradient(at 80% 65%, rgba(167, 139, 250, 0.22) 0px, transparent 55%),
-      radial-gradient(at 50% 85%, rgba(251, 191, 36, 0.2) 0px, transparent 50%),
-      linear-gradient(135deg, #FAF9FC 0%, #F3F4F8 100%);
-    background-attachment: fixed;
-    color: #111827;
+    background-color: #FFFFFF;
+    background-image: none;
+    color: #1A1A1A;
   }
 
   .crextio-card {
-    background-color: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    border-radius: 28px;
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 1), 0 12px 35px -4px rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    background-color: #F7F7F7;
+    border: 1px solid #E8E8E8;
+    border-radius: 8px; /* 8px (lg) radius */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    color: #111827;
+    color: #1A1A1A;
   }
   .crextio-card:hover {
-    background-color: rgba(255, 255, 255, 0.85);
-    border-color: rgba(255, 255, 255, 1);
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 1), 0 16px 42px -4px rgba(0, 0, 0, 0.06);
+    background-color: #FFFFFF;
+    border-color: #C2C2C2;
+    box-shadow: 0 2px 8px 0 rgba(26, 26, 26, 0.08);
   }
 
   .crextio-dark-card {
-    background-color: #111827;
+    background-color: #1A1A1A;
     color: #FFFFFF;
-    border-radius: 28px;
-    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.12);
     position: relative;
     overflow: hidden;
   }
@@ -845,6 +837,119 @@
 /* 数字表格化 */
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   HP Enterprise UI Button System (HP 规范按钮主体色)
+   ========================================================================== */
+
+/* 全局 HTML button 兜底默认规范 */
+button {
+  border-radius: 4px;
+}
+button:focus-visible {
+  outline: 2px solid #024AD8 !important;
+  outline-offset: 2px !important;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Primary Button */
+.btn-hp-primary {
+  background-color: #024AD8;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+.btn-hp-primary:hover:not(:disabled) {
+  background-color: #003198;
+}
+.btn-hp-primary:active:not(:disabled) {
+  background-color: #00226B;
+}
+.btn-hp-primary:disabled {
+  background-color: #E2E2E2 !important;
+  color: #9E9E9E !important;
+  cursor: not-allowed;
+  border: none !important;
+}
+
+/* Secondary Button */
+.btn-hp-secondary {
+  background-color: #FFFFFF;
+  color: #1C1C1C;
+  border: 1px solid #D1D1D1;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+.btn-hp-secondary:hover:not(:disabled) {
+  background-color: #F7F7F7;
+  border-color: #B0B0B0;
+}
+.btn-hp-secondary:disabled {
+  background-color: #E2E2E2 !important;
+  color: #9E9E9E !important;
+  border-color: #E2E2E2 !important;
+  cursor: not-allowed;
+}
+
+/* Ghost / Text Button */
+.btn-hp-ghost {
+  background-color: transparent;
+  color: #024AD8;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+.btn-hp-ghost:hover:not(:disabled) {
+  background-color: #EFF4FF;
+  color: #024AD8;
+}
+.btn-hp-ghost:disabled {
+  color: #9E9E9E !important;
+  cursor: not-allowed;
+  background-color: transparent !important;
+}
+
+/* Danger Button - Primary */
+.btn-hp-danger {
+  background-color: #D32F2F;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+.btn-hp-danger:hover:not(:disabled) {
+  background-color: #B71C1C;
+}
+
+/* Danger Button - Secondary */
+.btn-hp-danger-secondary {
+  background-color: transparent;
+  color: #D32F2F;
+  border: 1px solid #FFCDD2;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+.btn-hp-danger-secondary:hover:not(:disabled) {
+  background-color: #FFF2F2;
+}
+
+/* Focus state for Accessibility (A11y) */
+.btn-hp-primary:focus-visible,
+.btn-hp-secondary:focus-visible,
+.btn-hp-ghost:focus-visible,
+.btn-hp-danger:focus-visible,
+.btn-hp-danger-secondary:focus-visible {
+  outline: 2px solid #024AD8 !important;
+  outline-offset: 2px !important;
 }
 
 /* 极细滚动条（全局） */

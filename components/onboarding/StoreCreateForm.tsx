@@ -31,8 +31,24 @@ export function StoreCreateForm() {
     formData.set('currency', 'CNY')
 
     try {
-      await createStoreAction(formData)
-    } catch (err) {
+      const res = await createStoreAction(formData)
+      if (res?.success && res?.redirectUrl) {
+        window.location.href = res.redirectUrl
+        return
+      }
+      if (res?.error) {
+        setError(res.error)
+        setIsSubmitting(false)
+      }
+    } catch (err: any) {
+      if (
+        err?.message === 'NEXT_REDIRECT' ||
+        err?.message?.includes('NEXT_REDIRECT') ||
+        err?.digest?.startsWith('NEXT_REDIRECT')
+      ) {
+        window.location.href = '/dashboard'
+        return
+      }
       setError(err instanceof Error ? err.message : '创建店铺失败，请重试')
       setIsSubmitting(false)
     }
@@ -95,7 +111,7 @@ export function StoreCreateForm() {
             <button
               type="submit"
               disabled={isSubmitting || !storeName.trim()}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#E11D48] via-[#FB7185] to-[#E11D48] hover:from-[#BE123C] hover:to-[#E11D48] active:scale-[0.99] text-white text-sm font-bold shadow-[0_14px_30px_rgba(225,29,72,0.3)] hover:shadow-[0_18px_36px_rgba(225,29,72,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 px-6 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-sm font-medium transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
             >
               {isSubmitting ? (
                 <>

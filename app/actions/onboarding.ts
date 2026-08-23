@@ -13,7 +13,7 @@ export async function createStoreAction(formData: FormData) {
   const currency = (formData.get('currency') as string | null) || 'CNY'
 
   if (!store_name) {
-    throw new Error('店铺名称不能为空')
+    return { success: false, error: '店铺名称不能为空' }
   }
 
   // Get user from Supabase session
@@ -21,7 +21,7 @@ export async function createStoreAction(formData: FormData) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
   if (userError || !user) {
-    throw new Error('未检测到有效登录状态，请先登录')
+    return { success: false, error: '未检测到有效登录状态，请先登录' }
   }
 
   const owner_id = user.id
@@ -36,11 +36,11 @@ export async function createStoreAction(formData: FormData) {
       description: description || null,
       currency: currency || 'CNY',
     })
+    return { success: true, redirectUrl: '/dashboard' }
   } catch (error) {
-    throw new Error(`创建店铺失败: ${error instanceof Error ? error.message : error}`)
+    return {
+      success: false,
+      error: `创建店铺失败: ${error instanceof Error ? error.message : error}`,
+    }
   }
-  // redirect() throws NEXT_REDIRECT; it must NOT be caught by the business
-  // try/catch above. Keep it as the last statement at function scope so
-  // Next.js sees and translates it into a 303 navigation.
-  redirect('/dashboard')
 }

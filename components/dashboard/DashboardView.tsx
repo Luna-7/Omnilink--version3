@@ -547,19 +547,19 @@ export function DashboardView({
               {/* 头部 */}
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <h3 className="font-heading text-sm sm:text-base font-bold text-[#111827] flex items-center gap-1.5">
+                  <h3 className="font-heading text-sm sm:text-base font-bold text-[#1a1a1a] flex items-center gap-1.5">
                     {isZh ? '客户订单量趋势与数据图' : 'Customer Orders Trend Data Chart'}
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-rose-50 text-[#E11D48] font-bold border border-rose-200">
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-50 text-[#024ad8] font-bold border border-blue-200">
                       Live Wave
                     </span>
                   </h3>
-                  <span className="text-[10px] text-[#9CA3AF]">
+                  <span className="text-[10px] text-[#636363]">
                     {isZh ? '2026年1月1日 - 12月12日 全年订单曲线' : '1 Jan - 12 Dec 2026 Order Curve'}
                   </span>
                 </div>
                 <button
                   type="button"
-                  className="w-7 h-7 rounded-full hover:bg-[#F3F4F8] flex items-center justify-center text-[#9CA3AF] hover:text-[#111827] transition-colors"
+                  className="w-7 h-7 rounded-full hover:bg-[#f7f7f7] flex items-center justify-center text-[#636363] hover:text-[#1a1a1a] transition-colors"
                   aria-label="Options"
                 >
                   <MoreHorizontal size={15} />
@@ -568,62 +568,62 @@ export function DashboardView({
 
               {/* 大数字与标签 */}
               <div className="my-1.5">
-                <div className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827] tnum">
-                  45,637 <span className="text-xs font-normal text-[#6B7280]">{isZh ? '总订单' : 'total orders'}</span>
+                <div className="text-xl sm:text-2xl font-bold tracking-tight text-[#1a1a1a] tnum">
+                  45,637 <span className="text-xs font-normal text-[#636363]">{isZh ? '总订单' : 'total orders'}</span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="px-2 py-0.5 rounded-full bg-[#FB7185] text-white text-[10px] font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-[#10b981] text-white text-[10px] font-bold">
                     +9.4% ↗
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#F3F4F8] text-[#6B7280] text-[10px] font-medium">
+                  <span className="px-2 py-0.5 rounded-full bg-[#f7f7f7] text-[#636363] text-[10px] font-medium border border-[#e8e8e8]">
                     {isZh ? '今日新增 +245 单' : '+245 today'}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* 平滑粉色波浪图 */}
+            {/* HP 极简中性波浪趋势图 (Graphite #636363 & Steel #c2c2c2) */}
             <div className="relative pt-3 pb-1">
               <div className="relative w-full h-36">
                 {/* 峰值高亮 Tooltip */}
-                <div className="absolute left-[64%] -top-3.5 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-rose-200 shadow-sm rounded-md px-2 py-0.5 text-[9px] font-bold text-[#E11D48] z-10">
+                <div className="absolute left-[64%] -top-3.5 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-[#c2c2c2] shadow-xs rounded-md px-2 py-0.5 text-[9px] font-bold text-[#1a1a1a] z-10">
                   2,345 {isZh ? '单/日峰值' : 'peak'}
                 </div>
 
-                {/* 峰值浅粉色垂直投影柱 */}
-                <div className="absolute left-[64%] top-1 bottom-0 w-6 -translate-x-1/2 bg-[#FB7185]/15 rounded-t-lg pointer-events-none" />
+                {/* 峰值中性灰色垂直投影柱 */}
+                <div className="absolute left-[64%] top-1 bottom-0 w-6 -translate-x-1/2 bg-[#636363]/10 rounded-t-lg pointer-events-none" />
 
-                {/* SVG 柔和波浪曲线 */}
+                {/* SVG 极简中性波浪曲线 (HP Graphite & Steel) */}
                 <svg viewBox="0 0 300 120" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                   <defs>
-                    <linearGradient id="orderPinkGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FB7185" stopOpacity="0.35" />
-                      <stop offset="100%" stopColor="#FB7185" stopOpacity="0.0" />
+                    <linearGradient id="orderNeutralGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#636363" stopOpacity="0.22" />
+                      <stop offset="100%" stopColor="#c2c2c2" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
                   <path
                     d="M 0 95 C 40 90, 70 105, 110 85 C 150 65, 180 90, 210 30 C 240 70, 270 50, 300 75 L 300 120 L 0 120 Z"
-                    fill="url(#orderPinkGradient)"
+                    fill="url(#orderNeutralGradient)"
                   />
                   <path
                     d="M 0 95 C 40 90, 70 105, 110 85 C 150 65, 180 90, 210 30 C 240 70, 270 50, 300 75"
                     fill="none"
-                    stroke="#FB7185"
+                    stroke="#636363"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                   />
-                  <circle cx="210" cy="30" r="4.5" fill="#FFFFFF" stroke="#FB7185" strokeWidth="2.5" />
+                  <circle cx="210" cy="30" r="4.5" fill="#FFFFFF" stroke="#024ad8" strokeWidth="2.5" />
                 </svg>
               </div>
 
               {/* 月份轴 */}
-              <div className="flex justify-between text-[10px] text-[#9CA3AF] mt-2 px-1">
+              <div className="flex justify-between text-[10px] text-[#636363] mt-2 px-1">
                 <span>{isZh ? '5月' : 'May'}</span>
                 <span>{isZh ? '6月' : 'Jun'}</span>
                 <span>{isZh ? '7月' : 'Jul'}</span>
                 <span>{isZh ? '8月' : 'Aug'}</span>
                 <span>{isZh ? '9月' : 'Sep'}</span>
-                <span className="font-bold text-[#E11D48]">{isZh ? '10月' : 'Oct'}</span>
+                <span className="font-bold text-[#024ad8]">{isZh ? '10月' : 'Oct'}</span>
                 <span>{isZh ? '11月' : 'Nov'}</span>
                 <span>{isZh ? '12月' : 'Dec'}</span>
               </div>

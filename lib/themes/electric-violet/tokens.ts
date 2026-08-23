@@ -12,30 +12,30 @@ import type { ThemeTokens } from '../types'
 
 export const electricVioletTokens: ThemeTokens = {
   colors: {
-    // 品牌主色：Electric Violet。仅用于 CTA / active / accent，不大面积铺色。
-    primary: '#8B5CF6',
-    // White-first 背景。
+    // 品牌主色：HP Electric Blue (#024ad8)。仅用于 CTA / active / accent。
+    primary: '#024ad8',
+    // White-first 画布背景。
     background: '#FFFFFF',
-    // 极轻微冷白 surface（亚克力浮卡的底色）。
-    surface: '#FAFAFC',
-    text: '#111827',
-    muted: '#6B7280',
-    border: 'rgba(17,24,39,0.08)',
-    // 深一档紫，用于 hover / 强调态。
-    accent: '#7C3AED',
+    // 灰色卡片分层 (Cloud #f7f7f7)。
+    surface: '#F7F7F7',
+    text: '#1A1A1A',
+    muted: '#636363',
+    border: '#E8E8E8',
+    // 深蓝 Deep Navy (#0e3191)，用于 hover / 强调态。
+    accent: '#0e3191',
   },
   typography: {
     // 复用 app/layout.tsx 注入的 next/font 变量（Plus Jakarta Sans / Inter）。
     headingFont: 'var(--font-heading)',
     bodyFont: 'var(--font-sans)',
-    headingWeight: 600,
+    headingWeight: 500,
     bodyWeight: 400,
   },
   radius: {
-    // 全主题统一 8px。
-    card: '0.5rem',
-    button: '0.5rem',
-    input: '0.5rem',
+    // 卡片圆角微调收紧至 8px (0.5rem)。按钮 4px (0.25rem)。
+    card: '0.5rem',   // 8px
+    button: '0.25rem', // 4px
+    input: '0.25rem',  // 4px
   },
   spacing: {
     // premium SaaS 留白。
