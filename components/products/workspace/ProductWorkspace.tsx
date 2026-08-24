@@ -3,25 +3,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, CheckCircle2, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
+import { ArrowLeft, Save, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 
 import { ProductIdentitySection } from './ProductIdentitySection'
 import { ProductMediaSection } from './ProductMediaSection'
 import { ProductCommercialSection } from './ProductCommercialSection'
 import { ProductDescriptionSection } from './ProductDescriptionSection'
-import { ProductAttributesSection, ProductAttributeValue, CustomAttribute, AcceptedAttribute } from './ProductAttributesSection'
+import { ProductAttributesSection, ProductAttributeValue } from './ProductAttributesSection'
 import { ProductVariantsSection } from './ProductVariantsSection'
-import { ProductPackagingSection, PackagingState } from './ProductPackagingSection'
 import { ProductKnowledgeSection } from './ProductKnowledgeSection'
 import { ProductSeoSection } from './ProductSeoSection'
+import { ProductRelationsSection } from './ProductRelationsSection'
+import { FuturePreviewModal } from './FuturePreviewModal'
 
 import { ProductMediaUploaderRef, ExistingAsset } from '@/components/products/ProductMediaUploader'
 import type { ProductOption, ProductVariant } from '@/lib/products/variants/types'
+import type { ProductRelation } from '@/lib/products/product-relations'
 import { createProductSaveController, type ProductSaveSnapshot } from '@/lib/products/product-save-state'
-import { getProductSaveMessage, ProductSaveError } from '@/lib/products/product-save-errors'
+import { getProductSaveMessage } from '@/lib/products/product-save-errors'
 import { saveProductManagement } from '@/lib/products/product-management-save'
 import type { ProductManagementModel } from '@/lib/products/product-management-model'
+import { DEMO_PRODUCTS } from '@/lib/products/demo-data'
 
 interface ProductWorkspaceProps {
   productId?: string
@@ -62,17 +65,8 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const [options, setOptions] = useState<ProductOption[]>([])
   const [variants, setVariants] = useState<ProductVariant[]>([])
 
-  // Packaging State
-  const [packaging, setPackaging] = useState<PackagingState>({
-    pkgType: 'carton',
-    unitsPerPkg: 1,
-    lengthCm: 25,
-    widthCm: 20,
-    heightCm: 12,
-    weightKg: 0.8,
-    stackable: true,
-    fragile: false,
-  })
+  // Product Relations
+  const [relations, setRelations] = useState<ProductRelation[]>([])
 
   // SEO State
   const [seoTitle, setSeoTitle] = useState('')
@@ -81,6 +75,15 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   // Media state & Ref
   const mediaUploaderRef = useRef<ProductMediaUploaderRef>(null)
   const [existingAssets, setExistingAssets] = useState<ExistingAsset[]>([])
+
+  // Future Preview Modal State
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [previewModalTitle, setPreviewModalTitle] = useState('')
+
+  const handleOpenPreview = (title: string) => {
+    setPreviewModalTitle(title)
+    setPreviewModalOpen(true)
+  }
 
   // Save State Controller
   const saveControllerRef = useRef(createProductSaveController(productId ? 'ready' : 'dirty'))
@@ -98,6 +101,74 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     setIsLoading(true)
     setAttributesLoading(true)
     setAttributesError(null)
+
+    // Check if it matches a predefined demo product to avoid slow/failing API calls
+    const demoProduct = DEMO_PRODUCTS.find(
+      (p) => p.id === productId || p.sku.toLowerCase() === productId.toLowerCase()
+    )
+    if (demoProduct) {
+      setName(demoProduct.name)
+      setSku(demoProduct.sku || '')
+      setDescription(demoProduct.description || '')
+      setPrice(demoProduct.price)
+      setCurrency(demoProduct.currency)
+      setInventory(demoProduct.inventory)
+      setStatus(demoProduct.status)
+      setCategory(demoProduct.category || '')
+      
+      const attributes = Object.entries(demoProduct.semantic_data?.attributes || {}).map(([key, val]) => ({
+        fieldKey: key,
+        label: key,
+        value: String(val),
+        type: 'text' as const,
+        isStandard: true,
+      }))
+      setAttributeValues(attributes)
+      initialAttributeKeysRef.current = new Set(attributes.map((a) => a.fieldKey.toLowerCase()))
+      
+      setSeoTitle(demoProduct.name)
+      setSeoDescription(demoProduct.description || '')
+      
+      const assets = demoProduct.image_url ? [{
+        id: 'media-main',
+        url: demoProduct.image_url,
+        asset_type: 'image',
+      }] : []
+      setExistingAssets(assets)
+      
+      const mappedOptions = (demoProduct.options || []).map((opt, idx) => ({
+        id: opt.id,
+        product_id: productId,
+        name: opt.name,
+        code: opt.code,
+        position: idx,
+        values: opt.values,
+        created_at: new Date().toISOString(),
+      }))
+      setOptions(mappedOptions)
+
+      const mappedVariants = (demoProduct.variants || []).map((v) => ({
+        id: v.id,
+        product_id: productId,
+        sku: v.sku,
+        price: v.price,
+        currency: demoProduct.currency || 'CNY',
+        inventory: v.inventory,
+        status: v.status as 'draft' | 'active' | 'archived',
+        option_values: v.option_values,
+        raw_data: null,
+        semantic_data: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }))
+      setVariants(mappedVariants)
+      setRelations([])
+      
+      setIsLoading(false)
+      setAttributesLoading(false)
+      return
+    }
+
     try {
       const [mgmtRes, assetsRes, optionsRes, variantsRes] = await Promise.all([
         fetch(`/api/merchant/products/${productId}/management`),
@@ -122,9 +193,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
             (model.attributes || []).map((a) => a.fieldKey.toLowerCase())
           )
           setIsUsingLegacyFallback(Boolean(model.metadata?.isLegacy))
-          if (model.packaging) {
-            setPackaging((prev) => ({ ...prev, ...(model.packaging as any) }))
-          }
           if (model.seo) {
             setSeoTitle(model.seo.title || '')
             setSeoDescription(model.seo.description || '')
@@ -156,6 +224,16 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
       if (variantsRes.ok) {
         const variantsData = await variantsRes.json()
         setVariants(variantsData.variants || [])
+      }
+
+      try {
+        const relationsRes = await fetch(`/api/merchant/products/${productId}/relations`)
+        if (relationsRes.ok) {
+          const relData = await relationsRes.json()
+          setRelations(relData.relations || [])
+        }
+      } catch (relErr) {
+        console.error('Failed to load relations:', relErr)
       }
     } catch (err) {
       console.error('Failed to load existing product details:', err)
@@ -217,7 +295,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
             status,
             raw_data: {
               category,
-              packaging,
               seo: { title: seoTitle, description: seoDescription },
             },
           }),
@@ -263,7 +340,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         category: category || null,
         attributes: validAttributes,
         deletions: allDeletions.length > 0 ? allDeletions : undefined,
-        packaging: packaging as unknown as Record<string, unknown>,
         seo: { title: seoTitle, description: seoDescription },
       })
 
@@ -325,6 +401,19 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         }
       }
 
+      // Handle Relations persistence
+      if (targetProductId) {
+        try {
+          await fetch(`/api/merchant/products/${targetProductId}/relations`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ relations }),
+          })
+        } catch (rErr) {
+          console.error('Error saving product relations:', rErr)
+        }
+      }
+
       setSaveSnapshot(saveControllerRef.current.markSaved())
       setSuccess(
         (productId
@@ -353,7 +442,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   return (
     <form onSubmit={handleSave} className="max-w-7xl mx-auto space-y-6 pb-24">
       {/* Top Fixed Header Bar */}
-      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/90 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3.5 mb-6 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/90 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3.5 mb-6 flex items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/products"
@@ -361,41 +450,34 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           >
             <ArrowLeft size={16} />
           </Link>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-bold text-slate-900 leading-none">
-                {productId
-                  ? name || (isZh ? '未命名商品' : 'Untitled Product')
-                  : isZh
-                  ? '新建商品 (New Product)'
-                  : 'New Product'}
-              </h1>
-              {/* SKU Badge */}
-              <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-mono">
-                SKU: {sku || '—'}
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-base font-bold text-slate-900 leading-none">
+              {productId
+                ? name || (isZh ? '未命名商品' : 'Untitled Product')
+                : isZh
+                ? '新建商品 (New Product)'
+                : 'New Product'}
+            </h1>
+            {/* SKU Badge */}
+            <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-mono">
+              SKU: {sku || '—'}
+            </span>
+            {/* Product Status Badge */}
+            {status === 'active' && (
+              <span className="px-2 py-0.5 rounded-[4px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                {isZh ? '已上架 (Active)' : 'Active'}
               </span>
-              {/* Product Status Badge */}
-              {status === 'active' && (
-                <span className="px-2 py-0.5 rounded-[4px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                  {isZh ? '已上架 (Active)' : 'Active'}
-                </span>
-              )}
-              {status === 'draft' && (
-                <span className="px-2 py-0.5 rounded-[4px] bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">
-                  {isZh ? '草稿箱 (Draft)' : 'Draft'}
-                </span>
-              )}
-              {status === 'archived' && (
-                <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-bold">
-                  {isZh ? '已归档 (Archived)' : 'Archived'}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-500">
-              {isZh
-                ? '全域商品主档、规格语义层与多维度变体控制中心'
-                : 'Master product record, specification semantics, and variant matrix control center'}
-            </p>
+            )}
+            {status === 'draft' && (
+              <span className="px-2 py-0.5 rounded-[4px] bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">
+                {isZh ? '草稿箱 (Draft)' : 'Draft'}
+              </span>
+            )}
+            {status === 'archived' && (
+              <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-bold">
+                {isZh ? '已归档 (Archived)' : 'Archived'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -495,58 +577,61 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         </div>
       )}
 
-      {/* Unified 9-Section Surface Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 01 Product Identity */}
-        <div className="lg:col-span-2">
-          <ProductIdentitySection
-            name={name}
-            setName={setName}
-            sku={sku}
-            setSku={setSku}
-            category={category}
-            setCategory={setCategory}
-            disabled={isSaving}
-          />
+      {/* Structured Section Grid with Defined Hierarchy */}
+      <div className="space-y-6">
+        {/* ZONE 1: PRODUCT CORE ZONE */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 01 Product Identity [PRIMARY] */}
+          <div className="lg:col-span-2">
+            <ProductIdentitySection
+              name={name}
+              setName={setName}
+              sku={sku}
+              setSku={setSku}
+              category={category}
+              setCategory={setCategory}
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* 02 Product Media [SECONDARY] */}
+          <div className="lg:col-span-1">
+            <ProductMediaSection
+              productId={productId}
+              existingAssets={existingAssets}
+              mediaUploaderRef={mediaUploaderRef}
+            />
+          </div>
+
+          {/* 03 Commercial [PRIMARY] */}
+          <div className="lg:col-span-1">
+            <ProductCommercialSection
+              price={price}
+              setPrice={setPrice}
+              currency={currency}
+              setCurrency={setCurrency}
+              inventory={inventory}
+              setInventory={setInventory}
+              status={status}
+              setStatus={setStatus}
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* 04 Description [SECONDARY] */}
+          <div className="lg:col-span-2">
+            <ProductDescriptionSection
+              description={description}
+              setDescription={setDescription}
+              productName={name}
+              category={category}
+              disabled={isSaving}
+            />
+          </div>
         </div>
 
-        {/* 02 Product Media */}
-        <div className="lg:col-span-1">
-          <ProductMediaSection
-            productId={productId}
-            existingAssets={existingAssets}
-            mediaUploaderRef={mediaUploaderRef}
-          />
-        </div>
-
-        {/* 03 Commercial */}
-        <div className="lg:col-span-1">
-          <ProductCommercialSection
-            price={price}
-            setPrice={setPrice}
-            currency={currency}
-            setCurrency={setCurrency}
-            inventory={inventory}
-            setInventory={setInventory}
-            status={status}
-            setStatus={setStatus}
-            disabled={isSaving}
-          />
-        </div>
-
-        {/* 04 Description */}
-        <div className="lg:col-span-2">
-          <ProductDescriptionSection
-            description={description}
-            setDescription={setDescription}
-            productName={name}
-            category={category}
-            disabled={isSaving}
-          />
-        </div>
-
-        {/* 05 Product Specifications (Canonical Attributes ViewModel & Rule Engine) */}
-        <div className="lg:col-span-2">
+        {/* ZONE 2: PRODUCT SPECIFICATIONS (⭐ CORE WORKSPACE FOCUS) */}
+        <div>
           <ProductAttributesSection
             productId={productId}
             category={category}
@@ -557,11 +642,12 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
             error={attributesError}
             onRetry={loadProductDetails}
             disabled={isSaving}
+            onOpenPreview={handleOpenPreview}
           />
         </div>
 
-        {/* 06 Variants */}
-        <div className="lg:col-span-2">
+        {/* ZONE 3: SPECIFICATIONS AND VARIANTS MATRIX */}
+        <div>
           <ProductVariantsSection
             productId={productId}
             options={options}
@@ -572,22 +658,25 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           />
         </div>
 
-        {/* 07 Packaging */}
-        <div className="lg:col-span-1">
-          <ProductPackagingSection
-            packaging={packaging}
-            setPackaging={setPackaging}
+        {/* ZONE 3.5: PRODUCT RELATIONSHIPS */}
+        <div>
+          <ProductRelationsSection
+            relations={relations}
+            onChange={setRelations}
             disabled={isSaving}
           />
         </div>
 
-        {/* 08 Product Knowledge */}
-        <div className="lg:col-span-1">
-          <ProductKnowledgeSection productId={productId} />
+        {/* ZONE 4: PRODUCT DOCUMENTS & KNOWLEDGE */}
+        <div>
+          <ProductKnowledgeSection
+            productId={productId}
+            onOpenPreview={handleOpenPreview}
+          />
         </div>
 
-        {/* 09 SEO & Meta */}
-        <div className="lg:col-span-2">
+        {/* ZONE 6: SEO & META */}
+        <div>
           <ProductSeoSection
             seoTitle={seoTitle}
             setSeoTitle={setSeoTitle}
@@ -642,6 +731,13 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           </button>
         </div>
       </div>
+
+      {/* Future Capability Preview Modal */}
+      <FuturePreviewModal
+        isOpen={previewModalOpen}
+        title={previewModalTitle}
+        onClose={() => setPreviewModalOpen(false)}
+      />
     </form>
   )
 }

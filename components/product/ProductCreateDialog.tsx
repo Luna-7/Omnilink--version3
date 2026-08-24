@@ -847,7 +847,7 @@ export function ProductCreateDialog() {
               </div>
 
               {/* 3. 价格 / 币种 / 库存 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-900 mb-1">
                     {isZh ? '基础售价 *' : 'Price *'}
@@ -873,23 +873,7 @@ export function ProductCreateDialog() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-900 mb-1">
-                    {isZh ? '店铺基础币种' : 'Store Currency'}
-                  </label>
-                  <div
-                    id="create-product-currency-display"
-                    className="w-full h-9 px-3 rounded-xl bg-slate-100/90 border border-slate-200 text-xs font-semibold text-slate-800 flex items-center justify-between select-none"
-                    title={isZh ? '继承自店铺基础货币，无法在此单独修改' : 'Inherited from Store Base Currency'}
-                  >
-                    <span>{currency === 'USD' ? 'USD (美元 $)' : 'CNY (人民币 ¥)'}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 font-medium">
-                      {isZh ? '店铺统一' : 'Store Base'}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-900 mb-1">
-                    {isZh ? '初始库存' : 'Inventory'}
+                    {isZh ? '库存' : 'Inventory'}
                   </label>
                   <input
                     type="number"

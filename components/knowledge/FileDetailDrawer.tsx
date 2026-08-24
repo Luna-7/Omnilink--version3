@@ -377,7 +377,7 @@ export function FileDetailDrawer({
                           onDeleteFile(source.id)
                           onClose()
                         }}
-                        className="px-3.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                        className="px-3.5 py-1 rounded-lg bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-semibold transition-colors cursor-pointer"
                       >
                         {isZh ? '删除' : 'Delete'}
                       </button>
@@ -387,7 +387,7 @@ export function FileDetailDrawer({
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(true)}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200/60 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-[#D32F2F] hover:bg-[#FFF2F2] border border-[#FFCDD2] transition-colors cursor-pointer"
                   >
                     <Trash2 size={13} />
                     <span>{isZh ? '删除文件' : 'Delete File'}</span>

@@ -241,7 +241,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label htmlFor="price" className="block text-xs font-semibold text-[#111827] mb-1.5">
             {isZh ? '基础售价 *' : 'Price *'}
@@ -259,31 +259,14 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
               step="0.01"
               placeholder="0.00"
               disabled={busy}
-              className="w-full h-10 pl-8 pr-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs font-bold text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
+              className="w-full h-10 pl-8 pr-3.5 rounded-xl bg-[#F4F5F7] border border-slate-200 text-xs font-bold text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="currency" className="block text-xs font-semibold text-[#111827] mb-1.5">
-            {isZh ? '结算币种' : 'Currency'}
-          </label>
-          <select
-            id="currency"
-            name="currency"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            disabled={busy}
-            className="w-full h-10 px-3.5 rounded-xl bg-[#F4F5F7] border border-[#E5E7EB] text-xs font-medium text-[#111827] focus:outline-none focus:ring-1 focus:ring-[#111827] disabled:opacity-50"
-          >
-            <option value="CNY">CNY (人民币 ¥)</option>
-            <option value="USD">USD (美元 $)</option>
-          </select>
-        </div>
-
-        <div>
           <label htmlFor="inventory" className="block text-xs font-semibold text-[#111827] mb-1.5">
-            {isZh ? '库存数量' : 'Inventory'}
+            {isZh ? '库存' : 'Inventory'}
           </label>
           <input
             type="number"

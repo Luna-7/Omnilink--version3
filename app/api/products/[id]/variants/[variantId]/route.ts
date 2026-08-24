@@ -15,10 +15,13 @@ export async function GET(
     const variant = await getProductVariant(id, variantId)
     return NextResponse.json({ variant })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error fetching product variant:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch variant' },
-      { status: error instanceof Error && error.message === 'Unauthorized' ? 401 : 404 }
+      { status: 404 }
     )
   }
 }
@@ -34,10 +37,13 @@ export async function PATCH(
     const variant = await updateProductVariant(id, variantId, body)
     return NextResponse.json({ variant })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error updating product variant:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update variant' },
-      { status: error instanceof Error && error.message === 'Unauthorized' ? 401 : 400 }
+      { status: 400 }
     )
   }
 }
@@ -51,10 +57,13 @@ export async function DELETE(
     await deleteProductVariant(id, variantId)
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error deleting product variant:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete variant' },
-      { status: error instanceof Error && error.message === 'Unauthorized' ? 401 : 404 }
+      { status: 404 }
     )
   }
 }

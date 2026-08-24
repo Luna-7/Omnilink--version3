@@ -148,3 +148,42 @@ export async function loadProductManagementModel(
       data.updated_at ?? null,
   }
 }
+
+export async function loadProductDetailModel(
+  productId: string,
+): Promise<import('./product-detail-model').ProductDetailModel> {
+  const { buildProductDetailModel } = await import('./product-detail-model')
+  const product = await loadProductManagementModel(productId)
+
+  let media: import('./product-media').ProductMediaAsset[] = []
+  try {
+    const supabase = await createClientServer()
+    const { data: mediaData } = await supabase
+      .from('product_assets')
+      .select('id, url, asset_type, position, metadata')
+      .eq('product_id', productId)
+      .order('position', { ascending: true })
+
+    if (Array.isArray(mediaData)) {
+      media = mediaData.map((item: any, index: number) => ({
+        id: item.id,
+        url: item.url,
+        mediaType: item.asset_type === 'video' ? 'video' : 'image',
+        position: item.position ?? index,
+        alt: item.metadata?.alt ?? null,
+        mimeType: item.metadata?.mimeType ?? null,
+        width: item.metadata?.width ?? null,
+        height: item.metadata?.height ?? null,
+        duration: item.metadata?.duration ?? null,
+        metadata: item.metadata ?? {},
+      }))
+    }
+  } catch (_e) {
+    media = []
+  }
+
+  const relations: import('./product-relations').ProductRelation[] = []
+
+  return buildProductDetailModel(product, media, relations)
+}
+

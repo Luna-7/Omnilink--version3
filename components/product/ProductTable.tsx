@@ -101,12 +101,6 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
             count={products.filter((p) => (p.status || 'active') === 'active').length}
           />
           <FilterPill
-            active={filterStatus === 'ai_ready'}
-            onClick={() => setFilterStatus('ai_ready')}
-            label={isZh ? 'AI 语义就绪' : 'AI Ready'}
-            count={products.filter((p) => Boolean(p.semantic_data)).length}
-          />
-          <FilterPill
             active={filterStatus === 'low_stock'}
             onClick={() => setFilterStatus('low_stock')}
             label={isZh ? '库存预警' : 'Low Stock'}
@@ -287,7 +281,7 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
                         </div>
                         <div className="min-w-0 max-w-xs">
                           <Link
-                            href={`/dashboard/products/${p.id}`}
+                            href={`/dashboard/products/${p.id}/edit`}
                             className="font-bold text-[#111827] hover:underline truncate block"
                           >
                             {p.name}
@@ -322,7 +316,7 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Link
-                          href={`/dashboard/products/${p.id}`}
+                          href={`/dashboard/products/${p.id}/edit`}
                           className="px-2.5 py-1 rounded-lg bg-[#F4F5F7] hover:bg-[#E5E7EB] text-[11px] font-semibold text-[#111827] transition-colors"
                         >
                           {isZh ? '编辑' : 'Edit'}
@@ -412,7 +406,7 @@ function ProductCard({
 
       <div>
         {/* 商品图：方形圆角 */}
-        <Link href={`/dashboard/products/${p.id}`} className="block relative">
+        <Link href={`/dashboard/products/${p.id}/edit`} className="block relative">
           <div className="w-full aspect-square rounded-xl overflow-hidden bg-white border border-[#E5E7EB] flex items-center justify-center">
             {p.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -433,7 +427,7 @@ function ProductCard({
             <span className="text-[10px] font-semibold text-[#6B7280]">{p.category || (isZh ? '通用' : 'General')}</span>
           </div>
 
-          <Link href={`/dashboard/products/${p.id}`} className="block">
+          <Link href={`/dashboard/products/${p.id}/edit`} className="block">
             <h4 className="text-xs font-bold text-[#111827] truncate group-hover:text-[#111827] transition-colors mt-0.5" title={p.name}>
               {p.name}
             </h4>
@@ -463,10 +457,10 @@ function ProductCard({
             <Cpu size={13} />
           </Link>
           <Link
-            href={`/dashboard/products/${p.id}`}
+            href={`/dashboard/products/${p.id}/edit`}
             className="text-[11px] font-semibold text-[#6B7280] group-hover:text-[#111827] transition-all inline-flex items-center gap-0.5"
           >
-            <span>{isZh ? '详情' : 'Edit'}</span>
+            <span>{isZh ? '编辑' : 'Edit'}</span>
             <ChevronRight size={12} />
           </Link>
         </div>

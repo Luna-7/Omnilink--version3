@@ -402,7 +402,7 @@ export function KnowledgeSourcesSection({
                   onDeleteFile(fileToDelete.id)
                   setFileToDelete(null)
                 }}
-                className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-colors cursor-pointer"
+                className="px-4 py-1.5 rounded-lg bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs font-semibold transition-colors cursor-pointer"
               >
                 {isZh ? '删除' : 'Delete'}
               </button>

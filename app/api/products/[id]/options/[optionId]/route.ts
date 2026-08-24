@@ -16,10 +16,13 @@ export async function PATCH(
     const option = await updateProductOption(id, optionId, body)
     return NextResponse.json({ option })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error updating product option:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update option' },
-      { status: error instanceof Error && error.message === 'Unauthorized' ? 401 : 400 }
+      { status: 400 }
     )
   }
 }
@@ -33,10 +36,13 @@ export async function DELETE(
     await deleteProductOption(id, optionId)
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error deleting product option:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete option' },
-      { status: error instanceof Error && error.message === 'Unauthorized' ? 401 : 404 }
+      { status: 404 }
     )
   }
 }

@@ -15,7 +15,7 @@ export function ProductsView({ products }: { products: ProductRow[] }) {
   return (
     <div className="space-y-5">
       {/* 顶部指标卡行（精简去重，节省空间） */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="crextio-card p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#F4F5F7] border border-[#E5E7EB] text-[#111827] flex items-center justify-center shrink-0">
@@ -28,23 +28,6 @@ export function ProductsView({ products }: { products: ProductRow[] }) {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="crextio-card p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#F4F5F7] border border-[#E5E7EB] text-[#111827] flex items-center justify-center shrink-0">
-              <Sparkles size={18} />
-            </div>
-            <div>
-              <span className="text-xs text-[#6B7280] block font-medium">{t.products.aiReady}</span>
-              <div className="text-xl font-bold text-[#111827] mt-0.5 tnum">
-                {aiReadyCount} / {products.length || 0}
-              </div>
-            </div>
-          </div>
-          <span className="px-2.5 py-0.5 rounded-full bg-[#edbc40] text-[#111827] text-xs font-bold shadow-sm">
-            AI Active
-          </span>
         </div>
 
         <div className="crextio-card p-5 flex items-center justify-between">

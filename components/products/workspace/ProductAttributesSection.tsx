@@ -6,16 +6,16 @@ import {
   Plus,
   Trash2,
   Sparkles,
-  Send,
   AlertCircle,
   CheckCircle2,
   Info,
   Loader2,
   RefreshCw,
   AlertTriangle,
+  ShieldCheck,
+  Check,
 } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
-import { fetchWithRetry } from '@/lib/network/retry-client'
 import {
   getCategoryTemplate,
   AttributeTemplateField,
@@ -24,19 +24,17 @@ import {
   buildAttributeSchemaState,
   AttributeSchemaState,
 } from '@/lib/product/attribute-schema-state'
-import {
-  resolveCategoryAttributeRules,
-  AttributeRuleDefinition,
-} from '@/lib/product/attribute-rules'
-import { resolveCategorySemanticMappings } from '@/lib/product/category-semantic-mapping'
+import type { AttributeRuleDefinition } from '@/lib/product/attribute-rules'
 import { getCategoryConditionalRules } from '@/lib/product/category-conditional-rules'
 import { resolveEffectiveAttributeRules } from '@/lib/product/effective-attribute-rules'
 import type { CanonicalProductAttribute } from '@/lib/products/canonical-attributes'
 import type { AttributeCompletenessItem } from '@/lib/product/attribute-completeness'
+import type { ProductAiReport, ProductAiChange } from '@/lib/product/ai-intelligence'
+import { analyzeProductWithAi } from '@/lib/product/product-ai-intelligence'
+import { ProductAiIntelligenceDrawer } from './ProductAiIntelligenceDrawer'
 
 /**
  * Canonical Product Attribute View Model (Frontend UI Contract)
- * Directly consumes unified attribute rule definitions.
  */
 export interface ProductAttributeValue {
   fieldKey: string
@@ -53,26 +51,6 @@ export interface ProductAttributeValue {
   isStandard?: boolean
 }
 
-// Backward-compatible type aliases for existing references
-export interface CustomAttribute {
-  id: string
-  name: string
-  value: string
-  type: 'text' | 'number' | 'boolean' | 'select'
-  options?: string[]
-}
-
-export interface AcceptedAttribute {
-  id: string
-  key: string
-  label: string
-  value: string
-  type: 'text' | 'number' | 'boolean' | 'select'
-  unit?: string | null
-  confidence: number
-  source: 'ai' | 'manual' | 'system'
-}
-
 export interface ProductAttributesSectionProps {
   productId?: string
   category?: string
@@ -83,18 +61,7 @@ export interface ProductAttributesSectionProps {
   error?: string | null
   onRetry?: () => void
   disabled?: boolean
-  // Optional legacy props maintained for signature backward compatibility
-  coreMaterial?: string
-  setCoreMaterial?: (val: string) => void
-  coreDimensions?: string
-  setCoreDimensions?: (val: string) => void
-  coreWeight?: string
-  setCoreWeight?: (val: string) => void
-  coreOrigin?: string
-  setCoreOrigin?: (val: string) => void
-  customAttributes?: CustomAttribute[]
-  setCustomAttributes?: React.Dispatch<React.SetStateAction<CustomAttribute[]>>
-  initialAiAttributes?: AcceptedAttribute[]
+  onOpenPreview?: (title: string) => void
 }
 
 export function ProductAttributesSection({
@@ -107,6 +74,7 @@ export function ProductAttributesSection({
   error = null,
   onRetry,
   disabled = false,
+  onOpenPreview,
 }: ProductAttributesSectionProps) {
   const { isZh } = useLanguage()
 
@@ -115,44 +83,34 @@ export function ProductAttributesSection({
   const prevCategoryRef = useRef(category)
   const [categoryChangeNotice, setCategoryChangeNotice] = useState<string | null>(null)
 
-  // 2. Dirty State Tracking (Unsaved modifications in UI session)
-  const [isDirty, setIsDirty] = useState(false)
-
-  // 3. Validation Errors State (per-field and section-level)
+  // 2. Validation Errors State (per-field)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [globalValidationError, setGlobalValidationError] = useState<string | null>(null)
-  const [ruleConflictNotice, setRuleConflictNotice] = useState<string | null>(null)
 
-  // 4. Resolve Category Attribute Rules Map
+  // 3. AI 商品智能 UI State
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [aiReport, setAiReport] = useState<ProductAiReport | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isApplying, setIsApplying] = useState(false)
+  const [applyNotice, setApplyNotice] = useState<string | null>(null)
+
+  // 4. Category Attribute Rules Map (Derived directly from category template)
   const rules = useMemo(() => {
-    if (!template || !template.fields || template.fields.length === 0) {
-      return new Map<string, AttributeRuleDefinition>()
+    const map = new Map<string, AttributeRuleDefinition>()
+    if (!template || !template.fields) return map
+
+    for (const f of template.fields) {
+      map.set(f.key, {
+        fieldKey: f.key,
+        type: f.type,
+        unit: f.unit || null,
+        required: Boolean((f as any).required),
+        allowedValues: f.options,
+        placeholderZh: f.placeholderZh,
+        placeholderEn: f.placeholderEn,
+      })
     }
-
-    const semanticFields = template.fields.map((f, idx) => ({
-      id: `sf-${category}-${idx}`,
-      field_name: f.key,
-      field_type: f.type,
-      display_name: isZh ? f.nameZh : f.nameEn,
-      required: false,
-      allowed_values: f.options,
-      validation_rules: f.options ? { enum: f.options } : {},
-    }))
-
-    const { mappings } = resolveCategorySemanticMappings(
-      category,
-      template.fields,
-      semanticFields,
-    )
-
-    const { rules: resolvedRules } = resolveCategoryAttributeRules(
-      template.fields,
-      semanticFields,
-      mappings,
-    )
-
-    return resolvedRules
-  }, [category, template, isZh])
+    return map
+  }, [template])
 
   // 5. Resolve Conditional Rules & Effective Attribute Rules
   const conditionalRules = useMemo(() => {
@@ -187,7 +145,7 @@ export function ProductAttributesSection({
     }
   }, [attributeValues, rules, conditionalRules])
 
-  // 6. Consume AttributeSchemaState
+  // 6. Consume AttributeSchemaState directly from Canonical Product Attributes
   const schemaState: AttributeSchemaState = useMemo(() => {
     const canonicalAttrs: CanonicalProductAttribute[] = attributeValues.map((attr) => ({
       fieldKey: attr.fieldKey,
@@ -232,7 +190,7 @@ export function ProductAttributesSection({
     return map
   }, [template])
 
-  // Handle Category Changes without silently deleting data
+  // Handle Category Changes
   useEffect(() => {
     if (prevCategoryRef.current !== category && prevCategoryRef.current !== '') {
       const prevTemplate = getCategoryTemplate(prevCategoryRef.current)
@@ -241,8 +199,8 @@ export function ProductAttributesSection({
       if (prevTemplate?.id !== currentTemplate?.id) {
         setCategoryChangeNotice(
           isZh
-            ? `分类已更新为「${category || '通用'}」，属性规范模板已实时切换。原有属性数据已完整保留。`
-            : `Category updated to "${category || 'General'}". Template refreshed and previous attribute data safely retained.`
+            ? `分类已更新为「${category || '通用'}」，Canonical 规格模版已实时联动更新。`
+            : `Category updated to "${category || 'General'}". Template refreshed.`
         )
       }
     }
@@ -255,29 +213,136 @@ export function ProductAttributesSection({
   const [newType, setNewType] = useState<'text' | 'number' | 'boolean' | 'select'>('text')
   const [customError, setCustomError] = useState('')
 
-  // Apply API status state
-  const [isApplying, setIsApplying] = useState(false)
-  const deletedKeysRef = useRef<Set<string>>(new Set())
-  const [applyResult, setApplyResult] = useState<{
-    success: boolean
-    message: string
-    acceptedCount?: number
-    unknownCount?: number
-    rejectedCount?: number
-  } | null>(null)
+  // AI 整理 Trigger
+  const handleAiOrganize = async () => {
+    setIsAnalyzing(true)
+    setApplyNotice(null)
+    try {
+      if (productId) {
+        const res = await fetch(`/api/merchant/products/${productId}/ai-intelligence`, {
+          method: 'POST',
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.report) {
+            setAiReport(data.report)
+            setIsAnalyzing(false)
+            return
+          }
+        }
+      }
 
-  // Helper to scroll and focus the first invalid field
-  const focusFirstInvalidField = (fieldKey: string) => {
-    setTimeout(() => {
-      const fieldContainer = document.getElementById(`attr-field-${fieldKey}`)
-      const inputElement = document.getElementById(`attr-input-${fieldKey}`)
-      if (fieldContainer) {
-        fieldContainer.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Client fallback analysis if new product shell or endpoint fallback
+      const report = await analyzeProductWithAi({
+        productId: productId || 'temp',
+        name: '商品主档',
+        category,
+        attributes: attributeValues.map((a) => ({
+          fieldKey: a.fieldKey,
+          label: a.label,
+          value: a.value,
+          type: a.type,
+          unit: a.unit,
+        })),
+      })
+      setAiReport(report)
+    } catch (err) {
+      console.error('AI Organize error:', err)
+      setApplyNotice(isZh ? 'AI 商品整理失败，请重试' : 'AI Analysis failed, please retry')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  // AI Apply Handler
+  const handleApplyAiChanges = async (changesToApply: ProductAiChange[]) => {
+    setIsApplying(true)
+    try {
+      if (productId) {
+        const res = await fetch(`/api/merchant/products/${productId}/ai-intelligence/apply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ changes: changesToApply }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.canonical?.attributes) {
+            onChangeAttributeValues(data.canonical.attributes)
+          }
+          const count = data.applied ?? changesToApply.filter((c) => c.status === 'accepted').length
+          setApplyNotice(isZh ? `已应用 ${count} 项修改` : `Applied ${count} changes`)
+          setIsDrawerOpen(false)
+          setAiReport(null)
+          setIsApplying(false)
+          return
+        }
       }
-      if (inputElement) {
-        inputElement.focus()
+
+      // Client-side local application fallback
+      let updatedAttrs = [...attributeValues]
+      let appliedCount = 0
+
+      for (const change of changesToApply) {
+        const key = change.fieldKey
+        if (change.status !== 'accepted' || !key) continue
+
+        if (change.type === 'remove') {
+          updatedAttrs = updatedAttrs.filter((a) => a.fieldKey.toLowerCase() !== key.toLowerCase())
+          appliedCount++
+        } else if (change.nextValue) {
+          const idx = updatedAttrs.findIndex((a) => a.fieldKey.toLowerCase() === key.toLowerCase())
+          if (idx >= 0) {
+            updatedAttrs[idx] = {
+              ...updatedAttrs[idx],
+              value: change.nextValue,
+              source: 'ai',
+              confidence: change.confidence || 0.95,
+            }
+          } else {
+            updatedAttrs.push({
+              fieldKey: key,
+              label: change.label || key,
+              value: change.nextValue,
+              type: 'text',
+              source: 'ai',
+              confidence: change.confidence || 0.95,
+              isStandard: true,
+            })
+          }
+          appliedCount++
+        }
       }
-    }, 100)
+
+      onChangeAttributeValues(updatedAttrs)
+      setApplyNotice(isZh ? `已应用 ${appliedCount} 项修改` : `Applied ${appliedCount} changes`)
+      setIsDrawerOpen(false)
+      setAiReport(null)
+    } catch (err) {
+      console.error('Apply AI changes error:', err)
+      setApplyNotice(isZh ? '部分修改未应用，请检查后再试' : 'Failed to apply some changes')
+    } finally {
+      setIsApplying(false)
+    }
+  }
+
+  // One click fix handler
+  const handleOneClickFix = async () => {
+    if (!aiReport?.changes) return
+    const allAccepted = aiReport.changes.map((c) => ({ ...c, status: 'accepted' as const }))
+    await handleApplyAiChanges(allAccepted)
+  }
+
+  // Scroll to field helper
+  const scrollToField = (fieldKey: string) => {
+    const el = document.getElementById(`attr-field-${fieldKey}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const inputEl = document.getElementById(`attr-input-${fieldKey}`)
+      if (inputEl) {
+        inputEl.focus()
+      }
+    }
   }
 
   // Handle standard rule field modification
@@ -287,24 +352,12 @@ export function ProductAttributesSection({
     rule: AttributeRuleDefinition,
     labelName?: string,
   ) => {
-    setIsDirty(true)
-
-    // Clear specific field error upon user correction
     if (fieldErrors[fieldKey]) {
       setFieldErrors((prev) => {
         const next = { ...prev }
         delete next[fieldKey]
         return next
       })
-    }
-    if (globalValidationError) {
-      setGlobalValidationError(null)
-    }
-
-    if (!value || !value.trim()) {
-      deletedKeysRef.current.add(fieldKey)
-    } else {
-      deletedKeysRef.current.delete(fieldKey)
     }
 
     const existingIndex = attributeValues.findIndex(
@@ -358,15 +411,12 @@ export function ProductAttributesSection({
 
     const standardKey = keyClean.toLowerCase().replace(/\s+/g, '_')
 
-    // Prevent duplicate key collision
     const exists = attributeValues.some((a) => a.fieldKey.toLowerCase() === standardKey)
     if (exists) {
       setCustomError(isZh ? '已存在同名属性，请在已有属性项中直接修改' : 'Attribute already exists')
       return
     }
 
-    setIsDirty(true)
-    deletedKeysRef.current.delete(standardKey)
     const newAttr: ProductAttributeValue = {
       fieldKey: standardKey,
       label: keyClean,
@@ -384,18 +434,12 @@ export function ProductAttributesSection({
   }
 
   const handleUpdateOtherValue = (fieldKey: string, val: string) => {
-    setIsDirty(true)
     if (fieldErrors[fieldKey]) {
       setFieldErrors((prev) => {
         const next = { ...prev }
         delete next[fieldKey]
         return next
       })
-    }
-    if (!val || !val.trim()) {
-      deletedKeysRef.current.add(fieldKey)
-    } else {
-      deletedKeysRef.current.delete(fieldKey)
     }
     const next = attributeValues.map((attr) =>
       attr.fieldKey === fieldKey ? { ...attr, value: val, source: 'manual' as const } : attr
@@ -404,145 +448,8 @@ export function ProductAttributesSection({
   }
 
   const handleRemoveOther = (fieldKey: string) => {
-    setIsDirty(true)
-    deletedKeysRef.current.add(fieldKey)
     const next = attributeValues.filter((attr) => attr.fieldKey !== fieldKey)
     onChangeAttributeValues(next)
-  }
-
-  // Combine non-empty attributes for semantic submission
-  const validAttributesForSubmission = useMemo(() => {
-    return attributeValues.filter((attr) => attr.value && attr.value.trim().length > 0)
-  }, [attributeValues])
-
-  // Save to Product Semantic Data handler
-  const handleApplyToSemanticData = async () => {
-    if (!productId) {
-      setApplyResult({
-        success: false,
-        message: isZh
-          ? '请先保存商品，获得 Product ID 后再提交语义数据'
-          : 'Please save the product first to acquire a Product ID',
-      })
-      return
-    }
-
-    const deletions = Array.from(deletedKeysRef.current)
-
-    if (validAttributesForSubmission.length === 0 && deletions.length === 0) {
-      setApplyResult({
-        success: false,
-        message: isZh
-          ? '请在属性模板中填写或添加至少一条属性'
-          : 'Please fill in template fields or add at least one attribute first',
-      })
-      return
-    }
-
-    setIsApplying(true)
-    setApplyResult(null)
-    setFieldErrors({})
-    setGlobalValidationError(null)
-
-    try {
-      const payload = {
-        category,
-        attributes: validAttributesForSubmission.map((attr) => ({
-          fieldKey: attr.fieldKey,
-          label: attr.label || attr.fieldKey,
-          value: attr.value,
-          type: attr.type,
-          unit: attr.unit || null,
-          required: attr.required,
-          allowedValues: attr.allowedValues,
-          min: attr.min,
-          max: attr.max,
-          source: attr.source || 'manual',
-          confidence: attr.confidence ?? 1.0,
-        })),
-        deletions: deletions.length > 0 ? deletions : undefined,
-      }
-
-      const response = await fetchWithRetry(
-        `/api/merchant/products/${productId}/canonical-attributes`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
-        {
-          timeoutMs: 30_000,
-          maxAttempts: 2,
-        }
-      )
-
-      const body = await response.json().catch(() => ({}))
-
-      // Handle 422 Validation Error gracefully
-      if (response.status === 422 && body?.issues) {
-        const errorsMap: Record<string, string> = {}
-        for (const issue of body.issues) {
-          errorsMap[issue.fieldKey] = issue.message
-        }
-        setFieldErrors(errorsMap)
-        setGlobalValidationError(
-          isZh
-            ? '商品属性有未通过校验的字段，请检查修正后重试'
-            : 'Some product attributes failed validation. Please review and fix the highlighted fields.'
-        )
-        setApplyResult({
-          success: false,
-          message: isZh
-            ? '属性规则校验未通过'
-            : 'Product attribute validation failed',
-        })
-        setIsDirty(true)
-        if (body.issues.length > 0) {
-          focusFirstInvalidField(body.issues[0].fieldKey)
-        }
-        return
-      }
-
-      if (!response.ok) {
-        const errorMsg =
-          body?.error || (isZh ? '保存语义数据失败' : 'Failed to save canonical attribute data')
-        throw new Error(errorMsg)
-      }
-
-      const mapping = body.mapping
-      deletedKeysRef.current.clear()
-      setIsDirty(false)
-      setFieldErrors({})
-      setGlobalValidationError(null)
-
-      if (body.canonical?.attributes) {
-        onChangeAttributeValues(body.canonical.attributes)
-      }
-
-      setApplyResult({
-        success: true,
-        message: isZh
-          ? '成功写入商品规范语义数据 (Product Semantics)'
-          : 'Successfully saved to Product Canonical Semantics',
-        acceptedCount: mapping?.accepted?.length ?? 0,
-        unknownCount: mapping?.unknownFields?.length ?? 0,
-        rejectedCount: mapping?.rejected?.length ?? 0,
-      })
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : isZh
-          ? '请求失败，请稍后重试'
-          : 'Request failed'
-      setApplyResult({
-        success: false,
-        message: msg,
-      })
-      setIsDirty(true)
-    } finally {
-      setIsApplying(false)
-    }
   }
 
   const renderConfidenceBadge = (confidence = 1.0, source: 'ai' | 'manual' | 'system' = 'manual') => {
@@ -564,14 +471,14 @@ export function ProductAttributesSection({
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[10px] font-medium bg-blue-50 text-[#024AD8] border border-blue-200">
           <Sparkles size={10} className="text-[#024AD8]" />
-          <span>✨ AI ({(confidence * 100).toFixed(0)}%)</span>
+          <span>✨ Canonical ({(confidence * 100).toFixed(0)}%)</span>
         </span>
       )
     }
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
         <Sparkles size={10} className="text-amber-600" />
-        <span>✨ AI 待确认 ({(confidence * 100).toFixed(0)}%)</span>
+        <span>✨ 待确认 ({(confidence * 100).toFixed(0)}%)</span>
       </span>
     )
   }
@@ -579,193 +486,327 @@ export function ProductAttributesSection({
   const completeness = schemaState.completeness
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-[4px] bg-blue-50 text-[#024AD8] flex items-center justify-center font-mono font-bold text-xs">
+    <div className="bg-white rounded-2xl border-2 border-[#024AD8] shadow-md ring-4 ring-[#024AD8]/10 p-6 sm:p-7 space-y-6 transition-all">
+      {/* Header - Core Visual Focus in Workspace with AI Organize Entry */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-[4px] bg-[#024AD8] text-white flex items-center justify-center font-mono font-extrabold text-sm shadow-sm shrink-0">
             05
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-slate-900">
-                {isZh ? '标准商品属性与规格 (Canonical Product Attributes)' : 'Canonical Product Attributes'}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
+                {isZh ? '商品规格' : 'Product Specifications'}
               </h2>
-              {isDirty && (
-                <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                  {isZh ? '● 未保存修改' : '● Unsaved Changes'}
-                </span>
-              )}
+              <span className="px-2.5 py-0.5 rounded-[4px] text-[11px] font-bold bg-[#024AD8] text-white shadow-2xs">
+                ⭐ {isZh ? '核心工作区' : 'Core Workspace'}
+              </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {template
                 ? isZh
-                  ? `已与分类「${category}」联动加载标准属性模板定义`
-                  : `Linked with "${category}" category standard specification template`
+                  ? `已与分类「${category}」联动加载 Canonical 标准规格模版`
+                  : `Linked with "${category}" canonical specifications template`
                 : isZh
-                ? '当前分类采用通用自由属性体系，支持自定义添加'
+                ? '当前分类采用通用标准规范，支持自定义添加扩展规格'
                 : 'General custom attributes for unconstrained categories'}
             </p>
           </div>
         </div>
 
-        {/* Action button (HP Standard Primary Button) */}
-        <button
-          type="button"
-          onClick={handleApplyToSemanticData}
-          disabled={disabled || isApplying || isLoading || validAttributesForSubmission.length === 0}
-          className="px-3.5 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed transition-all focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
-        >
-          {isApplying ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : (
-            <Send size={13} />
-          )}
-          <span>
-            {isApplying
-              ? isZh
-                ? '正在映射与校准...'
-                : 'Mapping & Normalizing...'
-              : isZh
-              ? '保存到商品语义数据'
-              : 'Apply to Product Semantics'}
-          </span>
-        </button>
+        {/* AI Organize Primary Action Button */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleAiOrganize}
+            disabled={isAnalyzing || disabled}
+            className="px-4 py-2 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8]"
+          >
+            {isAnalyzing ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Sparkles size={14} />
+            )}
+            <span>{isAnalyzing ? (isZh ? '正在整理商品…' : 'Analyzing...') : (isZh ? '[AI 整理]' : '[AI Organize]')}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Schema Summary UI */}
-      {rules.size > 0 && (
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/90 space-y-3.5 text-xs">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 text-sm">
-                {category || (isZh ? '通用分类' : 'General Category')}
-              </span>
-              {template && (
-                <span className="px-2 py-0.5 rounded-[4px] bg-blue-50 text-[#024AD8] text-[10px] font-bold border border-blue-200">
-                  {isZh ? template.titleZh : template.titleEn}
-                </span>
-              )}
-            </div>
+      {/* Lightweight Loading State for AI Intelligence */}
+      {isAnalyzing && (
+        <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs flex items-center gap-3 animate-pulse">
+          <Loader2 size={18} className="text-[#024AD8] animate-spin shrink-0" />
+          <div>
+            <p className="font-bold text-[#024AD8]">{isZh ? '正在整理商品…' : 'Analyzing product specifications...'}</p>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              {isZh ? '从描述与结构化资料中归一化 Canonical 规范属性' : 'Extracting and normalizing canonical attributes'}
+            </p>
+          </div>
+        </div>
+      )}
 
-            {/* Status Badge */}
+      {/* AI Intelligence Result Summary Banner */}
+      {aiReport && !isAnalyzing && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-white border border-blue-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-[4px] bg-[#024AD8] text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <Sparkles size={16} />
+            </div>
             <div>
-              {completeness.invalidFields > 0 ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-rose-50 text-[#D32F2F] font-bold text-xs border border-rose-200">
-                  <AlertCircle size={13} />
-                  <span>{isZh ? '属性存在错误' : 'Attribute Errors'}</span>
-                </span>
-              ) : completeness.requiredFields > completeness.completedRequiredFields ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-amber-50 text-amber-700 font-bold text-xs border border-amber-200">
-                  <AlertTriangle size={13} />
-                  <span>{isZh ? '待完善' : 'Incomplete'}</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">
-                  <CheckCircle2 size={13} />
-                  <span>{isZh ? '已满足要求' : 'Requirements Met'}</span>
-                </span>
-              )}
+              <h4 className="text-xs font-extrabold text-slate-900">
+                {isZh ? 'AI 商品智能' : 'AI Product Intelligence'}
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5">
+                {isZh
+                  ? `发现 ${aiReport.summary.changeCount + aiReport.summary.errorCount} 项需要处理（新增 ${aiReport.summary.addCount} • 修改 ${aiReport.summary.updateCount} • 冲突 ${aiReport.summary.errorCount}）`
+                  : `${aiReport.summary.changeCount + aiReport.summary.errorCount} items to review`}
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            {/* Attribute Completeness (属性完整度) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-slate-600 font-medium">
-                <span>{isZh ? '属性完整度' : 'Attribute Completeness'}</span>
-                <span className="font-mono font-bold text-slate-900">
-                  {completeness.completedFields} / {completeness.totalFields}
-                </span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    completeness.invalidFields > 0
-                      ? 'bg-[#D32F2F]'
-                      : completeness.isComplete
-                      ? 'bg-emerald-500'
-                      : 'bg-[#024AD8]'
-                  }`}
-                  style={{ width: `${completeness.percentage}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Required Attributes (必填属性) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-slate-600 font-medium">
-                <span>{isZh ? '必填属性' : 'Required Attributes'}</span>
-                <span className="font-mono font-bold text-slate-900">
-                  {completeness.completedRequiredFields} / {completeness.requiredFields}
-                </span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-slate-200/80 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    completeness.completedRequiredFields === completeness.requiredFields
-                      ? 'bg-emerald-500'
-                      : 'bg-amber-500'
-                  }`}
-                  style={{ width: `${completeness.requiredPercentage}%` }}
-                />
-              </div>
-            </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className="px-3.5 py-1.5 rounded-[4px] bg-white border border-[#D1D1D1] text-[#1C1C1C] text-xs font-medium hover:bg-[#F7F7F7] hover:border-[#B0B0B0] transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8]"
+            >
+              {isZh ? '[查看修改]' : '[View Changes]'}
+            </button>
+            <button
+              type="button"
+              onClick={handleOneClickFix}
+              disabled={isApplying}
+              className="px-4 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-bold transition-all cursor-pointer disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed shadow-2xs flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-[#024AD8]"
+            >
+              {isApplying ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+              <span>{isZh ? '[一键修复]' : '[One-Click Fix]'}</span>
+            </button>
           </div>
         </div>
       )}
 
-      {/* Invalid State Banner (Non-blocking) */}
-      {completeness.invalidFields > 0 && (
-        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-[#D32F2F] text-xs flex items-center justify-between gap-2 transition-all">
+      {/* Toast Notice */}
+      {applyNotice && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <AlertCircle size={16} className="text-[#D32F2F] shrink-0" />
-            <span className="font-semibold">
-              {isZh
-                ? `属性存在错误：当前有 ${completeness.invalidFields} 个属性未通过规则校验，请检查下方高亮字段`
-                : `Attribute errors detected: ${completeness.invalidFields} field(s) failed rule validation. Please review highlighted inputs below.`}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Global Validation Error Banner */}
-      {globalValidationError && (
-        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2 transition-all">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={16} className="text-[#D32F2F] shrink-0" />
-            <span className="font-semibold">{globalValidationError}</span>
+            <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+            <span className="font-bold">{applyNotice}</span>
           </div>
           <button
             type="button"
-            onClick={() => setGlobalValidationError(null)}
-            className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
+            onClick={() => setApplyNotice(null)}
+            className="text-[11px] text-emerald-700 font-semibold hover:underline cursor-pointer"
           >
-            {isZh ? '我知道了' : 'Dismiss'}
+            {isZh ? '关闭' : 'Close'}
           </button>
         </div>
       )}
 
-      {/* Rule Conflict Notice Banner (Non-blocking) */}
-      {ruleConflictNotice && (
-        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 transition-all">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-amber-600 shrink-0" />
-            <span>
-              {isZh
-                ? '属性规则存在配置冲突，请联系管理员'
-                : 'Attribute rule configuration conflict detected, please contact administrator'}
+      {/* 属性完整度状态指示器 (Attribute Completeness Status Indicator) */}
+      <div className="p-5 rounded-xl bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 border border-blue-200/90 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#024AD8] text-white flex items-center justify-center shadow-xs shrink-0">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">
+                  {isZh ? '属性完整度' : 'Attribute Completeness'}
+                </h3>
+                <span className="text-[10px] text-slate-400 font-mono">Canonical Audit</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isZh
+                  ? '实时监控当前商品 Canonical 规格模版的填写合规度与字段约束'
+                  : 'Real-time audit for canonical schema completeness and field constraints'}
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            {completeness.invalidFields > 0 ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-rose-50 text-[#D32F2F] border border-rose-200 shadow-2xs">
+                <AlertCircle size={16} />
+                <div className="text-left">
+                  <span className="text-xs font-bold block">{isZh ? '格式需修正' : 'Invalid Attributes'}</span>
+                  <span className="text-[10px] font-mono block">{completeness.invalidFields} {isZh ? '项格式异常' : 'errors'}</span>
+                </div>
+              </div>
+            ) : completeness.requiredFields > completeness.completedRequiredFields ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
+                <AlertTriangle size={16} className="text-amber-600" />
+                <div className="text-left">
+                  <span className="text-xs font-bold block">{isZh ? '必填项待完善' : 'Incomplete Required'}</span>
+                  <span className="text-[10px] font-mono block">
+                    {isZh
+                      ? `还差 ${completeness.requiredFields - completeness.completedRequiredFields} 项必填`
+                      : `${completeness.requiredFields - completeness.completedRequiredFields} missing`}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                <CheckCircle2 size={16} className="text-emerald-600" />
+                <div className="text-left">
+                  <span className="text-xs font-bold block">{isZh ? '规格就绪 (100%)' : 'Schema Ready (100%)'}</span>
+                  <span className="text-[10px] font-mono block">{isZh ? '满足所有校验条件' : 'All requirements met'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Multi-segmented Progress Bar */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+            <div className="flex items-center gap-2">
+              <span>{isZh ? '总体规格完成率' : 'Overall Completion Rate'}</span>
+              <span className="text-[11px] font-mono text-[#024AD8]">
+                ({completeness.completedFields} / {completeness.totalFields})
+              </span>
+            </div>
+            <span className="font-mono font-extrabold text-slate-900 text-sm">
+              {completeness.percentage}%
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setRuleConflictNotice(null)}
-            className="text-[11px] font-semibold text-amber-700 hover:text-amber-900 cursor-pointer"
-          >
-            {isZh ? '忽略' : 'Dismiss'}
-          </button>
+
+          <div className="w-full h-2.5 rounded-full bg-slate-200/80 overflow-hidden flex">
+            <div
+              className={`h-full transition-all duration-500 ${
+                completeness.invalidFields > 0
+                  ? 'bg-[#D32F2F]'
+                  : completeness.requiredPercentage === 100
+                  ? 'bg-emerald-500'
+                  : 'bg-[#024AD8]'
+              }`}
+              style={{ width: `${completeness.percentage}%` }}
+            />
+          </div>
         </div>
-      )}
+
+        {/* Stat Cards Breakdown (4 Columns) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          <div className="p-2.5 rounded-lg bg-white/90 border border-slate-200/80 space-y-1">
+            <span className="text-[10px] text-slate-500 font-medium block">
+              {isZh ? '必填规格符合度' : 'Required Fields'}
+            </span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-extrabold text-slate-900 font-mono">
+                {completeness.completedRequiredFields} / {completeness.requiredFields}
+              </span>
+              <span
+                className={`text-[10px] font-bold ${
+                  completeness.completedRequiredFields === completeness.requiredFields
+                    ? 'text-emerald-600'
+                    : 'text-amber-600'
+                }`}
+              >
+                {completeness.requiredPercentage}%
+              </span>
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-white/90 border border-slate-200/80 space-y-1">
+            <span className="text-[10px] text-slate-500 font-medium block">
+              {isZh ? '标准模版属性' : 'Standard Fields'}
+            </span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-extrabold text-slate-900 font-mono">
+                {rules.size} {isZh ? '项' : 'fields'}
+              </span>
+              <span className="text-[10px] text-[#024AD8] font-bold">Canonical</span>
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-white/90 border border-slate-200/80 space-y-1">
+            <span className="text-[10px] text-slate-500 font-medium block">
+              {isZh ? '扩展属性项' : 'Custom Fields'}
+            </span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-extrabold text-slate-900 font-mono">
+                {schemaState.otherAttributes.length} {isZh ? '项' : 'fields'}
+              </span>
+              <span className="text-[10px] text-slate-500 font-bold">Custom</span>
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-white/90 border border-slate-200/80 space-y-1">
+            <span className="text-[10px] text-slate-500 font-medium block">
+              {isZh ? '数据校验状态' : 'Validation Status'}
+            </span>
+            <div className="flex items-baseline justify-between">
+              <span
+                className={`text-xs font-bold font-mono ${
+                  completeness.invalidFields > 0 ? 'text-[#D32F2F]' : 'text-emerald-600'
+                }`}
+              >
+                {completeness.invalidFields > 0
+                  ? isZh
+                    ? '格式异常'
+                    : 'Error'
+                  : isZh
+                  ? '校验通过'
+                  : 'Passed'}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">API Sync</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Interactive Field Status Chips */}
+        {schemaState.completeness.items.length > 0 && (
+          <div className="pt-2 border-t border-slate-200/60">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 mb-2">
+              <span>{isZh ? '标准属性状态明细 (点击可快速定位跳转)' : 'Standard Attributes Checklist'}</span>
+              <span className="text-[10px] font-normal text-slate-400">{isZh ? '根据 Canonical Rules 校验' : 'Validated by Canonical Rules'}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {schemaState.completeness.items.map((item) => {
+                const tmplField = templateFieldMap.get(item.fieldKey.toLowerCase())
+                const labelName = tmplField
+                  ? isZh
+                    ? tmplField.nameZh
+                    : tmplField.nameEn
+                  : item.label || item.fieldKey
+
+                const isMissingReq = item.issue === 'required'
+                const isInvalid = !item.valid && Boolean(item.value)
+                const isOk = item.completed && item.valid
+
+                return (
+                  <button
+                    key={item.fieldKey}
+                    type="button"
+                    onClick={() => scrollToField(item.fieldKey)}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-all cursor-pointer border focus-visible:outline-2 focus-visible:outline-[#024AD8] ${
+                      isInvalid
+                        ? 'bg-rose-50 text-[#D32F2F] border-rose-200 hover:bg-rose-100'
+                        : isMissingReq
+                        ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                        : isOk
+                        ? 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'
+                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {isInvalid ? (
+                      <AlertCircle size={11} className="text-[#D32F2F]" />
+                    ) : isMissingReq ? (
+                      <AlertTriangle size={11} className="text-amber-600" />
+                    ) : isOk ? (
+                      <Check size={11} className="text-emerald-600" />
+                    ) : null}
+                    <span>{labelName}</span>
+                    {item.required && !isOk && (
+                      <span className="text-[9px] font-bold text-[#D32F2F] ml-0.5">*</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Category Change Notice */}
       {categoryChangeNotice && (
@@ -790,8 +831,8 @@ export function ProductAttributesSection({
           <AlertCircle size={15} className="text-amber-600 shrink-0" />
           <span>
             {isZh
-              ? '当前使用兼容数据（Legacy Fallback）。保存后将自动归一化并写入正式标准规范语义层。'
-              : 'Currently using legacy compatibility data. Saving will normalize and write to the canonical semantic store.'}
+              ? '当前使用兼容数据（Legacy Fallback）。保存后将自动归一化并写入规范层。'
+              : 'Currently using legacy compatibility data.'}
           </span>
         </div>
       )}
@@ -802,12 +843,7 @@ export function ProductAttributesSection({
           <Loader2 size={24} className="mx-auto text-[#024AD8] animate-spin" />
           <div className="space-y-1">
             <p className="text-xs font-semibold text-slate-800">
-              {isZh ? '正在加载商品属性…' : 'Loading product attributes...'}
-            </p>
-            <p className="text-[11px] text-slate-500">
-              {isZh
-                ? '正在获取并校验属性规范模型，请稍候'
-                : 'Hydrating and validating canonical attribute view model...'}
+              {isZh ? '正在加载商品 Canonical 属性…' : 'Loading canonical attributes...'}
             </p>
           </div>
         </div>
@@ -837,45 +873,18 @@ export function ProductAttributesSection({
       )}
 
       {/* Empty State Banner */}
-      {!isLoading && !error && attributeValues.length === 0 && (
+      {!isLoading && !error && attributeValues.length === 0 && rules.size === 0 && (
         <div className="p-3.5 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-xs text-slate-600 flex items-center gap-2.5">
           <Info size={15} className="text-slate-400 shrink-0" />
           <span>
             {isZh
-              ? '当前商品暂无已保存属性。您可以直接在下方分类标准模板中填写，或在底部添加自定义属性。'
-              : 'No saved attributes yet for this product. You can fill in the category template fields below or add custom attributes.'}
+              ? '当前商品暂无已保存属性。您可以在下方添加自定义扩展属性。'
+              : 'No saved attributes yet for this product. You can add custom attributes below.'}
           </span>
         </div>
       )}
 
-      {/* Apply Result Message */}
-      {applyResult && (
-        <div
-          className={`p-3.5 rounded-xl border text-xs flex items-start gap-2 ${
-            applyResult.success
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
-          }`}
-        >
-          {applyResult.success ? (
-            <CheckCircle2 size={15} className="text-emerald-600 shrink-0 mt-0.5" />
-          ) : (
-            <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
-          )}
-          <div className="space-y-0.5">
-            <p className="font-semibold">{applyResult.message}</p>
-            {applyResult.success && (
-              <p className="text-[11px] opacity-90">
-                {isZh
-                  ? `匹配核心规范 field: ${applyResult.acceptedCount ?? 0} 项 | 未知属性存入 unknown: ${applyResult.unknownCount ?? 0} 项`
-                  : `Mapped fields: ${applyResult.acceptedCount ?? 0} | Unknown: ${applyResult.unknownCount ?? 0}`}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Area (Rendered when not in loading state) */}
+      {/* Main Content Area */}
       {!isLoading && (
         <>
           {/* 1. Standard Specifications (标准规格) */}
@@ -884,7 +893,7 @@ export function ProductAttributesSection({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-bold text-slate-900">
-                    {isZh ? '标准规格' : 'Standard Specifications'}
+                    {isZh ? '标准规格属性字段' : 'Standard Specification Fields'}
                   </h3>
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded-[4px] bg-blue-50 text-[#024AD8] border border-blue-200">
                     {rules.size} {isZh ? '项' : 'fields'}
@@ -900,7 +909,6 @@ export function ProductAttributesSection({
                     conditionalResolution.states.get(fieldKey) ||
                     conditionalResolution.states.get(fieldKey.toLowerCase())
 
-                  // Conditional Visibility: Hide field in UI without clearing value
                   if (condState && condState.visible === false) {
                     return null
                   }
@@ -931,18 +939,15 @@ export function ProductAttributesSection({
                       condState?.triggeredRuleIds &&
                       condState.triggeredRuleIds.length > 0,
                   )
-                  const isTriggered = Boolean(
-                    condState?.triggeredRuleIds && condState.triggeredRuleIds.length > 0,
-                  )
 
                   return (
                     <div
                       key={fieldKey}
                       id={`attr-field-${fieldKey}`}
-                      className={`space-y-1.5 bg-white p-3 rounded-xl border transition-all ${
+                      className={`space-y-1.5 bg-white p-3.5 rounded-xl border transition-all ${
                         isInvalid
-                          ? 'border-[#D32F2F] bg-rose-50/30 ring-1 ring-[#D32F2F]'
-                          : 'border-slate-200/80 shadow-2xs'
+                          ? 'border-[#D32F2F] bg-rose-50/30 ring-2 ring-[#D32F2F]/20'
+                          : 'border-slate-200/90 shadow-2xs hover:border-slate-300'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-1.5">
@@ -952,28 +957,14 @@ export function ProductAttributesSection({
                         >
                           <span className="truncate">{label}</span>
                           {isConditionalRequired ? (
-                            <span
-                              className="px-1.5 py-0.2 rounded-[4px] bg-blue-50 text-[#024AD8] text-[10px] font-bold border border-blue-200 shrink-0"
-                              title={
-                                isZh
-                                  ? '根据当前选择，此属性为必填'
-                                  : 'Required based on current selection'
-                              }
-                            >
-                              {isZh
-                                ? '根据当前选择，此属性为必填'
-                                : 'Required (Conditional)'}
+                            <span className="px-1.5 py-0.2 rounded-[4px] bg-blue-50 text-[#024AD8] text-[10px] font-bold border border-blue-200 shrink-0">
+                              {isZh ? '条件必填' : 'Required'}
                             </span>
                           ) : isRequired ? (
                             <span className="px-1.5 py-0.2 rounded-[4px] bg-rose-50 text-[#D32F2F] text-[10px] font-bold border border-rose-200 shrink-0">
                               {isZh ? '必填' : 'Required'}
                             </span>
                           ) : null}
-                          {isTriggered && !isConditionalRequired && (
-                            <span className="px-1.5 py-0.2 rounded-[4px] bg-[#EFF4FF] text-[#024AD8] text-[10px] font-medium border border-blue-200 shrink-0">
-                              {isZh ? '条件生效' : 'Condition Active'}
-                            </span>
-                          )}
                           {effRule.unit && (
                             <span className="text-[10px] text-slate-400 font-normal shrink-0">
                               ({effRule.unit})
@@ -991,7 +982,7 @@ export function ProductAttributesSection({
                           ) : item?.issue === 'required' ? (
                             <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200 flex items-center gap-1">
                               <AlertTriangle size={10} />
-                              <span>{isZh ? '缺失必填' : 'Missing'}</span>
+                              <span>{isZh ? '缺失' : 'Missing'}</span>
                             </span>
                           ) : item?.completed ? (
                             <span className="px-1.5 py-0.5 rounded-[4px] bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
@@ -1011,11 +1002,6 @@ export function ProductAttributesSection({
                         <select
                           id={`attr-input-${fieldKey}`}
                           aria-label={label}
-                          aria-required={isRequired}
-                          aria-invalid={isInvalid}
-                          aria-describedby={
-                            isInvalid ? `attr-error-${fieldKey}` : undefined
-                          }
                           value={value}
                           onChange={(e) =>
                             handleStandardFieldChange(
@@ -1026,11 +1012,7 @@ export function ProductAttributesSection({
                             )
                           }
                           disabled={disabled}
-                          className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
-                            isInvalid
-                              ? 'bg-rose-50/40 border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
-                              : 'bg-slate-50 border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
-                          }`}
+                          className="w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#024AD8] focus:bg-white transition-all"
                         >
                           <option value="">{isZh ? '-- 请选择 --' : '-- Select --'}</option>
                           {(effRule.allowedValues || []).map((opt) => (
@@ -1040,17 +1022,7 @@ export function ProductAttributesSection({
                           ))}
                         </select>
                       ) : effRule.type === 'boolean' ? (
-                        <div
-                          id={`attr-input-${fieldKey}`}
-                          tabIndex={0}
-                          aria-label={label}
-                          aria-required={isRequired}
-                          aria-invalid={isInvalid}
-                          aria-describedby={
-                            isInvalid ? `attr-error-${fieldKey}` : undefined
-                          }
-                          className="flex items-center justify-between pt-1"
-                        >
+                        <div className="flex items-center justify-between pt-1">
                           <button
                             type="button"
                             onClick={() =>
@@ -1062,7 +1034,7 @@ export function ProductAttributesSection({
                               )
                             }
                             disabled={disabled}
-                            className={`h-7 px-3 rounded-[4px] text-xs font-medium transition-all cursor-pointer ${
+                            className={`h-7 px-3 rounded-[4px] text-xs font-medium transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8] ${
                               value === 'true'
                                 ? 'bg-[#024AD8] text-white hover:bg-[#003198]'
                                 : 'bg-white border border-[#D1D1D1] text-[#1C1C1C] hover:bg-[#F7F7F7]'
@@ -1071,7 +1043,7 @@ export function ProductAttributesSection({
                             {value === 'true'
                               ? isZh
                                 ? '已启用 / 支持'
-                                : 'Supported / Yes'
+                                : 'Supported'
                               : isZh
                               ? '未启用 / 否'
                               : 'No'}
@@ -1079,19 +1051,11 @@ export function ProductAttributesSection({
                           {value && renderConfidenceBadge(confidence, source)}
                         </div>
                       ) : (
-                        <div className="relative">
+                        <div>
                           <input
                             id={`attr-input-${fieldKey}`}
                             aria-label={label}
-                            aria-required={isRequired}
-                            aria-invalid={isInvalid}
-                            aria-describedby={
-                              isInvalid ? `attr-error-${fieldKey}` : undefined
-                            }
                             type={effRule.type === 'number' ? 'number' : 'text'}
-                            min={effRule.min}
-                            max={effRule.max}
-                            step={effRule.type === 'number' ? 'any' : undefined}
                             value={value}
                             onChange={(e) =>
                               handleStandardFieldChange(
@@ -1102,56 +1066,16 @@ export function ProductAttributesSection({
                               )
                             }
                             disabled={disabled}
-                            placeholder={
-                              placeholder ||
-                              (effRule.min !== undefined && effRule.max !== undefined
-                                ? `${effRule.min} ~ ${effRule.max}`
-                                : isZh
-                                ? '输入参数值...'
-                                : 'Enter value...')
-                            }
-                            className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
-                              isInvalid
-                                ? 'bg-rose-50/40 border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
-                                : 'bg-slate-50 border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
-                            }`}
+                            placeholder={placeholder || (isZh ? '输入属性值...' : 'Enter value...')}
+                            className="w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-[#024AD8] focus:bg-white transition-all"
                           />
                         </div>
                       )}
 
-                      {/* Confidence Badge for non-boolean populated fields */}
                       {effRule.type !== 'boolean' && value && (
                         <div className="pt-0.5 flex justify-end">
                           {renderConfidenceBadge(confidence, source)}
                         </div>
-                      )}
-
-                      {/* Inline Error Message */}
-                      {isInvalid && (
-                        <p
-                          id={`attr-error-${fieldKey}`}
-                          className="text-[11px] text-[#D32F2F] font-medium mt-1 flex items-center gap-1"
-                        >
-                          <AlertCircle size={12} className="shrink-0" />
-                          <span>
-                            {fieldError ||
-                              (effRule.type === 'number'
-                                ? isZh
-                                  ? `数值不符合要求${
-                                      effRule.min !== undefined && effRule.max !== undefined
-                                        ? ` (范围: ${effRule.min} ~ ${effRule.max})`
-                                        : ''
-                                    }`
-                                  : 'Invalid number value'
-                                : effRule.type === 'select'
-                                ? isZh
-                                  ? '选项不在允许的值范围内'
-                                  : 'Selected option is not in allowed values'
-                                : isZh
-                                ? '输入值无效'
-                                : 'Invalid value')}
-                          </span>
-                        </p>
                       )}
                     </div>
                   )
@@ -1159,27 +1083,21 @@ export function ProductAttributesSection({
               </div>
             </div>
           ) : (
-            /* Empty Category Template Banner */
             <div className="py-6 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 space-y-1.5">
               <Sliders size={20} className="mx-auto text-slate-400 mb-1" />
               <h4 className="text-xs font-bold text-slate-700">
-                {isZh ? '当前分类暂无标准属性模板' : 'No Standard Attribute Template For Category'}
+                {isZh ? '当前分类暂无预定义标准规格' : 'No Standard Specification Predefined'}
               </h4>
-              <p className="text-[11px] text-slate-500 max-w-md mx-auto">
-                {isZh
-                  ? '当前品类暂无预定义的标准规范模板，可在下方自由添加扩展属性。'
-                  : 'There is no standard predefined template for this category. You may freely add custom attributes below.'}
-              </p>
             </div>
           )}
 
-          {/* 2. Other Attributes (其他属性) */}
+          {/* 2. Other Attributes (扩展自定义属性) */}
           <div className="space-y-3 pt-3 border-t border-slate-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-slate-700" />
                 <h3 className="text-xs font-bold text-slate-900">
-                  {isZh ? '其他属性' : 'Other Attributes'}
+                  {isZh ? '扩展自定义属性' : 'Custom Attributes'}
                 </h3>
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-[4px] bg-slate-100 text-slate-600">
                   {schemaState.otherAttributes.length}
@@ -1189,87 +1107,53 @@ export function ProductAttributesSection({
 
             {schemaState.otherAttributes.length > 0 ? (
               <div className="space-y-2">
-                {schemaState.otherAttributes.map((attr) => {
-                  const otherError = fieldErrors[attr.fieldKey]
-                  return (
-                    <div
-                      key={attr.fieldKey}
-                      id={`attr-field-${attr.fieldKey}`}
-                      className={`p-2.5 rounded-xl border transition-all ${
-                        otherError
-                          ? 'bg-rose-50/40 border-[#D32F2F] ring-1 ring-[#D32F2F]'
-                          : 'bg-slate-50 border-slate-200'
-                      }`}
-                    >
-                      <div className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-3">
-                          <span className="text-[11px] font-bold text-slate-800 block truncate">
-                            {attr.label || attr.fieldKey}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400 block truncate">
-                            {attr.fieldKey}
-                          </span>
-                        </div>
-
-                        <div className="col-span-4">
-                          <input
-                            id={`attr-input-${attr.fieldKey}`}
-                            aria-label={attr.label || attr.fieldKey}
-                            aria-invalid={Boolean(otherError)}
-                            aria-describedby={
-                              otherError ? `attr-error-${attr.fieldKey}` : undefined
-                            }
-                            type={attr.type === 'number' ? 'number' : 'text'}
-                            value={attr.value}
-                            onChange={(e) => handleUpdateOtherValue(attr.fieldKey, e.target.value)}
-                            placeholder={isZh ? '属性值' : 'Value'}
-                            className={`w-full h-8 px-2.5 rounded-[4px] text-xs text-slate-900 focus:outline-none transition-all ${
-                              otherError
-                                ? 'bg-white border border-[#D32F2F] focus:ring-1 focus:ring-[#D32F2F]'
-                                : 'bg-white border border-slate-200 focus:ring-1 focus:ring-[#024AD8]'
-                            }`}
-                          />
-                        </div>
-
-                        <div className="col-span-2 flex items-center justify-center">
-                          {renderConfidenceBadge(attr.confidence, attr.source)}
-                        </div>
-
-                        <div className="col-span-2 flex items-center justify-center">
-                          <span className="text-[10px] text-slate-500 font-medium">
-                            {attr.type}
-                          </span>
-                        </div>
-
-                        <div className="col-span-1 text-right">
-                          <button
-                            type="button"
-                            aria-label={`Remove ${attr.label || attr.fieldKey}`}
-                            onClick={() => handleRemoveOther(attr.fieldKey)}
-                            className="p-1 text-slate-400 hover:text-[#D32F2F] rounded-[4px] cursor-pointer transition-colors"
-                            title={isZh ? '移除' : 'Remove'}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {otherError && (
-                        <p
-                          id={`attr-error-${attr.fieldKey}`}
-                          className="text-[11px] text-[#D32F2F] font-medium mt-1.5 flex items-center gap-1"
-                        >
-                          <AlertCircle size={12} className="shrink-0" />
-                          <span>{otherError}</span>
-                        </p>
-                      )}
+                {schemaState.otherAttributes.map((attr) => (
+                  <div
+                    key={attr.fieldKey}
+                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-12 gap-2 items-center"
+                  >
+                    <div className="col-span-3">
+                      <span className="text-[11px] font-bold text-slate-800 block truncate">
+                        {attr.label || attr.fieldKey}
+                      </span>
                     </div>
-                  )
-                })}
+
+                    <div className="col-span-4">
+                      <input
+                        type={attr.type === 'number' ? 'number' : 'text'}
+                        value={attr.value}
+                        onChange={(e) => handleUpdateOtherValue(attr.fieldKey, e.target.value)}
+                        placeholder={isZh ? '属性值' : 'Value'}
+                        className="w-full h-8 px-2.5 rounded-[4px] bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
+                      />
+                    </div>
+
+                    <div className="col-span-2 flex items-center justify-center">
+                      {renderConfidenceBadge(attr.confidence, attr.source)}
+                    </div>
+
+                    <div className="col-span-2 flex items-center justify-center">
+                      <span className="text-[10px] text-slate-500 font-medium uppercase font-mono">
+                        {attr.type}
+                      </span>
+                    </div>
+
+                    <div className="col-span-1 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOther(attr.fieldKey)}
+                        className="p-1 text-slate-400 hover:text-[#D32F2F] rounded-[4px] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#024AD8]"
+                        title={isZh ? '移除' : 'Remove'}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="text-center py-2 text-[11px] text-slate-400">
-                {isZh ? '暂无其他属性。可在下方自由添加。' : 'No additional attributes. Add below if needed.'}
+                {isZh ? '暂无扩展自定义属性。可在下方自由添加。' : 'No custom attributes yet. Add below.'}
               </p>
             )}
 
@@ -1279,20 +1163,24 @@ export function ProductAttributesSection({
                 <p className="text-xs text-[#D32F2F] font-medium mb-1.5">{customError}</p>
               )}
 
-              <form
-                onSubmit={handleAddCustomAttribute}
+              <div
                 className="grid grid-cols-12 gap-2 items-center bg-slate-50/80 p-3 rounded-xl border border-slate-200"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleAddCustomAttribute()
+                  }
+                }}
               >
                 <div className="col-span-4">
                   <input
                     type="text"
-                    aria-label={isZh ? '新属性名' : 'New attribute key'}
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
                     placeholder={
                       isZh
                         ? '属性名 (如: water_resistance)'
-                        : 'Key / Name (e.g. water_resistance)'
+                        : 'Key (e.g. water_resistance)'
                     }
                     className="w-full h-8 px-2.5 rounded-[4px] bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
                   />
@@ -1301,7 +1189,6 @@ export function ProductAttributesSection({
                 <div className="col-span-4">
                   <input
                     type="text"
-                    aria-label={isZh ? '新属性值' : 'New attribute value'}
                     value={newValue}
                     onChange={(e) => setNewValue(e.target.value)}
                     placeholder={isZh ? '属性值 (如: IP68)' : 'Value (e.g. IP68)'}
@@ -1312,7 +1199,6 @@ export function ProductAttributesSection({
                 <div className="col-span-2">
                   <select
                     value={newType}
-                    aria-label={isZh ? '新属性类型' : 'New attribute type'}
                     onChange={(e) => setNewType(e.target.value as any)}
                     className="w-full h-8 px-2 rounded-[4px] bg-white border border-slate-200 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
                   >
@@ -1325,19 +1211,29 @@ export function ProductAttributesSection({
 
                 <div className="col-span-2 text-right">
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={() => handleAddCustomAttribute()}
                     disabled={disabled}
-                    className="w-full h-8 px-3 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-medium flex items-center justify-center gap-1 cursor-pointer disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed transition-all"
+                    className="w-full h-8 px-3 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-medium flex items-center justify-center gap-1 cursor-pointer disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed transition-all focus-visible:outline-2 focus-visible:outline-[#024AD8]"
                   >
                     <Plus size={13} />
                     <span>{isZh ? '添加' : 'Add'}</span>
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </>
       )}
+
+      {/* AI Intelligence Drawer */}
+      <ProductAiIntelligenceDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        report={aiReport}
+        onApplyChanges={handleApplyAiChanges}
+        isApplying={isApplying}
+      />
     </div>
   )
 }

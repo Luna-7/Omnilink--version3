@@ -46,7 +46,7 @@ export function ProductNodeVisualizer({ product }: ProductNodeVisualizerProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
-            href={`/dashboard/products/${product.id}`}
+            href={`/dashboard/products/${product.id}/edit`}
             className="w-9 h-9 rounded-full bg-white border border-[#E5E7EB] hover:bg-[#F4F5F7] flex items-center justify-center text-[#111827] transition-colors shadow-sm"
           >
             <ArrowLeft size={16} />
@@ -68,7 +68,7 @@ export function ProductNodeVisualizer({ product }: ProductNodeVisualizerProps) {
 
         <div className="flex items-center gap-2">
           <Link
-            href={`/dashboard/products/${product.id}`}
+            href={`/dashboard/products/${product.id}/edit`}
             className="px-4 py-2 rounded-full bg-white border border-[#E5E7EB] text-xs font-bold text-[#111827] hover:border-[#111827] transition-colors shadow-sm"
           >
             {isZh ? '返回商品编辑' : 'Back to Product Edit'}

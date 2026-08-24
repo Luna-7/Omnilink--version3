@@ -38,7 +38,7 @@ export default async function ProductSemanticPage({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <Link
-            href={`/dashboard/products/${id}`}
+            href={`/dashboard/products/${id}/edit`}
             className="text-iris hover:text-iris text-sm"
           >
             ← Back to Product
