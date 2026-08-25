@@ -97,9 +97,17 @@ Return JSON only conforming to the schema.
       })
 
       if (response.text) {
-        const parsed = JSON.parse(response.text) as ProductDraft
-        if (parsed && typeof parsed === 'object') {
-          return parsed
+        let text = response.text.trim()
+        if (text.startsWith('```')) {
+          text = text.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
+        }
+        try {
+          const parsed = JSON.parse(text) as ProductDraft
+          if (parsed && typeof parsed === 'object' && parsed.name) {
+            return parsed
+          }
+        } catch (parseErr) {
+          console.warn('[gemini.analyzer] JSON parse failed, fallback to default draft:', parseErr)
         }
       }
     } catch (err) {

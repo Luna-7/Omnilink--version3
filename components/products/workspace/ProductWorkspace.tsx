@@ -36,7 +36,12 @@ interface ProductWorkspaceProps {
     inventory: number
     sku?: string
     category?: string
+    categoryId?: string | null
     status?: 'active' | 'draft' | 'archived'
+    options?: ProductOption[]
+    variants?: ProductVariant[]
+    existingAssets?: ExistingAsset[]
+    attributes?: ProductAttributeValue[]
   }
 }
 
@@ -44,37 +49,113 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const router = useRouter()
   const { isZh } = useLanguage()
 
+  // Match demo product for instant zero-lag rendering
+  const demoFallback = React.useMemo(() => {
+    if (!productId) return undefined
+    return DEMO_PRODUCTS.find(
+      (p) => p.id === productId || p.sku.toLowerCase() === productId.toLowerCase()
+    )
+  }, [productId])
+
   // Primary form fields
-  const [name, setName] = useState(initialData?.name || '')
-  const [sku, setSku] = useState(initialData?.sku || '')
-  const [category, setCategory] = useState(initialData?.category || '')
-  const [price, setPrice] = useState<string | number>(initialData?.price ?? '')
-  const [currency, setCurrency] = useState(initialData?.currency || 'CNY')
-  const [inventory, setInventory] = useState<string | number>(initialData?.inventory ?? 100)
-  const [description, setDescription] = useState(initialData?.description || '')
-  const [status, setStatus] = useState<'active' | 'draft' | 'archived'>(initialData?.status || 'active')
+  const [name, setName] = useState(initialData?.name || demoFallback?.name || '')
+  const [sku, setSku] = useState(initialData?.sku || demoFallback?.sku || '')
+  const [category, setCategory] = useState(initialData?.category || demoFallback?.category || '')
+  const [categoryId, setCategoryId] = useState<string | null>(initialData?.categoryId || null)
+  const [price, setPrice] = useState<string | number>(initialData?.price ?? demoFallback?.price ?? '')
+  const [currency, setCurrency] = useState(initialData?.currency || demoFallback?.currency || 'CNY')
+  const [inventory, setInventory] = useState<string | number>(initialData?.inventory ?? demoFallback?.inventory ?? 100)
+  const [description, setDescription] = useState(initialData?.description || demoFallback?.description || '')
+  const [status, setStatus] = useState<'active' | 'draft' | 'archived'>(initialData?.status || demoFallback?.status || 'active')
 
   // Unified Canonical Attribute View Model State
-  const [attributeValues, setAttributeValues] = useState<ProductAttributeValue[]>([])
+  const [attributeValues, setAttributeValues] = useState<ProductAttributeValue[]>(() => {
+    if (initialData?.attributes && initialData.attributes.length > 0) {
+      return initialData.attributes
+    }
+    if (demoFallback?.semantic_data?.attributes) {
+      return Object.entries(demoFallback.semantic_data.attributes).map(([key, val]) => ({
+        fieldKey: key,
+        label: key,
+        value: String(val),
+        type: 'text' as const,
+        isStandard: true,
+      }))
+    }
+    return []
+  })
   const [attributesLoading, setAttributesLoading] = useState(false)
   const [attributesError, setAttributesError] = useState<string | null>(null)
   const [isUsingLegacyFallback, setIsUsingLegacyFallback] = useState(false)
-  const initialAttributeKeysRef = useRef<Set<string>>(new Set())
+  const initialAttributeKeysRef = useRef<Set<string>>(
+    new Set(
+      (initialData?.attributes || []).map((a) => a.fieldKey.toLowerCase())
+    )
+  )
 
   // Options & Variants
-  const [options, setOptions] = useState<ProductOption[]>([])
-  const [variants, setVariants] = useState<ProductVariant[]>([])
+  const [options, setOptions] = useState<ProductOption[]>(() => {
+    if (initialData?.options && initialData.options.length > 0) {
+      return initialData.options
+    }
+    if (demoFallback?.options && demoFallback.options.length > 0) {
+      return demoFallback.options.map((opt, idx) => ({
+        id: opt.id,
+        product_id: productId || '',
+        name: opt.name,
+        code: opt.code,
+        position: idx,
+        values: opt.values,
+        created_at: new Date().toISOString(),
+      }))
+    }
+    return []
+  })
+  const [variants, setVariants] = useState<ProductVariant[]>(() => {
+    if (initialData?.variants && initialData.variants.length > 0) {
+      return initialData.variants
+    }
+    if (demoFallback?.variants && demoFallback.variants.length > 0) {
+      return demoFallback.variants.map((v) => ({
+        id: v.id,
+        product_id: productId || '',
+        sku: v.sku,
+        price: v.price,
+        currency: demoFallback.currency || 'CNY',
+        inventory: v.inventory,
+        status: (v.status || 'active') as 'draft' | 'active' | 'archived',
+        option_values: v.option_values,
+        raw_data: null,
+        semantic_data: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }))
+    }
+    return []
+  })
 
   // Product Relations
   const [relations, setRelations] = useState<ProductRelation[]>([])
 
   // SEO State
-  const [seoTitle, setSeoTitle] = useState('')
-  const [seoDescription, setSeoDescription] = useState('')
+  const [seoTitle, setSeoTitle] = useState(initialData?.name || demoFallback?.name || '')
+  const [seoDescription, setSeoDescription] = useState(initialData?.description || demoFallback?.description || '')
 
   // Media state & Ref
   const mediaUploaderRef = useRef<ProductMediaUploaderRef>(null)
-  const [existingAssets, setExistingAssets] = useState<ExistingAsset[]>([])
+  const [existingAssets, setExistingAssets] = useState<ExistingAsset[]>(() => {
+    if (initialData?.existingAssets && initialData.existingAssets.length > 0) {
+      return initialData.existingAssets
+    }
+    if (demoFallback?.image_url) {
+      return [{
+        id: 'media-main',
+        url: demoFallback.image_url,
+        asset_type: 'image',
+      }]
+    }
+    return []
+  })
 
   // Future Preview Modal State
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
@@ -86,8 +167,17 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   }
 
   // Save State Controller
-  const saveControllerRef = useRef(createProductSaveController(productId ? 'ready' : 'dirty'))
-  const [saveSnapshot, setSaveSnapshot] = useState<ProductSaveSnapshot>(saveControllerRef.current.reset())
+  const saveControllerRef = useRef<ReturnType<typeof createProductSaveController> | null>(null)
+  const getSaveController = useCallback(() => {
+    if (!saveControllerRef.current) {
+      saveControllerRef.current = createProductSaveController(productId ? 'ready' : 'dirty')
+    }
+    return saveControllerRef.current
+  }, [productId])
+
+  const [saveSnapshot, setSaveSnapshot] = useState<ProductSaveSnapshot>(() =>
+    createProductSaveController(productId ? 'ready' : 'dirty').reset()
+  )
 
   // Status flags
   const [isSaving, setIsSaving] = useState(false)
@@ -98,87 +188,32 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   // Fetch product model and details via canonical loader endpoint
   const loadProductDetails = useCallback(async () => {
     if (!productId) return
-    setIsLoading(true)
-    setAttributesLoading(true)
-    setAttributesError(null)
 
-    // Check if it matches a predefined demo product to avoid slow/failing API calls
-    const demoProduct = DEMO_PRODUCTS.find(
-      (p) => p.id === productId || p.sku.toLowerCase() === productId.toLowerCase()
-    )
-    if (demoProduct) {
-      setName(demoProduct.name)
-      setSku(demoProduct.sku || '')
-      setDescription(demoProduct.description || '')
-      setPrice(demoProduct.price)
-      setCurrency(demoProduct.currency)
-      setInventory(demoProduct.inventory)
-      setStatus(demoProduct.status)
-      setCategory(demoProduct.category || '')
-      
-      const attributes = Object.entries(demoProduct.semantic_data?.attributes || {}).map(([key, val]) => ({
-        fieldKey: key,
-        label: key,
-        value: String(val),
-        type: 'text' as const,
-        isStandard: true,
-      }))
-      setAttributeValues(attributes)
-      initialAttributeKeysRef.current = new Set(attributes.map((a) => a.fieldKey.toLowerCase()))
-      
-      setSeoTitle(demoProduct.name)
-      setSeoDescription(demoProduct.description || '')
-      
-      const assets = demoProduct.image_url ? [{
-        id: 'media-main',
-        url: demoProduct.image_url,
-        asset_type: 'image',
-      }] : []
-      setExistingAssets(assets)
-      
-      const mappedOptions = (demoProduct.options || []).map((opt, idx) => ({
-        id: opt.id,
-        product_id: productId,
-        name: opt.name,
-        code: opt.code,
-        position: idx,
-        values: opt.values,
-        created_at: new Date().toISOString(),
-      }))
-      setOptions(mappedOptions)
-
-      const mappedVariants = (demoProduct.variants || []).map((v) => ({
-        id: v.id,
-        product_id: productId,
-        sku: v.sku,
-        price: v.price,
-        currency: demoProduct.currency || 'CNY',
-        inventory: v.inventory,
-        status: v.status as 'draft' | 'active' | 'archived',
-        option_values: v.option_values,
-        raw_data: null,
-        semantic_data: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }))
-      setVariants(mappedVariants)
-      setRelations([])
-      
+    // If it's a demo product, initial states are already set without needing any network calls
+    if (demoFallback) {
       setIsLoading(false)
       setAttributesLoading(false)
       return
     }
 
+    // Progressive non-blocking background fetch for full management details
+    if (!initialData) {
+      setIsLoading(true)
+    }
+    setAttributesLoading(true)
+    setAttributesError(null)
+
     try {
-      const [mgmtRes, assetsRes, optionsRes, variantsRes] = await Promise.all([
+      const [mgmtSettled, assetsSettled, optionsSettled, variantsSettled, relationsSettled] = await Promise.allSettled([
         fetch(`/api/merchant/products/${productId}/management`),
         fetch(`/api/assets?product_id=${productId}`),
         fetch(`/api/products/${productId}/options`),
         fetch(`/api/products/${productId}/variants`),
+        fetch(`/api/merchant/products/${productId}/relations`),
       ])
 
-      if (mgmtRes.ok) {
-        const { model } = (await mgmtRes.json()) as { model: ProductManagementModel }
+      if (mgmtSettled.status === 'fulfilled' && mgmtSettled.value.ok) {
+        const { model } = (await mgmtSettled.value.json()) as { model: ProductManagementModel }
         if (model) {
           setName(model.name)
           setSku(model.sku || '')
@@ -188,6 +223,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           setInventory(model.inventory)
           setStatus(model.status)
           setCategory(model.category || '')
+          setCategoryId(model.categoryId || null)
           setAttributeValues(model.attributes || [])
           initialAttributeKeysRef.current = new Set(
             (model.attributes || []).map((a) => a.fieldKey.toLowerCase())
@@ -197,14 +233,12 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
             setSeoTitle(model.seo.title || '')
             setSeoDescription(model.seo.description || '')
           }
-          setSaveSnapshot(saveControllerRef.current.reset())
+          setSaveSnapshot(getSaveController().reset())
         }
-      } else {
-        setAttributesError(isZh ? '加载商品详情失败' : 'Failed to load product model')
       }
 
-      if (assetsRes.ok) {
-        const assetsData = await assetsRes.json()
+      if (assetsSettled.status === 'fulfilled' && assetsSettled.value.ok) {
+        const assetsData = await assetsSettled.value.json()
         if (Array.isArray(assetsData)) {
           setExistingAssets(
             assetsData.map((a: any) => ({
@@ -216,33 +250,33 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         }
       }
 
-      if (optionsRes.ok) {
-        const optionsData = await optionsRes.json()
-        setOptions(optionsData.options || [])
-      }
-
-      if (variantsRes.ok) {
-        const variantsData = await variantsRes.json()
-        setVariants(variantsData.variants || [])
-      }
-
-      try {
-        const relationsRes = await fetch(`/api/merchant/products/${productId}/relations`)
-        if (relationsRes.ok) {
-          const relData = await relationsRes.json()
-          setRelations(relData.relations || [])
+      if (optionsSettled.status === 'fulfilled' && optionsSettled.value.ok) {
+        const optionsData = await optionsSettled.value.json()
+        if (Array.isArray(optionsData.options)) {
+          setOptions(optionsData.options)
         }
-      } catch (relErr) {
-        console.error('Failed to load relations:', relErr)
+      }
+
+      if (variantsSettled.status === 'fulfilled' && variantsSettled.value.ok) {
+        const variantsData = await variantsSettled.value.json()
+        if (Array.isArray(variantsData.variants)) {
+          setVariants(variantsData.variants)
+        }
+      }
+
+      if (relationsSettled.status === 'fulfilled' && relationsSettled.value.ok) {
+        const relData = await relationsSettled.value.json()
+        if (Array.isArray(relData.relations)) {
+          setRelations(relData.relations)
+        }
       }
     } catch (err) {
-      console.error('Failed to load existing product details:', err)
-      setAttributesError(isZh ? '加载商品详情失败' : 'Failed to load product details')
+      console.error('Failed to load product details in background:', err)
     } finally {
       setIsLoading(false)
       setAttributesLoading(false)
     }
-  }, [productId, isZh])
+  }, [productId, demoFallback, initialData, getSaveController])
 
   useEffect(() => {
     let isMounted = true
@@ -263,19 +297,19 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     if (!name.trim()) {
       const msg = isZh ? '请填写商品名称' : 'Product name is required'
       setError(msg)
-      setSaveSnapshot(saveControllerRef.current.markFailed(msg))
+      setSaveSnapshot(getSaveController().markFailed(msg))
       return
     }
 
     if (price === '' || price == null || isNaN(Number(price))) {
       const msg = isZh ? '请填写有效的基础售价' : 'Valid price is required'
       setError(msg)
-      setSaveSnapshot(saveControllerRef.current.markFailed(msg))
+      setSaveSnapshot(getSaveController().markFailed(msg))
       return
     }
 
     setIsSaving(true)
-    setSaveSnapshot(saveControllerRef.current.startSaving())
+    setSaveSnapshot(getSaveController().startSaving())
 
     try {
       let targetProductId = productId
@@ -293,8 +327,11 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
             currency: currency || 'CNY',
             inventory: Number(inventory || 0),
             status,
+            category: category || null,
+            category_id: categoryId || null,
             raw_data: {
               category,
+              category_id: categoryId || null,
               seo: { title: seoTitle, description: seoDescription },
             },
           }),
@@ -338,6 +375,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           status,
         },
         category: category || null,
+        categoryId: categoryId || null,
         attributes: validAttributes,
         deletions: allDeletions.length > 0 ? allDeletions : undefined,
         seo: { title: seoTitle, description: seoDescription },
@@ -414,26 +452,28 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         }
       }
 
-      setSaveSnapshot(saveControllerRef.current.markSaved())
+      setSaveSnapshot(getSaveController().markSaved())
       setSuccess(
         (productId
           ? isZh
             ? '商品信息已成功更新！'
             : 'Product updated successfully!'
           : isZh
-          ? '商品创建成功！正在跳转...'
-          : 'Product created successfully! Redirecting...') + mediaNotice
+          ? '商品创建成功！已进入编辑模式'
+          : 'Product created successfully! Entering edit mode...') + mediaNotice
       )
 
       router.refresh()
-      setTimeout(() => {
-        router.push('/dashboard/products')
-      }, 1000)
+      if (!productId && targetProductId) {
+        setTimeout(() => {
+          router.push(`/dashboard/products/${targetProductId}/edit`)
+        }, 800)
+      }
     } catch (err) {
       console.error('Failed saving product:', err)
       const errorMsg = getProductSaveMessage(err)
       setError(errorMsg)
-      setSaveSnapshot(saveControllerRef.current.markFailed(errorMsg))
+      setSaveSnapshot(getSaveController().markFailed(errorMsg))
     } finally {
       setIsSaving(false)
     }
@@ -590,6 +630,8 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
               setSku={setSku}
               category={category}
               setCategory={setCategory}
+              categoryId={categoryId}
+              setCategoryId={setCategoryId}
               disabled={isSaving}
             />
           </div>
@@ -635,6 +677,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           <ProductAttributesSection
             productId={productId}
             category={category}
+            categoryId={categoryId}
             attributeValues={attributeValues}
             onChangeAttributeValues={setAttributeValues}
             isLoading={isLoading || attributesLoading}

@@ -121,6 +121,12 @@ export async function loadProductManagementModel(
       data.status,
     ),
 
+    categoryId:
+      (canonical as any).category_id ??
+      (typeof rawData.category_id === 'string'
+        ? rawData.category_id
+        : null),
+
     category:
       canonical.category ??
       (typeof rawData.category === 'string'

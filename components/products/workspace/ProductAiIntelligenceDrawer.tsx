@@ -421,7 +421,7 @@ export function ProductAiIntelligenceDrawer({
             ) : (
               <>
                 <Sparkles size={14} />
-                <span>{isZh ? '全部应用' : 'Apply All'}</span>
+                <span>{isZh ? '[应用结果]' : '[Apply Results]'}</span>
               </>
             )}
           </button>

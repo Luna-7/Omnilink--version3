@@ -91,9 +91,18 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
+    const rawData = isRecord(body.raw_data) ? { ...body.raw_data } : {}
+    if (typeof body.category_id === 'string' && body.category_id && !rawData.category_id) {
+      rawData.category_id = body.category_id
+    }
+    if (typeof body.category === 'string' && body.category && !rawData.category) {
+      rawData.category = body.category
+    }
+
     const insert: ProductInsert = {
       store_id: storeId,
       ...pickInsert(body),
+      raw_data: rawData,
       // Enforce store base currency as single source of truth (must be after pickInsert)
       currency: storeBaseCurrency,
     } as ProductInsert

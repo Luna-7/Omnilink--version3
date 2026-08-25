@@ -20,6 +20,7 @@ export interface ProductManagementModel {
 
   status: ProductStatus
 
+  categoryId?: string | null
   category: string | null
 
   attributes: CanonicalProductAttribute[]
@@ -46,6 +47,7 @@ export interface ProductManagementPatch {
 
   status?: ProductStatus
 
+  categoryId?: string | null
   category?: string | null
 
   attributes?: CanonicalProductAttribute[]
@@ -68,6 +70,7 @@ export function createEmptyProductManagementModel(): ProductManagementModel {
     currency: 'CNY',
     inventory: 0,
     status: 'draft',
+    categoryId: null,
     category: null,
     attributes: [],
     packaging: null,

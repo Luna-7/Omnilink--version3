@@ -54,6 +54,7 @@ export interface ProductAttributeValue {
 export interface ProductAttributesSectionProps {
   productId?: string
   category?: string
+  categoryId?: string | null
   attributeValues: ProductAttributeValue[]
   onChangeAttributeValues: (values: ProductAttributeValue[]) => void
   isLoading?: boolean
@@ -67,6 +68,7 @@ export interface ProductAttributesSectionProps {
 export function ProductAttributesSection({
   productId,
   category = '',
+  categoryId = null,
   attributeValues = [],
   onChangeAttributeValues,
   isLoading = false,
@@ -79,7 +81,7 @@ export function ProductAttributesSection({
   const { isZh } = useLanguage()
 
   // 1. Current category template (Field Definitions Source)
-  const template = useMemo(() => getCategoryTemplate(category), [category])
+  const template = useMemo(() => getCategoryTemplate(categoryId || category), [categoryId, category])
   const prevCategoryRef = useRef(category)
   const [categoryChangeNotice, setCategoryChangeNotice] = useState<string | null>(null)
 
@@ -503,13 +505,9 @@ export function ProductAttributesSection({
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {template
-                ? isZh
-                  ? `已与分类「${category}」联动加载 Canonical 标准规格模版`
-                  : `Linked with "${category}" canonical specifications template`
-                : isZh
-                ? '当前分类采用通用标准规范，支持自定义添加扩展规格'
-                : 'General custom attributes for unconstrained categories'}
+              {isZh
+                ? '描述商品本身的材质、功能与技术参数。已联动标准化规格模版。'
+                : 'Describes the material, features, and technical specifications of the product itself.'}
             </p>
           </div>
         </div>

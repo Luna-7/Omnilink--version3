@@ -57,6 +57,7 @@ export interface CanonicalProductAttributesResponse {
 }
 
 export interface SaveCanonicalProductAttributesInput {
+  categoryId?: string | null
   category?: string | null
   attributes: CanonicalProductAttribute[]
   deletions?: string[]
@@ -794,6 +795,10 @@ export async function saveCanonicalProductAttributes(
 
   const nextRawData: JsonRecord = {
     ...rawData,
+  }
+
+  if (input.categoryId !== undefined) {
+    nextRawData.category_id = input.categoryId || null
   }
 
   if (input.category !== undefined) {

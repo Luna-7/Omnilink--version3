@@ -22,18 +22,15 @@ export function normalizeHeader(header: string): string {
 
 /**
  * Option column aliases for detection
- * Extended to support multi-language and common variations
+ * Strictly limited to true sellable variant dimensions (what the customer selects to buy)
+ * Product specifications (material, dimensions, weight, technical parameters) belong to Specifications.
  */
 const OPTION_ALIASES: Record<string, string[]> = {
-  color: ['color', 'colour', '颜色', '色调', 'frame color', 'frame colour', 'lens color'],
-  size: ['size', '尺码', '尺寸', 'size us', 'size eu', 'size uk'],
-  material: ['material', '材质', '材料', 'frame material', 'frame material'],
-  finish: ['finish', '表面处理', '处理', 'frame finish', 'lens finish'],
-  storage: ['storage', '容量', '内存', 'storage capacity', 'memory'],
-  width: ['width', '宽度', '镜片宽度', 'lens width', 'frame width'],
-  height: ['height', '高度', '镜片高度', 'lens height', 'frame height'],
-  bridge: ['bridge', '鼻梁', 'bridge size'],
-  temple: ['temple', '镜腿', 'temple length'],
+  color: ['color', 'colour', '颜色', '色调', 'frame color', 'frame colour', 'lens color', 'colorway'],
+  size: ['size', '尺码', '鞋码', '服装尺码', 'size us', 'size eu', 'size uk', 'size fr'],
+  capacity: ['capacity', '容量', 'storage', '内存', 'storage capacity', 'memory', 'volume', '规格容量'],
+  style: ['style', '款式', '样式', 'pattern', 'design', '外观款式'],
+  edition: ['edition', 'version', '版本', '型号版本', 'bundle', 'package type', '套装版本'],
 }
 
 /**

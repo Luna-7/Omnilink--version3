@@ -282,6 +282,7 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
                         <div className="min-w-0 max-w-xs">
                           <Link
                             href={`/dashboard/products/${p.id}/edit`}
+                            prefetch={true}
                             className="font-bold text-[#111827] hover:underline truncate block"
                           >
                             {p.name}
@@ -317,13 +318,15 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
                       <div className="flex items-center justify-end gap-1.5">
                         <Link
                           href={`/dashboard/products/${p.id}/edit`}
-                          className="px-2.5 py-1 rounded-lg bg-[#F4F5F7] hover:bg-[#E5E7EB] text-[11px] font-semibold text-[#111827] transition-colors"
+                          prefetch={true}
+                          className="px-2.5 py-1 rounded-[4px] bg-[#F4F5F7] hover:bg-[#EFF4FF] hover:text-[#024AD8] text-[11px] font-semibold text-[#111827] transition-colors focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
                         >
                           {isZh ? '编辑' : 'Edit'}
                         </Link>
                         <Link
                           href={`/dashboard/products/${p.id}/node`}
-                          className="p-1 rounded-lg hover:bg-[#F4F5F7] text-[#6B7280] hover:text-[#111827]"
+                          prefetch={true}
+                          className="p-1 rounded-[4px] hover:bg-[#F4F5F7] text-[#6B7280] hover:text-[#111827] focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
                           title={isZh ? '查看语义节点' : 'View Node'}
                         >
                           <Cpu size={14} />
@@ -406,7 +409,7 @@ function ProductCard({
 
       <div>
         {/* 商品图：方形圆角 */}
-        <Link href={`/dashboard/products/${p.id}/edit`} className="block relative">
+        <Link href={`/dashboard/products/${p.id}/edit`} prefetch={true} className="block relative">
           <div className="w-full aspect-square rounded-xl overflow-hidden bg-white border border-[#E5E7EB] flex items-center justify-center">
             {p.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -427,7 +430,7 @@ function ProductCard({
             <span className="text-[10px] font-semibold text-[#6B7280]">{p.category || (isZh ? '通用' : 'General')}</span>
           </div>
 
-          <Link href={`/dashboard/products/${p.id}/edit`} className="block">
+          <Link href={`/dashboard/products/${p.id}/edit`} prefetch={true} className="block">
             <h4 className="text-xs font-bold text-[#111827] truncate group-hover:text-[#111827] transition-colors mt-0.5" title={p.name}>
               {p.name}
             </h4>
@@ -451,6 +454,7 @@ function ProductCard({
         <div className="flex items-center gap-1.5">
           <Link
             href={`/dashboard/products/${p.id}/node`}
+            prefetch={true}
             className="p-1 rounded-lg hover:bg-[#F4F5F7] text-[#6B7280] hover:text-[#111827] transition-colors"
             title={isZh ? '查看 AI 语义节点' : 'Semantic Node'}
           >
@@ -458,7 +462,8 @@ function ProductCard({
           </Link>
           <Link
             href={`/dashboard/products/${p.id}/edit`}
-            className="text-[11px] font-semibold text-[#6B7280] group-hover:text-[#111827] transition-all inline-flex items-center gap-0.5"
+            prefetch={true}
+            className="text-[11px] font-semibold text-[#6B7280] group-hover:text-[#024AD8] transition-all inline-flex items-center gap-0.5"
           >
             <span>{isZh ? '编辑' : 'Edit'}</span>
             <ChevronRight size={12} />

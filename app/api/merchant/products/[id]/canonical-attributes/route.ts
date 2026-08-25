@@ -131,6 +131,12 @@ export async function PUT(
       await saveCanonicalProductAttributes(
         id,
         {
+          categoryId:
+            typeof body.category_id === 'string'
+              ? body.category_id
+              : typeof body.categoryId === 'string'
+              ? body.categoryId
+              : undefined,
           category:
             typeof body.category === 'string'
               ? body.category

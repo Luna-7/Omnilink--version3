@@ -28,6 +28,16 @@ import {
   Activity,
   Radio,
   Zap,
+  Package,
+  Box,
+  Train,
+  FileText,
+  Star,
+  Sparkles,
+  ChevronRight,
+  SlidersHorizontal,
+  Clock,
+  Trophy,
 } from 'lucide-react'
 
 // ===== 全球节点网络架构数据（精确对齐 2000x857 SVG 投影坐标） =====
@@ -256,7 +266,8 @@ export function DashboardView({
   displayName?: string
 }) {
   const { isZh } = useLanguage()
-  const [expensePeriod, setExpensePeriod] = useState<'day' | 'week' | 'month' | 'year'>('day')
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<'Weekly' | 'Monthly' | 'Yearly'>('Weekly')
+  const [stockTimeframe, setStockTimeframe] = useState<'Weekly' | 'Monthly'>('Weekly')
   const [activeCountryFilter, setActiveCountryFilter] = useState<'all' | 'top'>('all')
 
   // ===== 全球市场与节点分布真实状态驱动系统 =====
@@ -266,6 +277,163 @@ export function DashboardView({
   const [selectedNode, setSelectedNode] = useState<GlobalNode | null>(null)
   const [zoomScale, setZoomScale] = useState<number>(1)
   const [zoomOrigin, setZoomOrigin] = useState<string>('50% 50%')
+
+  // ===== Stock Heatmap Matrix Data =====
+  const stockCategories = [
+    { name: 'Fashion', zhName: '服饰鞋包' },
+    { name: 'Electronics', zhName: '数码电子' },
+    { name: 'Food', zhName: '食品生鲜' },
+    { name: 'Cosmetics', zhName: '美妆护肤' },
+  ]
+  const stockDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+  // Heatmap values Matrix (4 categories x 7 days)
+  const stockMatrix = [
+    [120, 240, 310, 290, 420, 180, 90],  // Fashion
+    [320, 190, 280, 450, 310, 150, 210], // Electronics
+    [80,  210, 380, 290, 410, 260, 490], // Food
+    [230, 340, 160, 280, 120, 480, 320], // Cosmetics
+  ]
+
+  // Hover state for heatmap tile
+  const [hoveredTile, setHoveredTile] = useState<{ row: number; col: number; value: number } | null>(null)
+
+  // ===== 全球实时交易流 (Live Real-time Transactions Stream) =====
+  interface LiveTransaction {
+    id: string
+    buyerName: string
+    avatar: string
+    flag: string
+    countryName: string
+    productName: string
+    productImage: string
+    amount: string
+    timeAgo: string
+    isNew?: boolean
+  }
+
+  const INITIAL_TRANSACTIONS: LiveTransaction[] = [
+    {
+      id: 'tx-1',
+      buyerName: 'Sarah Jenkins',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop&q=80',
+      flag: '🇺🇸',
+      countryName: '美国 纽约',
+      productName: 'Adidas Ultraboost 22',
+      productImage: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=80&auto=format&fit=crop&q=80',
+      amount: '$180',
+      timeAgo: '刚刚',
+      isNew: true,
+    },
+    {
+      id: 'tx-2',
+      buyerName: 'Kenji Sato',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80',
+      flag: '🇯🇵',
+      countryName: '日本 东京',
+      productName: 'Sony WH-1000XM5',
+      productImage: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80&auto=format&fit=crop&q=80',
+      amount: '$399',
+      timeAgo: '12秒前',
+    },
+    {
+      id: 'tx-3',
+      buyerName: 'Max Mueller',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&auto=format&fit=crop&q=80',
+      flag: '🇩🇪',
+      countryName: '德国 柏林',
+      productName: 'Samsung Watch 6',
+      productImage: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80&auto=format&fit=crop&q=80',
+      amount: '$299',
+      timeAgo: '35秒前',
+    },
+    {
+      id: 'tx-4',
+      buyerName: 'Emma Watson',
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&auto=format&fit=crop&q=80',
+      flag: '🇬🇧',
+      countryName: '英国 伦敦',
+      productName: 'AirPods Pro 2',
+      productImage: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=80&auto=format&fit=crop&q=80',
+      amount: '$249',
+      timeAgo: '1分钟前',
+    },
+  ]
+
+  const [liveTransactions, setLiveTransactions] = useState<LiveTransaction[]>(INITIAL_TRANSACTIONS)
+
+  // 实时模拟交易流轮播
+  useEffect(() => {
+    const POOL = [
+      { name: 'Lucas Rossi', flag: '🇧🇷', country: '巴西 圣保罗', product: 'Nike Tech Fleece', img: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=80&auto=format&fit=crop&q=80', amount: '$130', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80' },
+      { name: 'Amina Al-Mansoor', flag: '🇦🇪', country: '阿联酋 迪拜', product: 'Sony Headphones', img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80&auto=format&fit=crop&q=80', amount: '$399', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80' },
+      { name: 'Liam O\'Connor', flag: '🇦🇺', country: '澳大利亚 悉尼', product: 'Ultraboost Sneakers', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=80&auto=format&fit=crop&q=80', amount: '$180', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=80&auto=format&fit=crop&q=80' },
+      { name: 'Sofia Korhonen', flag: '🇫🇮', country: '芬兰 赫尔辛基', product: 'Galaxy Watch 6', img: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80&auto=format&fit=crop&q=80', amount: '$299', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&auto=format&fit=crop&q=80' },
+    ]
+
+    let poolIdx = 0
+    const interval = setInterval(() => {
+      const item = POOL[poolIdx % POOL.length]
+      poolIdx++
+      const newTx: LiveTransaction = {
+        id: `tx-${Date.now()}`,
+        buyerName: item.name,
+        avatar: item.avatar,
+        flag: item.flag,
+        countryName: item.country,
+        productName: item.product,
+        productImage: item.img,
+        amount: item.amount,
+        timeAgo: '刚刚',
+        isNew: true,
+      }
+      setLiveTransactions((prev) => [newTx, ...prev.slice(0, 3).map((t) => ({ ...t, isNew: false }))])
+    }, 3200)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  // ===== 点击国家显示当地时间计算时钟 =====
+  const TIMEZONE_MAP: Record<string, { timeZone: string; label: string }> = {
+    us: { timeZone: 'America/New_York', label: '纽约 (UTC-4)' },
+    br: { timeZone: 'America/Sao_Paulo', label: '圣保罗 (UTC-3)' },
+    fi: { timeZone: 'Europe/Helsinki', label: '赫尔辛基 (UTC+3)' },
+    bd: { timeZone: 'Asia/Dhaka', label: '达卡 (UTC+6)' },
+    de: { timeZone: 'Europe/Berlin', label: '柏林 (UTC+2)' },
+    jp: { timeZone: 'Asia/Tokyo', label: '东京 (UTC+9)' },
+    sg: { timeZone: 'Asia/Singapore', label: '新加坡 (UTC+8)' },
+    ae: { timeZone: 'Asia/Dubai', label: '迪拜 (UTC+4)' },
+    au: { timeZone: 'Australia/Sydney', label: '悉尼 (UTC+10)' },
+    za: { timeZone: 'Africa/Johannesburg', label: '约翰内斯堡 (UTC+2)' },
+  }
+
+  const [selectedCountryTime, setSelectedCountryTime] = useState<string>('')
+
+  useEffect(() => {
+    const node = selectedNode || hoveredNode
+    if (!node) {
+      setSelectedCountryTime('')
+      return
+    }
+    const tzInfo = TIMEZONE_MAP[node.code] || { timeZone: 'UTC', label: 'UTC' }
+    const updateClock = () => {
+      try {
+        const nowStr = new Date().toLocaleTimeString('zh-CN', {
+          timeZone: tzInfo.timeZone,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        })
+        setSelectedCountryTime(`${nowStr} (${tzInfo.label})`)
+      } catch {
+        setSelectedCountryTime('12:00:00 (UTC)')
+      }
+    }
+    updateClock()
+    const interval = setInterval(updateClock, 1000)
+    return () => clearInterval(interval)
+  }, [selectedNode, hoveredNode])
 
   // ===== 交互状态与模态框 =====
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -331,7 +499,6 @@ export function DashboardView({
   // 节点聚焦与下钻放大
   const handleFocusNode = (node: GlobalNode) => {
     if (selectedNode?.code === node.code && zoomScale > 1) {
-      // 再次点击取消聚焦
       setZoomScale(1)
       setZoomOrigin('50% 50%')
       setSelectedNode(null)
@@ -371,176 +538,757 @@ export function DashboardView({
     setHoveredNode(null)
   }
 
-  // Top Products 数据
+  // Top Products 数据 (Top 5 畅销商品)
   const topProducts = [
     {
       id: 'p-1',
+      rank: 1,
       name: 'Adidas Ultraboost 22',
-      category: isZh ? '跑步运动鞋' : 'Running Shoes',
+      category: '服饰鞋包 / 跑步运动鞋',
+      salesCount: '1,840 件',
       price: '$180',
       image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=120&auto=format&fit=crop&q=80',
     },
     {
       id: 'p-2',
+      rank: 2,
       name: 'Samsung Galaxy Watch 6',
-      category: isZh ? '智能手表' : 'Smartwatch',
+      category: '数码电子 / 智能手表',
+      salesCount: '1,420 件',
       price: '$299',
       image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&auto=format&fit=crop&q=80',
     },
     {
       id: 'p-3',
+      rank: 3,
       name: 'Sony WH-1000XM5',
-      category: isZh ? '头戴式降噪耳机' : 'Noise-Canceling Headphones',
+      category: '数码电子 / 头戴式降噪耳机',
+      salesCount: '1,190 件',
       price: '$399',
       image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120&auto=format&fit=crop&q=80',
     },
     {
       id: 'p-4',
+      rank: 4,
       name: 'Apple AirPods Pro (2nd Gen)',
-      category: isZh ? '真无线降噪耳机' : 'Wireless Earbuds',
+      category: '数码电子 / 真无线降噪耳机',
+      salesCount: '980 件',
       price: '$249',
       image: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=120&auto=format&fit=crop&q=80',
+    },
+    {
+      id: 'p-5',
+      rank: 5,
+      name: 'Nike Tech Fleece Hoodie',
+      category: '服饰鞋包 / 运动连帽拉链衫',
+      salesCount: '860 件',
+      price: '$130',
+      image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=120&auto=format&fit=crop&q=80',
+    },
+  ]
+
+  // Color helper for heatmap tiles
+  const getTileBgClass = (value: number) => {
+    if (value <= 100) return 'bg-[#EFF6FF] border-[#DBEAFE]'
+    if (value <= 200) return 'bg-[#BFDBFE] border-[#93C5FD]'
+    if (value <= 300) return 'bg-[#60A5FA] border-[#3B82F6] text-white'
+    if (value <= 400) return 'bg-[#024AD8] border-[#003198] text-white'
+    return 'bg-[#00226B] border-[#001D6E] text-white'
+  }
+
+  // 订单履约管道节点数据
+  const fulfillmentPipeline = [
+    {
+      step: 1,
+      id: 'ordered',
+      name: '已下单',
+      value: '4,210',
+      unit: '单',
+      statusText: '实时转化中',
+      icon: ShoppingBag,
+    },
+    {
+      step: 2,
+      id: 'packed',
+      name: '已打包',
+      value: '3,047',
+      unit: '单',
+      statusText: '仓储出库完成',
+      icon: Box,
+    },
+    {
+      step: 3,
+      id: 'shipped',
+      name: '已发货',
+      value: '753',
+      unit: '单',
+      statusText: '物流干线运输中',
+      icon: Truck,
+    },
+    {
+      step: 4,
+      id: 'delivered',
+      name: '已送达',
+      value: '1,855',
+      unit: '单',
+      statusText: '买家签收就绪',
+      icon: CheckCircle2,
+    },
+    {
+      step: 5,
+      id: 'invoiced',
+      name: '已开票',
+      value: '$6.34',
+      unit: '万',
+      statusText: '财税结算完成',
+      icon: FileText,
     },
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12 select-none">
       {/* ============================================================
-          Row 1: 客户订单量趋势与数据图 (12 cols) — 头部卡片栏已去除
+          ROW 1: 顶部 Header —— 全球地图平铺充当 Header (无缝顶部与两侧羽化 + 渐变至实色底部Overlay: 利润统计 + 全球实时交易 + 核心销售榜单)
           ============================================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ---------------- 客户订单量趋势与数据图 (12 cols) ---------------- */}
-        <div className="lg:col-span-12">
-          <div className="crextio-card p-5 h-full flex flex-col justify-between bg-white">
-            <div>
-              {/* 头部 */}
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h3 className="font-heading text-sm sm:text-base font-bold text-[#1a1a1a] flex items-center gap-1.5">
-                    {isZh ? '客户订单量趋势与数据图' : 'Customer Orders Trend Data Chart'}
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-50 text-[#024ad8] font-bold border border-blue-200">
-                      Live Wave
+      <div className="relative w-full aspect-[2000/850] min-h-[500px] rounded-2xl overflow-hidden bg-gradient-to-b from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] border-t-0 border-x-0 border-b border-slate-200/30 select-none">
+        {/* 顶部与两侧羽化渐变遮罩 (与背景无缝相融) */}
+        <div className="absolute inset-y-0 left-0 w-12 sm:w-20 bg-gradient-to-r from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-12 sm:w-20 bg-gradient-to-l from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-10 sm:h-12 bg-gradient-to-b from-[#F8FAFC] via-[#F8FAFC]/70 to-transparent z-10 pointer-events-none" />
+
+        {/* 右上角浮动缩放控制胶囊 */}
+        <div className="absolute top-4 right-4 z-30 flex items-center gap-2.5">
+          <div className="flex items-center gap-1 bg-white/80 backdrop-blur-md p-1 rounded-xl border border-slate-200/60 shadow-xs">
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              title="放大"
+              className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-800 transition-colors cursor-pointer"
+            >
+              <ZoomIn size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              title="缩小"
+              className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-800 transition-colors cursor-pointer"
+            >
+              <ZoomOut size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              title="重置视图"
+              className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+            >
+              <RotateCcw size={13} />
+            </button>
+          </div>
+        </div>
+
+        {/* ---------------- 点击/悬浮国家后显示的详情浮窗 (Focus Glass Card: 无边框毛玻璃 + 极细主题色微光边框) ---------------- */}
+        {(selectedNode || hoveredNode) && (
+          <div className="absolute top-16 left-4 z-40 w-72 sm:w-80 bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-[#024AD8]/20 shadow-2xl text-xs space-y-2.5 animate-fadeIn">
+            {(() => {
+              const target = selectedNode || hoveredNode!
+              return (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                    <div className="flex items-center gap-2 font-bold text-slate-900">
+                      <span className="text-lg">{target.flag}</span>
+                      <span className="text-base font-extrabold">{target.zhName}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-[#024AD8] font-bold border border-[#024AD8]/15">
+                        {target.zhRegion}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedNode(null)
+                        setHoveredNode(null)
+                      }}
+                      className="w-6 h-6 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-800 flex items-center justify-center font-bold cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* 所点击的国家当地时间 (Live Clock) */}
+                  <div className="px-3 py-2 rounded-xl bg-slate-50/90 border border-slate-200/70 flex items-center justify-between text-[11px] font-bold text-slate-800">
+                    <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                      <Clock size={13} className="text-[#024AD8]" />
+                      <span>当地时间</span>
                     </span>
-                  </h3>
-                  <span className="text-[10px] text-[#636363]">
-                    {isZh ? '2026年1月1日 - 12月12日 全年订单曲线' : '1 Jan - 12 Dec 2026 Order Curve'}
-                  </span>
+                    <span className="text-[#024AD8] font-black tnum">
+                      {selectedCountryTime || '计算中...'}
+                    </span>
+                  </div>
+
+                  {/* 指标卡片网格 */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="p-2 rounded-lg bg-slate-50/80 border border-slate-200/60">
+                      <span className="text-[9px] text-slate-400 block font-medium">实时销售总额</span>
+                      <span className="font-black text-slate-900 text-sm tnum">${target.sales.toLocaleString()}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50/80 border border-slate-200/60">
+                      <span className="text-[9px] text-slate-400 block font-medium">同比增长</span>
+                      <span className="font-black text-emerald-600 text-sm tnum">{target.growth}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50/80 border border-slate-200/60">
+                      <span className="text-[9px] text-slate-400 block font-medium">在途活跃订单</span>
+                      <span className="font-bold text-slate-700 text-xs tnum">{target.activeOrders} 单</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50/80 border border-slate-200/60">
+                      <span className="text-[9px] text-slate-400 block font-medium">履约妥投率</span>
+                      <span className="font-bold text-blue-600 text-xs tnum">{target.fulfillRate}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalTitle(`${target.flag} ${target.zhName} 地区销售深度分析`)
+                      setActiveModal('details')
+                    }}
+                    className="w-full py-2 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] text-white text-xs font-bold transition-all cursor-pointer text-center shadow-2xs"
+                  >
+                    查看该地区销售深度分析
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="w-7 h-7 rounded-full hover:bg-[#f7f7f7] flex items-center justify-center text-[#636363] hover:text-[#1a1a1a] transition-colors"
-                  aria-label="Options"
+              )
+            })()}
+          </div>
+        )}
+
+        {/* 核心 SVG 世界地图绘制 (无边界点阵 Dot-Matrix Command Center) */}
+        <svg
+          viewBox={`0 0 ${WORLD_VIEWBOX.w} ${WORLD_VIEWBOX.h}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="w-full h-full transition-transform duration-500 ease-out"
+          style={{
+            transform: selectedNode ? 'scale(1.8)' : `scale(${zoomScale})`,
+            transformOrigin: selectedNode ? `${selectedNode.cx}px ${selectedNode.cy}px` : zoomOrigin,
+            maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 100%)',
+            WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 100%)',
+          }}
+        >
+          <defs>
+            {/* 微光点阵颗粒 */}
+            <circle id="dot" r="1.5" fill="#024AD8" opacity="0.32" />
+            <circle id="glow-dot" r="2.0" fill="#3B82F6" opacity="0.85" />
+
+            <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#024AD8" stopOpacity="0.85" />
+              <stop offset="50%" stopColor="#10B981" stopOpacity="0.75" />
+              <stop offset="100%" stopColor="#00226B" stopOpacity="0.75" />
+            </linearGradient>
+
+            <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="1" stdDeviation="4" floodColor="#024AD8" floodOpacity="0.6" />
+            </filter>
+          </defs>
+
+          {/* 全点阵网格底层 (Dot-Matrix Overlay) */}
+          <g id="matrix-map-overlay" className="pointer-events-none">
+            {/* 北美洲点阵群 */}
+            <g transform="translate(380, 180)">
+              <use href="#dot" x="20" y="20"/><use href="#dot" x="40" y="20"/><use href="#dot" x="60" y="20"/><use href="#glow-dot" x="80" y="20"/><use href="#dot" x="100" y="20"/>
+              <use href="#dot" x="10" y="40"/><use href="#glow-dot" x="30" y="40"/><use href="#dot" x="50" y="40"/><use href="#dot" x="70" y="40"/><use href="#dot" x="90" y="40"/>
+              <use href="#dot" x="20" y="60"/><use href="#dot" x="40" y="60"/><use href="#glow-dot" x="60" y="60"/><use href="#dot" x="80" y="60"/><use href="#dot" x="100" y="60"/>
+              <use href="#dot" x="30" y="80"/><use href="#dot" x="50" y="80"/><use href="#dot" x="70" y="80"/>
+            </g>
+
+            {/* 南美洲点阵群 */}
+            <g transform="translate(620, 520)">
+              <use href="#dot" x="20" y="20"/><use href="#dot" x="40" y="20"/><use href="#dot" x="60" y="20"/>
+              <use href="#dot" x="30" y="40"/><use href="#glow-dot" x="50" y="40"/><use href="#dot" x="70" y="40"/>
+              <use href="#dot" x="40" y="60"/><use href="#dot" x="60" y="60"/>
+              <use href="#glow-dot" x="45" y="80"/>
+            </g>
+
+            {/* 欧洲与非洲点阵群 */}
+            <g transform="translate(980, 120)">
+              <use href="#glow-dot" x="20" y="0"/><use href="#dot" x="40" y="0"/><use href="#dot" x="60" y="0"/>
+              <use href="#dot" x="10" y="20"/><use href="#dot" x="30" y="20"/><use href="#glow-dot" x="50" y="20"/>
+              <use href="#dot" x="20" y="160"/><use href="#dot" x="40" y="160"/><use href="#dot" x="60" y="160"/>
+              <use href="#dot" x="30" y="220"/><use href="#glow-dot" x="50" y="220"/>
+            </g>
+
+            {/* 亚洲点阵群 */}
+            <g transform="translate(1350, 160)">
+              <use href="#dot" x="40" y="20"/><use href="#dot" x="60" y="20"/><use href="#dot" x="80" y="20"/><use href="#dot" x="100" y="20"/><use href="#dot" x="120" y="20"/>
+              <use href="#dot" x="20" y="40"/><use href="#glow-dot" x="40" y="40"/><use href="#dot" x="60" y="40"/><use href="#dot" x="80" y="40"/><use href="#dot" x="100" y="40"/>
+              <use href="#dot" x="0" y="60"/><use href="#dot" x="20" y="60"/><use href="#dot" x="40" y="60"/><use href="#glow-dot" x="60" y="60"/><use href="#dot" x="80" y="60"/>
+            </g>
+
+            {/* 大洋洲点阵群 */}
+            <g transform="translate(1620, 580)">
+              <use href="#dot" x="20" y="20"/><use href="#glow-dot" x="40" y="20"/><use href="#dot" x="60" y="20"/>
+              <use href="#dot" x="10" y="40"/><use href="#dot" x="30" y="40"/><use href="#dot" x="50" y="40"/>
+            </g>
+          </g>
+
+          {/* 世界矢量线条轮廓 (极淡无边界 Contour Line Only) */}
+          <g className="world-base-map">
+            {worldPaths.map((p, idx) => {
+              const pName = p.name.toLowerCase()
+              const pId = p.id.toLowerCase()
+              const isSelected =
+                selectedNode &&
+                (pName.includes(selectedNode.name.toLowerCase()) ||
+                  pId === selectedNode.code.toLowerCase() ||
+                  p.name === selectedNode.zhName)
+
+              return (
+                <path
+                  key={idx}
+                  d={p.d}
+                  fill={isSelected ? '#024AD8' : 'none'}
+                  fillOpacity={isSelected ? 0.25 : 0}
+                  stroke="#024AD8"
+                  strokeWidth={isSelected ? 1.2 : 0.45}
+                  strokeOpacity={isSelected ? 0.8 : 0.2}
+                  className="transition-all duration-300 cursor-pointer hover:stroke-opacity-60"
+                  onClick={() => {
+                    const matched = GLOBAL_NODES.find(
+                      (n) =>
+                        n.name.toLowerCase() === pName ||
+                        n.code.toLowerCase() === pId ||
+                        p.name.includes(n.zhName)
+                    )
+                    if (matched) handleFocusNode(matched)
+                  }}
+                />
+              )
+            })}
+          </g>
+
+          {/* 干线路由弧线 */}
+          <g className="global-routing-arcs pointer-events-none">
+            {GLOBAL_ROUTES.map((route, idx) => {
+              const fromNode = GLOBAL_NODES.find((n) => n.code === route.from)
+              const toNode = GLOBAL_NODES.find((n) => n.code === route.to)
+              const isVisible =
+                displayNodes.some((n) => n.code === route.from) ||
+                displayNodes.some((n) => n.code === route.to)
+
+              if (!isVisible || !fromNode || !toNode) return null
+
+              return (
+                <g key={`route-${idx}`}>
+                  <path
+                    d={route.d}
+                    fill="none"
+                    stroke="url(#routeGradient)"
+                    strokeWidth="2.2"
+                    strokeDasharray="4,5"
+                    strokeOpacity="0.75"
+                  />
+                  <path
+                    d={route.d}
+                    fill="none"
+                    stroke="#FFFFFF"
+                    strokeWidth="3.5"
+                    strokeDasharray="12,180"
+                    strokeLinecap="round"
+                    className="opacity-90 animate-pulse"
+                  />
+                </g>
+              )
+            })}
+          </g>
+
+          {/* 节点雷达脉冲与单色主题发光波纹 */}
+          <g className="node-beacons">
+            {displayNodes.map((node) => {
+              const isFocused = selectedNode?.code === node.code
+              const isHover = hoveredNode?.code === node.code
+
+              return (
+                <g
+                  key={`node-${node.code}`}
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredNode(node)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleFocusNode(node)
+                  }}
                 >
-                  <MoreHorizontal size={15} />
-                </button>
+                  {/* 同色系多层半透明光环扩散 */}
+                  <circle
+                    cx={node.cx}
+                    cy={node.cy}
+                    r={isFocused ? 32 : 22}
+                    fill="none"
+                    stroke="#024AD8"
+                    strokeWidth="1"
+                    strokeOpacity={isFocused ? 0.8 : 0.35}
+                    className="animate-ping"
+                    style={{ transformOrigin: `${node.cx}px ${node.cy}px` }}
+                  />
+                  <circle
+                    cx={node.cx}
+                    cy={node.cy}
+                    r={isFocused ? 20 : 14}
+                    fill="#024AD8"
+                    fillOpacity={isFocused ? 0.45 : 0.2}
+                  />
+                  <circle
+                    cx={node.cx}
+                    cy={node.cy}
+                    r={isFocused ? 8 : 5}
+                    fill="#024AD8"
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                    filter="url(#nodeGlow)"
+                  />
+                  <circle
+                    cx={node.cx}
+                    cy={node.cy}
+                    r={2.5}
+                    fill="#3B82F6"
+                  />
+
+                  <g
+                    transform={`translate(${node.cx - 50}, ${node.cy - 48})`}
+                    className="transition-transform duration-300 pointer-events-none"
+                  >
+                    <rect
+                      x="0"
+                      y="0"
+                      width="100"
+                      height="34"
+                      rx="8"
+                      fill="#FFFFFF"
+                      fillOpacity={isFocused || isHover ? '0.98' : '0.92'}
+                      stroke={isFocused ? '#024AD8' : '#E2E8F0'}
+                      strokeWidth={isFocused ? '2' : '1'}
+                      filter="url(#nodeGlow)"
+                    />
+                    <text
+                      x="8"
+                      y="15"
+                      fontSize="11"
+                      fontWeight="bold"
+                      fill="#111827"
+                    >
+                      {node.flag} {node.zhName}
+                    </text>
+                    <text
+                      x="8"
+                      y="28"
+                      fontSize="10"
+                      fontWeight="bold"
+                      fill="#024AD8"
+                    >
+                      ${(node.sales / 1000).toFixed(0)}k
+                      <tspan
+                        dx="4"
+                        fontSize="8"
+                        fontWeight="normal"
+                        fill="#10B981"
+                      >
+                        {node.growth}
+                      </tspan>
+                    </text>
+                  </g>
+                </g>
+              )
+            })}
+          </g>
+        </svg>
+
+        {/* ---------------- 底部横向排版 Overlay: 上边缘渐变羽化透明，下边缘逐渐过渡为实色 ---------------- */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-b from-white/30 via-white/70 to-white/95 backdrop-blur-md border-t border-white/30 p-5 sm:p-6 pt-9 sm:pt-11 pb-5 sm:pb-6 rounded-b-2xl before:absolute before:-top-8 before:inset-x-0 before:h-8 before:bg-gradient-to-t before:from-white/30 before:to-transparent before:pointer-events-none">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            {/* 1. 利润统计 (加宽占 5 cols: 大数字 KPI + 7天平滑面积趋势图) */}
+            <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-slate-200/50 pb-3 lg:pb-0 lg:pr-5 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between mb-1.5">
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <TrendingUp size={14} className="text-[#10B981]" />
+                  <span>利润统计</span>
+                </h4>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/80 text-[11px] font-black animate-pulse shadow-2xs">
+                  ↑ +24% <span className="text-[10px] font-bold text-emerald-500">较昨日</span>
+                </span>
               </div>
 
-              {/* 大数字与标签 */}
-              <div className="my-1.5">
-                <div className="text-xl sm:text-2xl font-bold tracking-tight text-[#1a1a1a] tnum">
-                  45,637 <span className="text-xs font-normal text-[#636363]">{isZh ? '总订单' : 'total orders'}</span>
+              {/* 35% KPI 数据区 + 65% 趋势可视化区 */}
+              <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-1">
+                {/* 左侧 KPI 核心数据区 (35%) */}
+                <div className="sm:w-[38%] flex flex-col justify-center border-r sm:border-r-slate-200/60 sm:pr-3 shrink-0">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">当前总利润</span>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 tnum tracking-tight mt-0.5">
+                    $12,850
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-500 mt-1 flex items-center gap-1">
+                    <span>周利润增长</span>
+                    <span className="font-extrabold text-emerald-600">36%</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="px-2 py-0.5 rounded-full bg-[#10b981] text-white text-[10px] font-bold">
-                    +9.4% ↗
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#f7f7f7] text-[#636363] text-[10px] font-medium border border-[#e8e8e8]">
-                    {isZh ? '今日新增 +245 单' : '+245 today'}
-                  </span>
+
+                {/* 右侧 趋势可视化区 (65%): 平滑渐变面积图 */}
+                <div className="sm:w-[62%] flex flex-col justify-between pt-0.5 min-w-0">
+                  <div className="relative w-full h-[58px]">
+                    <svg viewBox="0 0 200 60" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                      <defs>
+                        <linearGradient id="profitTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10B981" stopOpacity="0.45" />
+                          <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* 平滑渐变面积填充 */}
+                      <path
+                        d="M 0 45 C 20 42, 35 30, 55 22 C 75 14, 90 32, 110 18 C 130 4, 150 25, 170 12 C 185 2, 195 10, 200 8 L 200 55 L 0 55 Z"
+                        fill="url(#profitTrendGrad)"
+                      />
+
+                      {/* 平滑趋势主线 */}
+                      <path
+                        d="M 0 45 C 20 42, 35 30, 55 22 C 75 14, 90 32, 110 18 C 130 4, 150 25, 170 12 C 185 2, 195 10, 200 8"
+                        fill="none"
+                        stroke="#10B981"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+
+                      {/* 最高点 Label 与高亮节点 */}
+                      <g transform="translate(130, 4)">
+                        <circle r="3.5" fill="#10B981" stroke="#FFFFFF" strokeWidth="1.5" />
+                        <text x="0" y="-5" fontSize="8" fontWeight="900" fill="#047857" textAnchor="middle">
+                          高 $2,150
+                        </text>
+                      </g>
+
+                      {/* 最低点 Label 与节点 */}
+                      <g transform="translate(0, 45)">
+                        <circle r="3" fill="#6EE7B7" stroke="#FFFFFF" strokeWidth="1.5" />
+                        <text x="10" y="10" fontSize="7" fontWeight="800" fill="#059669" textAnchor="start">
+                          低 $1,200
+                        </text>
+                      </g>
+                    </svg>
+                  </div>
+
+                  {/* 极简 X 轴时间 */}
+                  <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 pt-1 border-t border-slate-100/80">
+                    <span>一</span>
+                    <span>二</span>
+                    <span>三</span>
+                    <span>四</span>
+                    <span>五</span>
+                    <span>六</span>
+                    <span>日</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* HP 极简中性波浪趋势图 (Graphite #636363 & Steel #c2c2c2) */}
-            <div className="relative pt-3 pb-1">
-              <div className="relative w-full h-36">
-                {/* 峰值高亮 Tooltip */}
-                <div className="absolute left-[64%] -top-3.5 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-[#c2c2c2] shadow-xs rounded-md px-2 py-0.5 text-[9px] font-bold text-[#1a1a1a] z-10">
-                  2,345 {isZh ? '单/日峰值' : 'peak'}
+            {/* 2. 全球实时交易 (缩窄占 4 cols) */}
+            <div className="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-slate-200/50 pb-3 lg:pb-0 lg:pr-5 flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs sm:text-sm">
+                  <Zap size={14} className="text-[#024AD8]" />
+                  <span>全球实时交易</span>
                 </div>
-
-                {/* 峰值中性灰色垂直投影柱 */}
-                <div className="absolute left-[64%] top-1 bottom-0 w-6 -translate-x-1/2 bg-[#636363]/10 rounded-t-lg pointer-events-none" />
-
-                {/* SVG 极简中性波浪曲线 (HP Graphite & Steel) */}
-                <svg viewBox="0 0 300 120" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                  <defs>
-                    <linearGradient id="orderNeutralGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#636363" stopOpacity="0.22" />
-                      <stop offset="100%" stopColor="#c2c2c2" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M 0 95 C 40 90, 70 105, 110 85 C 150 65, 180 90, 210 30 C 240 70, 270 50, 300 75 L 300 120 L 0 120 Z"
-                    fill="url(#orderNeutralGradient)"
-                  />
-                  <path
-                    d="M 0 95 C 40 90, 70 105, 110 85 C 150 65, 180 90, 210 30 C 240 70, 270 50, 300 75"
-                    fill="none"
-                    stroke="#636363"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="210" cy="30" r="4.5" fill="#FFFFFF" stroke="#024ad8" strokeWidth="2.5" />
-                </svg>
+                <span className="text-[10px] text-slate-400 font-bold">实时同步</span>
               </div>
 
-              {/* 月份轴 */}
-              <div className="flex justify-between text-[10px] text-[#636363] mt-2 px-1">
-                <span>{isZh ? '5月' : 'May'}</span>
-                <span>{isZh ? '6月' : 'Jun'}</span>
-                <span>{isZh ? '7月' : 'Jul'}</span>
-                <span>{isZh ? '8月' : 'Aug'}</span>
-                <span>{isZh ? '9月' : 'Sep'}</span>
-                <span className="font-bold text-[#024ad8]">{isZh ? '10月' : 'Oct'}</span>
-                <span>{isZh ? '11月' : 'Nov'}</span>
-                <span>{isZh ? '12月' : 'Dec'}</span>
+              {/* 2 笔最新交易卡片 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {liveTransactions.slice(0, 2).map((tx) => (
+                  <div
+                    key={tx.id}
+                    className={`p-2 sm:p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
+                      tx.isNew
+                        ? 'bg-blue-50/90 border-[#024AD8]/50 shadow-2xs animate-pulse'
+                        : 'bg-white/80 border-slate-200/80 hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-200 relative">
+                          <Image
+                            src={tx.avatar}
+                            alt={tx.buyerName}
+                            fill
+                            className="object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        <span className="absolute -bottom-1 -right-1 text-[10px] leading-none">
+                          {tx.flag}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-bold text-slate-900 truncate block">
+                          {tx.buyerName}
+                        </span>
+                        <span className="text-[9px] text-slate-500 truncate block">
+                          {tx.productName}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-[#024AD8] shrink-0 tnum">{tx.amount}</span>
+                  </div>
+                ))}
               </div>
+            </div>
+
+            {/* 3. 核心销售榜单 (3 cols) —— 去除标题，仅展示 3 个国家排行卡片，与左侧视觉平行 */}
+            <div className="lg:col-span-3 flex flex-col justify-center gap-2 h-full">
+              {[
+                { rank: 1, flag: '🇺🇸', name: '美国', sales: '$8.42M', trophyColor: 'text-amber-500 fill-amber-400' },
+                { rank: 2, flag: '🇯🇵', name: '日本', sales: '$5.16M', trophyColor: 'text-slate-400 fill-slate-300' },
+                { rank: 3, flag: '🇩🇪', name: '德国', sales: '$3.85M', trophyColor: 'text-amber-700 fill-amber-600' },
+              ].map((country) => (
+                <div
+                  key={country.rank}
+                  className="flex items-center justify-between p-2 px-3 rounded-xl bg-white/85 border border-slate-200/70 hover:bg-white transition-all text-xs shadow-2xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <Trophy size={14} className={`${country.trophyColor} shrink-0`} />
+                    <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <span>{country.flag}</span>
+                      <span>{country.name}</span>
+                    </span>
+                  </div>
+                  <span className="font-black text-[#024AD8] text-xs sm:text-sm tnum animate-pulse inline-block transition-transform transform hover:scale-105">
+                    {country.sales}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
       {/* ============================================================
-          Row 2 (Analytical Depth & Geographic Heatmap): Global Sales Heatmap (8 cols) + Customer Orders Wave (4 cols)
+          ROW 2: 订单履约管道全流程进度条卡片
           ============================================================ */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:border-slate-300 transition-all">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Truck size={18} className="text-[#024AD8]" />
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center">
+              订单履约管道全流程
+              <span className="text-xs text-slate-400 font-normal ml-1.5">(演示)</span>
+            </h3>
+          </div>
 
+          <button
+            type="button"
+            onClick={() => setActiveModal('fulfill')}
+            className="px-3.5 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5"
+          >
+            <Truck size={14} />
+            <span>批量发货与履约中心</span>
+          </button>
+        </div>
 
+        {/* Flow Pipeline Steps */}
+        <div className="relative pt-2 pb-1">
+          {/* Connecting Line */}
+          <div className="hidden md:block absolute top-[28px] left-[8%] right-[8%] h-1 bg-slate-200 z-0" />
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 relative z-10">
+            {fulfillmentPipeline.map((item, idx) => {
+              const IconComp = item.icon
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setActiveModal(item.id === 'invoiced' ? 'export' : 'fulfill')}
+                  className="p-3.5 rounded-xl border border-slate-200/90 bg-slate-50/70 hover:bg-white hover:border-[#024AD8]/50 hover:shadow-sm transition-all cursor-pointer group flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-extrabold text-slate-600 flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-[#024AD8] text-white text-[10px] font-bold flex items-center justify-center shadow-2xs">
+                        {item.step}
+                      </span>
+                      <span>{item.name}</span>
+                    </span>
+
+                    <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-[#024AD8] flex items-center justify-center shadow-2xs group-hover:scale-110 transition-transform">
+                      <IconComp size={15} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-slate-900 group-hover:text-[#024AD8] transition-colors tnum">
+                        {item.value}
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">{item.unit}</span>
+                    </div>
+
+                    <div className="mt-1 flex items-center justify-between text-[10px]">
+                      <span className="text-slate-500 font-medium">{item.statusText}</span>
+                      {idx < fulfillmentPipeline.length - 1 && (
+                        <ArrowRight size={12} className="text-slate-400 hidden md:inline-block group-hover:translate-x-1 transition-transform" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* ============================================================
-          3. 底部卡片区 (Customer Orders 4 cols + Sales by Countries 8 cols)
+          ROW 3: 商品与库存综合看板 (Left: 畅销 Top 5 | Right 一列: 数据分析折线图 + 品类库存热力图)
           ============================================================ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* 左侧卡片: 畅销商品 (4 cols) */}
-        <div className="lg:col-span-4">
-          <div className="crextio-card p-4 sm:p-5 h-full flex flex-col justify-between bg-white">
-            <div>
-              {/* 头部 */}
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-heading text-sm sm:text-base font-bold text-[#111827]">
-                  {isZh ? '畅销商品' : 'Top Products'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveModal('products')}
-                  className="w-7 h-7 rounded-full hover:bg-[#F3F4F8] flex items-center justify-center text-[#9CA3AF] hover:text-[#111827] transition-colors cursor-pointer"
-                  aria-label="Options"
-                >
-                  <MoreHorizontal size={15} />
-                </button>
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:border-slate-300 transition-all">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Package size={18} className="text-[#024AD8]" />
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center">
+              商品与库存综合看板
+              <span className="text-xs text-slate-400 font-normal ml-1.5">(演示)</span>
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveModal('products')}
+            className="px-3 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+          >
+            <span>查看全部商品</span>
+            <ExternalLink size={12} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Top 5 畅销商品 (6 cols) —— 纵向拉伸与右侧列对齐 */}
+          <div className="lg:col-span-6 flex flex-col justify-between h-full">
+            <div className="flex flex-col h-full justify-between">
+              <div className="flex items-center justify-between mb-3 shrink-0">
+                <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Star size={14} className="text-amber-400 fill-amber-400" />
+                  畅销 Top 5 榜单
+                </h4>
+                <span className="text-[11px] text-slate-400 font-medium">按销量与营收实时更新</span>
               </div>
 
-              {/* 产品垂直列表 */}
-              <div className="space-y-2.5">
-                {topProducts.slice(0, 4).map((product) => (
+              <div className="flex-1 flex flex-col justify-between gap-3">
+                {topProducts.map((product) => (
                   <div
                     key={product.id}
                     onClick={() => setActiveModal('products')}
-                    className="flex items-center justify-between p-2 rounded-xl bg-gray-50/60 hover:bg-white transition-all group cursor-pointer border border-gray-100 hover:border-[#FB7185]/30 hover:shadow-2xs"
+                    className="flex-1 min-h-[72px] sm:min-h-[76px] p-3 rounded-xl bg-slate-50/80 hover:bg-white border border-slate-200/80 hover:border-[#024AD8]/40 hover:shadow-2xs transition-all group cursor-pointer flex items-center justify-between gap-3"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 overflow-hidden relative shrink-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center text-white shrink-0 shadow-2xs ${
+                        product.rank === 1 ? 'bg-amber-500' : product.rank === 2 ? 'bg-slate-400' : product.rank === 3 ? 'bg-amber-700' : 'bg-slate-600'
+                      }`}>
+                        #{product.rank}
+                      </span>
+
+                      <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 overflow-hidden relative shrink-0">
                         <Image
                           src={product.image}
                           alt={product.name}
@@ -549,441 +1297,198 @@ export function DashboardView({
                           referrerPolicy="no-referrer"
                         />
                       </div>
+
                       <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-[#111827] truncate">
+                        <h5 className="text-xs font-bold text-slate-900 truncate group-hover:text-[#024AD8] transition-colors">
                           {product.name}
-                        </h4>
-                        <p className="text-[10px] text-[#9CA3AF] truncate mt-0.5">
+                        </h5>
+                        <p className="text-[10px] text-slate-500 truncate">
                           {product.category}
                         </p>
                       </div>
                     </div>
-                    <div className="text-xs font-bold text-[#E11D48] shrink-0 pl-2 tnum">
-                      {product.price}
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-black text-[#024AD8] block tnum">{product.price}</span>
+                      <span className="text-[10px] text-slate-500 font-semibold tnum">{product.salesCount}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
-            <div className="pt-3 border-t border-gray-100 mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setActiveModal('products')}
-                className="px-3 py-1 rounded-full bg-[#F3F4F8] hover:bg-[#111827] hover:text-white text-[#111827] text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer"
-              >
-                <span>{isZh ? '查看全部商品' : 'View All'}</span>
-                <ExternalLink size={11} />
-              </button>
-            </div>
           </div>
-        </div>
 
-        {/* 右侧卡片: 全球市场与热销热力图 (8 cols) */}
-        <div className="lg:col-span-8">
-          <div className="crextio-card p-4 sm:p-5 h-full flex flex-col justify-between relative overflow-hidden">
-            {/* 1. 顶部标题栏与筛选器 */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-              <div>
+          {/* 右侧一列 (6 cols): 1. 数据分析折线图 (上方) + 2. 品类库存分布热力图 (下方) */}
+          <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6 space-y-6">
+            {/* 1. 数据分析折线图卡片 (移动至此) */}
+            <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <TrendingUp size={14} className="text-[#024AD8]" />
+                  <span>数据分析</span>
+                  <span className="text-[10px] text-slate-400 font-normal ml-0.5">(演示)</span>
+                </h4>
+
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#FB7185] animate-pulse" />
-                  <h3 className="font-heading text-sm sm:text-base font-bold text-[#111827] flex items-center gap-1.5">
-                    {isZh ? '全球市场实时热销热力图' : 'Global Sales Heatmap'}
-                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-50 text-[#E11D48] border border-rose-200">
-                      {isZh ? '实时销售' : 'Live Sales'}
-                    </span>
-                  </h3>
-                </div>
-                <p className="text-[11px] text-[#6B7280] mt-0.5">
-                  {isZh
-                    ? '全球各国家与地区实时销售额分布热力追踪（点击节点查看地区销售）'
-                    : 'Real-time sales distribution heatmap across international markets'}
-                </p>
-              </div>
+                  <select
+                    value={analyticsTimeframe}
+                    onChange={(e) => setAnalyticsTimeframe(e.target.value as any)}
+                    className="h-6 px-2 rounded-full bg-white text-slate-700 text-[11px] font-semibold border border-slate-200 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Weekly">按周</option>
+                    <option value="Monthly">按月</option>
+                    <option value="Yearly">按年</option>
+                  </select>
 
-              {/* 筛选与视图胶囊 */}
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <div className="flex items-center gap-0.5 bg-[#F3F4F8] p-0.5 rounded-full text-xs shrink-0 border border-gray-200/60">
                   <button
                     type="button"
-                    onClick={() => setActiveCountryFilter('all')}
-                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                      activeCountryFilter === 'all'
-                        ? 'bg-[#111827] text-white shadow-2xs'
-                        : 'text-[#6B7280] hover:text-[#111827]'
-                    }`}
+                    className="h-6 px-2.5 rounded-full bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-semibold border border-slate-200 flex items-center gap-1 cursor-pointer"
                   >
-                    {isZh ? '全部地区 (10)' : 'All (10)'}
+                    <span>订单维度</span>
+                    <ChevronDown size={12} />
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => setActiveCountryFilter('top')}
-                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                      activeCountryFilter === 'top'
-                        ? 'bg-[#111827] text-white shadow-2xs'
-                        : 'text-[#6B7280] hover:text-[#111827]'
-                    }`}
+                    className="w-6 h-6 rounded-lg hover:bg-slate-200/60 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                   >
-                    {isZh ? '核心 Top 4' : 'Top 4'}
+                    <MoreHorizontal size={14} />
                   </button>
                 </div>
               </div>
-            </div>
 
-            {/* 2. 真实 SVG 世界地图与热力分布容器 */}
-            <div className="relative w-full aspect-[2000/860] my-2 rounded-2xl bg-gradient-to-b from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] overflow-hidden select-none border border-slate-200/80 shadow-inner">
-              {/* 地图悬浮控制条 (Zoom In / Out / Reset) */}
-              <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-white/90 backdrop-blur-md p-1 rounded-xl shadow-xs border border-gray-200/80">
-                <button
-                  type="button"
-                  onClick={handleZoomIn}
-                  title={isZh ? '放大' : 'Zoom In'}
-                  className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-[#111827] transition-colors cursor-pointer"
-                >
-                  <ZoomIn size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleZoomOut}
-                  title={isZh ? '缩小' : 'Zoom Out'}
-                  className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-[#111827] transition-colors cursor-pointer"
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResetZoom}
-                  title={isZh ? '重置视图' : 'Reset View'}
-                  className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-[#6B7280] hover:text-[#111827] transition-colors cursor-pointer"
-                >
-                  <RotateCcw size={13} />
-                </button>
-              </div>
+              {/* 转化率 & 销售额 */}
+              <div className="flex items-center gap-5 my-2 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium text-[11px]">转化率</span>
+                  <span className="text-sm font-black text-slate-900 tnum">0.75%</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#82E600] text-slate-900 text-[9px] font-extrabold flex items-center gap-0.5">
+                    <ArrowUpRight size={10} /> 13%
+                  </span>
+                </div>
 
-              {/* 左上角当前聚焦指示器 */}
-              <div className="absolute top-3 left-3 z-30 pointer-events-none">
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/90 backdrop-blur-md border border-gray-200/70 text-[10px] font-semibold text-[#111827] shadow-2xs">
-                  <Radio size={12} className="text-[#FB7185] animate-pulse" />
-                  <span>
-                    {selectedNode
-                      ? `${selectedNode.flag} ${isZh ? selectedNode.zhName : selectedNode.name} ($${selectedNode.sales.toLocaleString()})`
-                      : (isZh ? '全球热销热力追踪中 · 数据实时同步' : 'Global Sales Heatmap Active')}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium text-[11px]">销售额</span>
+                  <span className="text-sm font-black text-slate-900 tnum">-$2,480</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-bold shrink-0">
+                    -0.4%
                   </span>
                 </div>
               </div>
 
-              {/* 核心 SVG 画布 */}
-              <svg
-                viewBox={`0 0 ${WORLD_VIEWBOX.w} ${WORLD_VIEWBOX.h}`}
-                preserveAspectRatio="xMidYMid meet"
-                className="w-full h-full transition-transform duration-500 ease-out"
-                style={{
-                  transform: `scale(${zoomScale})`,
-                  transformOrigin: zoomOrigin,
-                }}
-              >
-                <defs>
-                  {/* 航线渐变 */}
-                  <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#FB7185" stopOpacity="0.8" />
-                    <stop offset="50%" stopColor="#F43F5E" stopOpacity="0.5" />
-                    <stop offset="100%" stopColor="#A855F7" stopOpacity="0.7" />
-                  </linearGradient>
+              {/* 折线图 */}
+              <div className="relative pt-3 pb-1">
+                <div className="relative w-full h-28">
+                  <div className="absolute left-[63%] top-[10%] -translate-x-1/2 bg-[#024AD8] text-white font-black text-[10px] px-2 py-0.5 rounded-full shadow-xs border border-white/40 z-10 animate-bounce">
+                    +34%
+                  </div>
 
-                  {/* 节点外发光 */}
-                  <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#FB7185" floodOpacity="0.6" />
-                  </filter>
-                </defs>
+                  <svg viewBox="0 0 500 120" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                    <defs>
+                      <pattern id="diagonalHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="0" x2="0" y2="8" stroke="#024AD8" strokeWidth="1.5" strokeOpacity="0.18" />
+                      </pattern>
+                    </defs>
 
-                {/* 1. 世界陆地轮廓 */}
-                <g className="world-base-map">
-                  {worldPaths.map((p, idx) => {
-                    const pName = p.name.toLowerCase()
-                    const pId = p.id.toLowerCase()
-                    const isCountryActive =
-                      activeCountryNames.has(pName) ||
-                      activeCountryNames.has(pId)
-                    const isSelected =
-                      selectedNode &&
-                      (pName.includes(selectedNode.name.toLowerCase()) ||
-                        pId === selectedNode.code.toLowerCase() ||
-                        p.name === selectedNode.zhName)
+                    <line x1="0" y1="25" x2="500" y2="25" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3,3" />
+                    <line x1="0" y1="60" x2="500" y2="60" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3,3" />
+                    <line x1="0" y1="95" x2="500" y2="95" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="3,3" />
 
-                    return (
-                      <path
-                        key={idx}
-                        d={p.d}
-                        className={`transition-colors duration-200 cursor-pointer ${
-                          isSelected
-                            ? 'fill-[#E11D48] stroke-[#FFFFFF] stroke-[1]'
-                            : isCountryActive
-                            ? 'fill-[#FDA4AF] hover:fill-[#FB7185] stroke-[#FFFFFF] stroke-[0.8]'
-                            : 'fill-[#CBD5E1] hover:fill-[#94A3B8] stroke-[#FFFFFF] stroke-[0.5]'
-                        }`}
-                        onClick={() => {
-                          const matched = GLOBAL_NODES.find(
-                            (n) =>
-                              n.name.toLowerCase() === pName ||
-                              n.code.toLowerCase() === pId ||
-                              p.name.includes(n.zhName)
-                          )
-                          if (matched) handleFocusNode(matched)
-                        }}
-                      />
-                    )
-                  })}
-                </g>
+                    <path
+                      d="M 0 80 Q 80 60, 165 75 T 315 30 T 415 50 T 500 65 L 500 110 L 0 110 Z"
+                      fill="url(#diagonalHatch)"
+                    />
 
-                {/* 2. 跨洲跨洋智能干线路由连接弧线 */}
-                <g className="global-routing-arcs pointer-events-none">
-                  {GLOBAL_ROUTES.map((route, idx) => {
-                    const fromNode = GLOBAL_NODES.find((n) => n.code === route.from)
-                    const toNode = GLOBAL_NODES.find((n) => n.code === route.to)
-                    const isVisible =
-                      displayNodes.some((n) => n.code === route.from) ||
-                      displayNodes.some((n) => n.code === route.to)
+                    <path
+                      d="M 0 80 Q 80 60, 165 75 T 315 30 T 415 50 T 500 65"
+                      fill="none"
+                      stroke="#024AD8"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
 
-                    if (!isVisible || !fromNode || !toNode) return null
-
-                    return (
-                      <g key={`route-${idx}`}>
-                        <path
-                          d={route.d}
-                          fill="none"
-                          stroke="url(#routeGradient)"
-                          strokeWidth="2.2"
-                          strokeDasharray="4,5"
-                          strokeOpacity="0.7"
-                        />
-                        <path
-                          d={route.d}
-                          fill="none"
-                          stroke="#FFFFFF"
-                          strokeWidth="3.5"
-                          strokeDasharray="12,180"
-                          strokeLinecap="round"
-                          className="opacity-90 animate-pulse"
-                        />
-                      </g>
-                    )
-                  })}
-                </g>
-
-                {/* 3. 活跃节点动态脉冲雷达圆点 */}
-                <g className="node-beacons">
-                  {displayNodes.map((node) => {
-                    const isFocused = selectedNode?.code === node.code
-                    const isHover = hoveredNode?.code === node.code
-
-                    return (
-                      <g
-                        key={`node-${node.code}`}
-                        className="cursor-pointer"
-                        onMouseEnter={() => setHoveredNode(node)}
-                        onMouseLeave={() => setHoveredNode(null)}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleFocusNode(node)
-                        }}
-                      >
-                        <circle
-                          cx={node.cx}
-                          cy={node.cy}
-                          r={isFocused ? 26 : 18}
-                          fill="#FB7185"
-                          fillOpacity="0.25"
-                          className="animate-ping"
-                          style={{ transformOrigin: `${node.cx}px ${node.cy}px` }}
-                        />
-                        <circle
-                          cx={node.cx}
-                          cy={node.cy}
-                          r={isFocused ? 16 : 11}
-                          fill="#E11D48"
-                          fillOpacity="0.35"
-                        />
-                        <circle
-                          cx={node.cx}
-                          cy={node.cy}
-                          r={isFocused ? 7 : 5}
-                          fill="#E11D48"
-                          stroke="#FFFFFF"
-                          strokeWidth="2"
-                          filter="url(#nodeGlow)"
-                        />
-                        <circle
-                          cx={node.cx}
-                          cy={node.cy}
-                          r={2}
-                          fill="#FFFFFF"
-                        />
-
-                        {/* 节点悬浮标签徽章 (仅显示国家名与销售额，无延迟等干扰信息) */}
-                        <g
-                          transform={`translate(${node.cx - 50}, ${node.cy - 48})`}
-                          className="transition-transform duration-300 pointer-events-none"
-                        >
-                          <rect
-                            x="0"
-                            y="0"
-                            width="100"
-                            height="34"
-                            rx="8"
-                            fill="#FFFFFF"
-                            fillOpacity={isFocused || isHover ? '0.98' : '0.92'}
-                            stroke={isFocused ? '#FB7185' : '#E2E8F0'}
-                            strokeWidth={isFocused ? '2' : '1'}
-                            filter="url(#nodeGlow)"
-                          />
-                          <text
-                            x="8"
-                            y="15"
-                            fontSize="11"
-                            fontWeight="bold"
-                            fill="#111827"
-                          >
-                            {node.flag} {isZh ? node.zhName : node.name}
-                          </text>
-                          <text
-                            x="8"
-                            y="28"
-                            fontSize="10"
-                            fontWeight="bold"
-                            fill="#FB7185"
-                          >
-                            ${(node.sales / 1000).toFixed(0)}k
-                            <tspan
-                              dx="4"
-                              fontSize="8"
-                              fontWeight="normal"
-                              fill="#10B981"
-                            >
-                              {node.growth}
-                            </tspan>
-                          </text>
-                        </g>
-                      </g>
-                    )
-                  })}
-                </g>
-              </svg>
-
-              {/* 4. 选中国家/悬浮时的高级销售热力诊断浮窗 (HUD Popover) */}
-              {(selectedNode || hoveredNode) && (
-                <div className="absolute bottom-3 left-3 z-40 bg-white/95 backdrop-blur-md rounded-xl p-3 border border-slate-200/90 shadow-lg text-xs max-w-[280px] animate-fadeIn">
-                  {(() => {
-                    const target = selectedNode || hoveredNode!
-                    return (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 font-bold text-[#111827]">
-                            <span className="text-base">{target.flag}</span>
-                            <span>{isZh ? target.zhName : target.name}</span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-50 text-[#E11D48] font-semibold">
-                              {isZh ? target.zhRegion : target.region}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedNode(null)
-                              setHoveredNode(null)
-                            }}
-                            className="text-[#9CA3AF] hover:text-[#111827] text-xs font-bold cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
-                          <div>
-                            <span className="text-[9px] text-[#9CA3AF] block">{isZh ? '实时销售总额' : 'Sales Volume'}</span>
-                            <span className="font-bold text-[#111827] text-xs tnum">${target.sales.toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-[#9CA3AF] block">{isZh ? '同比增长' : 'YoY Growth'}</span>
-                            <span className="font-bold text-emerald-600 text-xs tnum">{target.growth}</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-[#9CA3AF] block">{isZh ? '活跃订单数' : 'Active Orders'}</span>
-                            <span className="font-semibold text-[#111827] text-[11px] tnum">
-                              {target.activeOrders} {isZh ? '单' : 'orders'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-[#9CA3AF] block">{isZh ? '订单妥投率' : 'Fulfillment Rate'}</span>
-                            <span className="font-semibold text-emerald-600 text-[11px] tnum">{target.fulfillRate}</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-1.5 flex justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModalTitle(`${target.flag} ${isZh ? target.zhName : target.name} ${isZh ? '地区销售深度分析' : 'Regional Sales Analytics'}`)
-                              setActiveModal('details')
-                            }}
-                            className="w-full py-1.5 rounded-lg bg-[#111827] hover:bg-black text-white text-[10px] font-semibold transition-all cursor-pointer text-center"
-                          >
-                            {isZh ? '查看该地区销售分析' : 'View Regional Sales Analytics'}
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })()}
+                    <circle cx="80" cy="65" r="3" fill="#024AD8" stroke="#FFFFFF" strokeWidth="1.5" />
+                    <circle cx="165" cy="75" r="3" fill="#024AD8" stroke="#FFFFFF" strokeWidth="1.5" />
+                    <circle cx="240" cy="50" r="3" fill="#024AD8" stroke="#FFFFFF" strokeWidth="1.5" />
+                    <circle cx="315" cy="30" r="4.5" fill="#024AD8" stroke="#FFFFFF" strokeWidth="2" />
+                    <circle cx="415" cy="50" r="3" fill="#024AD8" stroke="#FFFFFF" strokeWidth="1.5" />
+                    <circle cx="490" cy="65" r="3" fill="#024AD8" stroke="#FFFFFF" strokeWidth="1.5" />
+                  </svg>
                 </div>
-              )}
+
+                <div className="flex justify-between text-[10px] text-slate-400 font-semibold px-1 mt-1">
+                  <span>1月</span>
+                  <span>2月</span>
+                  <span>3月</span>
+                  <span className="text-[#024AD8] font-bold">4月</span>
+                  <span>5月</span>
+                  <span>6月</span>
+                </div>
+              </div>
             </div>
 
-            {/* 3. 底部各地区实时销售数据速览网格 */}
-            <div className="pt-2 border-t border-gray-100 mt-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-[#111827] flex items-center gap-1">
-                  <Activity size={12} className="text-[#FB7185]" />
-                  {isZh ? '各主要市场销售业绩速览 (点击地图或卡片查看)' : 'Regional Markets Performance'}
-                </span>
-                <span className="text-[10px] text-[#6B7280]">
-                  {isZh ? `已接入 ${displayNodes.length} 个重点国家/地区` : `${displayNodes.length} Markets Tracked`}
-                </span>
+            {/* 2. 品类库存分布热力图 (下方) */}
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-1.5">
+                  <Box size={14} className="text-[#024AD8]" />
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    品类库存分布热力图
+                  </h4>
+                </div>
+
+                <select
+                  value={stockTimeframe}
+                  onChange={(e) => setStockTimeframe(e.target.value as any)}
+                  className="h-6 px-2 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold border border-slate-200 focus:outline-none cursor-pointer"
+                >
+                  <option value="Weekly">按周</option>
+                  <option value="Monthly">按月</option>
+                </select>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 max-h-36 overflow-y-auto pr-0.5">
-                {displayNodes.map((node) => {
-                  const isSelected = selectedNode?.code === node.code
-                  return (
-                    <div
-                      key={node.code}
-                      onClick={() => handleFocusNode(node)}
-                      className={`p-2 rounded-xl transition-all cursor-pointer group border ${
-                        isSelected
-                          ? 'bg-rose-50/80 border-[#FB7185] shadow-xs'
-                          : 'bg-white/90 hover:bg-white border-gray-100 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="text-xs shrink-0">{node.flag}</span>
-                          <span className="text-[11px] font-bold text-[#111827] truncate">
-                            {isZh ? node.zhName : node.name}
-                          </span>
+              <div className="my-1">
+                <div className="grid grid-cols-8 gap-1.5 items-center text-[11px] font-bold text-slate-600 mb-1.5">
+                  <span>品类</span>
+                  {['周日', '周一', '周二', '周三', '周四', '周五', '周六'].map((day, idx) => (
+                    <span key={idx} className="text-center text-slate-400">{day}</span>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5">
+                  {stockCategories.map((cat, rIdx) => (
+                    <div key={cat.name} className="grid grid-cols-8 gap-1.5 items-center">
+                      <span className="text-[11px] font-bold text-slate-700 truncate" title={cat.zhName}>
+                        {cat.zhName}
+                      </span>
+
+                      {stockMatrix[rIdx].map((val, cIdx) => (
+                        <div
+                          key={cIdx}
+                          onMouseEnter={() => setHoveredTile({ row: rIdx, col: cIdx, value: val })}
+                          onMouseLeave={() => setHoveredTile(null)}
+                          className={`h-8 rounded-md border transition-all cursor-pointer flex items-center justify-center text-[9px] font-bold ${getTileBgClass(
+                            val
+                          )} hover:scale-105 shadow-2xs`}
+                          title={`${cat.zhName} (${stockDays[cIdx]}): ${val} 件`}
+                        >
+                          {val}
                         </div>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-50 font-semibold text-emerald-600 shrink-0 tnum">
-                          {node.growth}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mt-1 text-[11px]">
-                        <span className="font-semibold text-[#111827] tnum">
-                          ${(node.sales / 1000).toFixed(0)}k
-                        </span>
-                        <span className="text-[9px] text-[#6B7280] tnum">
-                          {node.activeOrders} {isZh ? '单' : 'orders'}
-                        </span>
-                      </div>
+                      ))}
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 mt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-500 font-semibold">
+                <span>库存分布（件）:</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#EFF6FF] border border-[#DBEAFE]" /> 0-100</div>
+                  <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#BFDBFE]" /> 101-200</div>
+                  <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#60A5FA]" /> 201-300</div>
+                  <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#024AD8]" /> 301-400</div>
+                  <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#00226B]" /> 401+</div>
+                </div>
               </div>
             </div>
           </div>
@@ -993,9 +1498,9 @@ export function DashboardView({
       {/* ===== 交互式模态框与 Toast 通知 ===== */}
       {activeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-gray-100 overflow-hidden relative">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-              <h3 className="font-heading text-base font-bold text-[#111827]">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 overflow-hidden relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-extrabold text-slate-900">
                 {activeModal === 'export' && (isZh ? '导出店铺经营报表' : 'Export Store Analytics')}
                 {activeModal === 'fulfill' && (isZh ? '订单批量履约与发货中心' : 'Order Fulfillment & Shipping Hub')}
                 {activeModal === 'products' && (isZh ? '全渠道在售精选商品库存' : 'Active Products Inventory')}
@@ -1004,20 +1509,20 @@ export function DashboardView({
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-[#6B7280] flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             {activeModal === 'export' && (
-              <div className="space-y-4 text-xs text-[#6B7280]">
+              <div className="space-y-4 text-xs text-slate-600">
                 <p>{isZh ? '请选择您要导出的报表格式与时间跨度，系统将生成加密 CSV/Excel 结算明细：' : 'Select format and date range for your secure export:'}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="p-3 rounded-xl border-2 border-[#FB7185] bg-rose-50/40 font-bold text-[#111827] cursor-pointer text-center">
+                  <div className="p-3 rounded-xl border-2 border-[#024AD8] bg-blue-50/40 font-bold text-slate-900 cursor-pointer text-center">
                     CSV 详细账单
                   </div>
-                  <div className="p-3 rounded-xl border border-gray-200 hover:border-gray-300 font-semibold text-[#6B7280] cursor-pointer text-center">
+                  <div className="p-3 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-600 cursor-pointer text-center">
                     Excel 财务汇总
                   </div>
                 </div>
@@ -1028,7 +1533,7 @@ export function DashboardView({
                       setActiveModal(null)
                       setToastMessage(isZh ? '报表已成功生成并推送到您的下载队列' : 'Report generated and queued for download')
                     }}
-                    className="w-full py-2.5 rounded-xl bg-[#111827] hover:bg-black text-white font-semibold shadow-2xs transition-all cursor-pointer text-xs"
+                    className="w-full py-2.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] text-white font-bold shadow-2xs transition-all cursor-pointer text-xs"
                   >
                     {isZh ? '确认生成下载链接' : 'Confirm & Download'}
                   </button>
@@ -1038,15 +1543,15 @@ export function DashboardView({
 
             {activeModal === 'fulfill' && (
               <div className="space-y-3 text-xs">
-                <p className="text-[#6B7280]">{isZh ? '当前共有 12 笔待发货订单等待智能路由分发：' : '12 unfulfilled orders ready for AI routing:'}</p>
+                <p className="text-slate-600">{isZh ? '当前共有 12 笔待发货订单等待智能路由分发：' : '12 unfulfilled orders ready for AI routing:'}</p>
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100">
+                    <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
                       <div>
-                        <span className="font-bold text-[#111827]">#ORD-2026-88{i}</span>
-                        <span className="text-[10px] text-[#9CA3AF] block">{isZh ? 'Adidas Ultraboost 22 · 1件' : 'Adidas Ultraboost 22 · 1pc'}</span>
+                        <span className="font-bold text-slate-900">#ORD-2026-88{i}</span>
+                        <span className="text-[10px] text-slate-400 block">{isZh ? 'Adidas Ultraboost 22 · 1件' : 'Adidas Ultraboost 22 · 1pc'}</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
                         {isZh ? '就绪' : 'Ready'}
                       </span>
                     </div>
@@ -1059,7 +1564,7 @@ export function DashboardView({
                       setActiveModal(null)
                       setToastMessage(isZh ? '成功执行 12 笔订单一键批量履约发货！' : 'Successfully batch fulfilled 12 orders!')
                     }}
-                    className="w-full py-2.5 rounded-xl bg-[#FB7185] hover:bg-[#E11D48] text-white font-semibold shadow-2xs transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] text-white font-bold shadow-2xs transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5"
                   >
                     <Truck size={14} />
                     <span>{isZh ? '立即一键批量发货 (12)' : 'Execute Batch Fulfill (12)'}</span>
@@ -1070,15 +1575,15 @@ export function DashboardView({
 
             {activeModal === 'products' && (
               <div className="space-y-3 text-xs">
-                <p className="text-[#6B7280]">{isZh ? '当前店铺在售精选商品库存及实时销量：' : 'Active store inventory and sales velocity:'}</p>
+                <p className="text-slate-600">{isZh ? '当前店铺在售精选商品库存及实时销量：' : 'Active store inventory and sales velocity:'}</p>
                 <div className="space-y-2">
                   {topProducts.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                    <div key={p.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#111827]">{p.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-[#6B7280]">{p.category}</span>
+                        <span className="font-bold text-slate-900">{p.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">{p.category}</span>
                       </div>
-                      <span className="font-bold text-[#E11D48]">{p.price}</span>
+                      <span className="font-extrabold text-[#024AD8]">{p.price}</span>
                     </div>
                   ))}
                 </div>
@@ -1086,7 +1591,7 @@ export function DashboardView({
                   <button
                     type="button"
                     onClick={() => setActiveModal(null)}
-                    className="px-4 py-2 rounded-xl bg-[#111827] text-white font-semibold text-xs cursor-pointer"
+                    className="px-4 py-2 rounded-[4px] bg-slate-900 text-white font-bold text-xs cursor-pointer"
                   >
                     {isZh ? '关闭' : 'Close'}
                   </button>
@@ -1095,16 +1600,16 @@ export function DashboardView({
             )}
 
             {activeModal === 'details' && (
-              <div className="space-y-3 text-xs text-[#6B7280]">
-                <div className="p-3 rounded-xl bg-[#F8FAFC] border border-gray-100">
-                  <span className="font-bold text-[#111827] block mb-1">{isZh ? '核心指标多维拆解' : 'Multidimensional Breakdown'}</span>
+              <div className="space-y-3 text-xs text-slate-600">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="font-bold text-slate-900 block mb-1">{isZh ? '核心指标多维拆解' : 'Multidimensional Breakdown'}</span>
                   <p>{isZh ? '基于 AI 实时监测的归因模型，该指标在过去 7 天内保持稳健增长，环比提升 +14.2%，履约时效达到行业前 5%。' : 'Real-time AI monitored attribution model shows steady 14.2% week-over-week growth.'}</p>
                 </div>
                 <div className="pt-2 flex justify-end">
                   <button
                     type="button"
                     onClick={() => setActiveModal(null)}
-                    className="px-4 py-2 rounded-xl bg-[#111827] text-white font-semibold text-xs cursor-pointer"
+                    className="px-4 py-2 rounded-[4px] bg-[#024AD8] text-white font-bold text-xs cursor-pointer hover:bg-[#003198]"
                   >
                     {isZh ? '知道了' : 'Got it'}
                   </button>
@@ -1117,8 +1622,8 @@ export function DashboardView({
 
       {/* ===== 浮动 Toast 提示通知 ===== */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#111827] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-bounce">
-          <CheckCircle2 size={16} className="text-[#FB7185] shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-bold animate-bounce">
+          <CheckCircle2 size={16} className="text-[#82E600] shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}

@@ -1,3 +1,5 @@
+import { getCategoryTemplateKey } from '@/lib/product/categories'
+
 export interface AttributeTemplateField {
   key: string
   nameZh: string
@@ -261,18 +263,29 @@ export const PRODUCT_CATEGORY_TEMPLATES: Record<string, ProductCategoryTemplate>
 }
 
 /**
- * Match a category name to a template.
- * Matches exact keys or category synonyms.
+ * Match a category name or template ID to a template.
+ * Matches exact keys, template IDs, or taxonomy mappings.
  */
-export function getCategoryTemplate(category?: string | null): ProductCategoryTemplate | null {
-  if (!category) return null
+export function getCategoryTemplate(categoryOrKey?: string | null): ProductCategoryTemplate | null {
+  if (!categoryOrKey) return null
 
-  const trimmed = category.trim()
+  const trimmed = categoryOrKey.trim()
   if (!trimmed) return null
 
-  // Direct key lookup
+  // Direct key lookup by category name
   if (PRODUCT_CATEGORY_TEMPLATES[trimmed]) {
     return PRODUCT_CATEGORY_TEMPLATES[trimmed]
+  }
+
+  // Direct lookup by template ID
+  const byId = Object.values(PRODUCT_CATEGORY_TEMPLATES).find((t) => t.id === trimmed)
+  if (byId) return byId
+
+  // Taxonomy lookup
+  const mappedKey = getCategoryTemplateKey(trimmed)
+  if (mappedKey) {
+    const byMappedId = Object.values(PRODUCT_CATEGORY_TEMPLATES).find((t) => t.id === mappedKey)
+    if (byMappedId) return byMappedId
   }
 
   const lower = trimmed.toLowerCase()

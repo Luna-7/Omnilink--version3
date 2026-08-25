@@ -13,8 +13,10 @@ export interface ProductManagementSaveInput {
     currency?: string
     inventory?: number
     status?: 'active' | 'draft' | 'archived'
+    category_id?: string | null
   }
 
+  categoryId?: string | null
   category?: string | null
 
   attributes?: {
@@ -126,6 +128,7 @@ export async function saveProductManagement(
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            category_id: input.categoryId,
             category: input.category,
             attributes: input.attributes || [],
             deletions: input.deletions,

@@ -42,9 +42,9 @@ import { generateVariantCombinations } from '@/lib/products/variants/validation'
 import {
   suggestProductCategory,
   ProductCategorySuggestion,
-  COMMON_CATEGORY_OPTIONS,
 } from '@/lib/product/category-suggester'
 import { getCategoryTemplate } from '@/lib/product/category-templates'
+import { CategorySelector } from '@/components/product/CategorySelector'
 
 interface ImageFileItem {
   file: File
@@ -79,9 +79,10 @@ export function ProductCreateDialog() {
   const [title, setTitle] = useState('')
   const [sku, setSku] = useState('')
   const [category, setCategory] = useState('')
-  const [price, setPrice] = useState('1299')
+  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [price, setPrice] = useState('')
   const [currency, setCurrency] = useState('CNY')
-  const [inventory, setInventory] = useState('100')
+  const [inventory, setInventory] = useState('')
   const [description, setDescription] = useState('')
 
   // Local category suggestion from deterministic rule engine (fast, predictable, no tokens)
@@ -156,10 +157,11 @@ export function ProductCreateDialog() {
     setImages([])
     setTitle('')
     setSku('')
-    setCategory(isZh ? '音频声学' : 'Audio & Acoustics')
-    setPrice('1299')
+    setCategory('')
+    setCategoryId(null)
+    setPrice('')
     setCurrency('CNY')
-    setInventory('100')
+    setInventory('')
     setDescription('')
     setError('')
     setSuccess('')
@@ -472,11 +474,14 @@ export function ProductCreateDialog() {
         name: title.trim(),
         sku: sku.trim() || null,
         category: category.trim() || null,
+        category_id: categoryId || null,
         description: description.trim() || null,
         price: Number(price) || 0,
         currency: currency,
         inventory: Number(inventory) || 0,
         raw_data: {
+          category_id: categoryId || null,
+          category: category.trim() || null,
           ai_draft: aiDraft,
           attributes: allAttributes,
           accepted_modules: activeModules,
@@ -620,6 +625,11 @@ export function ProductCreateDialog() {
 
       setSuccess(noticeText)
       router.refresh()
+      setTimeout(() => {
+        setOpen(false)
+        resetForm()
+        router.push(`/dashboard/products/${createdId}/edit`)
+      }, 700)
     } catch (err) {
       setError(
         err instanceof Error
@@ -647,9 +657,9 @@ export function ProductCreateDialog() {
         <button
           type="button"
           id="btn-create-product-dialog"
-          className="px-4 py-2 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
+          className="px-4 py-2 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
         >
-          <Plus size={14} className="text-[#edbc40]" />
+          <Plus size={14} className="text-white" />
           <span>{isZh ? '新建商品' : 'Create Product'}</span>
         </button>
       </DialogTrigger>
@@ -664,17 +674,9 @@ export function ProductCreateDialog() {
                 <Package size={18} className="text-[#edbc40]" />
               </div>
               <div>
-                <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <span>{isZh ? '新建商品' : 'Create Product'}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
-                    Omnilink Studio
-                  </span>
+                <DialogTitle className="text-base sm:text-lg font-bold text-slate-900">
+                  {isZh ? '新建商品' : 'Create Product'}
                 </DialogTitle>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {isZh
-                    ? '录入商品基础信息与多模态 AI 智能提取，支持展开更多高级设置'
-                    : 'Enter product essentials with multimodal AI extraction, expandable with advanced settings'}
-                </p>
               </div>
             </div>
           </div>
@@ -717,13 +719,13 @@ export function ProductCreateDialog() {
                     type="button"
                     onClick={handleRunAIAnalysis}
                     disabled={isAnalyzing || isSubmitting}
-                    className="h-10 px-3.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+                    className="h-10 px-3.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
                     title={isZh ? '智能分析名称与已选图片' : 'AI Analyze Name & Images'}
                   >
                     {isAnalyzing ? (
-                      <Loader2 size={13} className="animate-spin" />
+                      <Loader2 size={13} className="animate-spin text-white" />
                     ) : (
-                      <Sparkles size={13} className="text-[#edbc40]" />
+                      <Sparkles size={13} className="text-white" />
                     )}
                     <span>
                       {isAnalyzing
@@ -734,59 +736,35 @@ export function ProductCreateDialog() {
                 </div>
               </div>
 
-              {/* Instant Rule-Based Category Suggestion Banner */}
+              {/* 智能分类推荐直选按钮 */}
               {localCategorySuggestion && (
-                <div className="p-2.5 rounded-xl bg-violet-50/80 border border-violet-200/80 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-violet-600 shrink-0" />
-                    <span className="font-bold text-violet-900">{isZh ? '✨ 建议分类:' : '✨ Suggested:'}</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white border border-violet-200 font-bold text-violet-800 shadow-2xs">
-                      {localCategorySuggestion.path.join(' → ')}
-                    </span>
-                  </div>
-                  {category !== localCategorySuggestion.category ? (
-                    <button
-                      type="button"
-                      onClick={() => setCategory(localCategorySuggestion.category)}
-                      className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold cursor-pointer transition-all shadow-2xs"
-                    >
-                      {isZh ? '采用建议' : 'Apply'}
-                    </button>
-                  ) : (
-                    <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
-                      <Check size={12} /> {isZh ? '已采用' : 'Applied'}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* AI Suggestion vs Local Rule Diff */}
-              {aiSuggestedCategory && localCategorySuggestion && aiSuggestedCategory !== localCategorySuggestion.category && (
-                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <span className="font-bold">{isZh ? '分类建议对比：' : 'Category Comparison:'}</span>
-                    <span className="ml-1 text-[11px]">
-                      {isZh
-                        ? `本地规则：${localCategorySuggestion.path.join(' → ')} | AI 推荐：${aiSuggestedCategory}`
-                        : `Rule: ${localCategorySuggestion.path.join(' → ')} | AI: ${aiSuggestedCategory}`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setCategory(localCategorySuggestion.category)}
-                      className="px-2 py-0.5 rounded-md bg-white border border-amber-300 text-[11px] font-semibold hover:bg-amber-100/50 cursor-pointer"
-                    >
-                      {isZh ? '选本地' : 'Rule'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCategory(aiSuggestedCategory)}
-                      className="px-2 py-0.5 rounded-md bg-white border border-amber-300 text-[11px] font-semibold hover:bg-amber-100/50 cursor-pointer"
-                    >
-                      {isZh ? '选 AI' : 'AI'}
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 text-xs flex-wrap pt-0.5">
+                  <span className="text-slate-500 text-[11px] font-medium shrink-0">
+                    {isZh ? '智能分类推荐：' : 'Suggested Category:'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategory(localCategorySuggestion.category)
+                      if (localCategorySuggestion.categoryId) {
+                        setCategoryId(localCategorySuggestion.categoryId)
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] border text-xs font-semibold transition-all cursor-pointer ${
+                      category === localCategorySuggestion.category || categoryId === localCategorySuggestion.categoryId
+                        ? 'bg-[#EFF4FF] text-[#024AD8] border-[#024AD8] font-bold ring-1 ring-[#024AD8]/20 shadow-2xs'
+                        : 'bg-white hover:bg-[#F7F7F7] text-slate-800 border-[#D1D1D1] hover:border-[#024AD8] hover:text-[#024AD8] shadow-2xs'
+                    }`}
+                    title={isZh ? '点击直接填入分类' : 'Click to apply'}
+                  >
+                    <Sparkles size={12} className={category === localCategorySuggestion.category || categoryId === localCategorySuggestion.categoryId ? 'text-[#024AD8]' : 'text-amber-500'} />
+                    <span>{localCategorySuggestion.path.join(' → ')}</span>
+                    {category === localCategorySuggestion.category || categoryId === localCategorySuggestion.categoryId ? (
+                      <Check size={12} className="text-[#024AD8]" />
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-normal ml-0.5">{isZh ? '点击填入' : 'Apply'}</span>
+                    )}
+                  </button>
                 </div>
               )}
 
@@ -815,34 +793,33 @@ export function ProductCreateDialog() {
                     onChange={(e) => setSku(e.target.value)}
                     placeholder="例如：PROD-001"
                     disabled={isSubmitting}
-                    className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
+                    className="w-full h-10 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#024AD8]/15 focus:border-[#024AD8]"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-bold text-slate-900">
-                      {isZh ? '商品分类' : 'Product Category'}
+                      {isZh ? '商品分类 (两级体系)' : 'Product Category'}
                     </label>
                     <span className="text-[10px] text-slate-400">
-                      {isZh ? '可直接输入或选建议' : 'Custom / suggestions'}
+                      {isZh ? '快速搜索 / 热门推荐' : 'Quick Search'}
                     </span>
                   </div>
-                  <input
-                    type="text"
+                  <CategorySelector
                     id="create-product-category"
-                    list="dialog-category-suggestions"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder={isZh ? '输入分类（如：太阳镜、耳机）' : 'Type category...'}
+                    value={categoryId || category}
+                    onChange={(res) => {
+                      setCategory(res.categoryName)
+                      setCategoryId(res.categoryId || null)
+                    }}
+                    onClear={() => {
+                      setCategory('')
+                      setCategoryId(null)
+                    }}
                     disabled={isSubmitting}
-                    className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
+                    placeholder={isZh ? '选择两级分类...' : 'Select category...'}
                   />
-                  <datalist id="dialog-category-suggestions">
-                    {COMMON_CATEGORY_OPTIONS.map((cat) => (
-                      <option key={cat} value={cat} />
-                    ))}
-                  </datalist>
                 </div>
               </div>
 
@@ -882,7 +859,7 @@ export function ProductCreateDialog() {
                     onChange={(e) => setInventory(e.target.value)}
                     min="0"
                     step="1"
-                    placeholder="100"
+                    placeholder="0"
                     disabled={isSubmitting}
                     className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
                   />
@@ -1798,7 +1775,7 @@ export function ProductCreateDialog() {
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting || isAnalyzing}
-              className="px-5 h-10 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+              className="px-5 h-10 rounded-[4px] bg-white hover:bg-[#F7F7F7] border border-[#D1D1D1] hover:border-[#B0B0B0] text-[#1C1C1C] text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
             >
               {isZh ? '取消' : 'Cancel'}
             </button>
@@ -1808,7 +1785,7 @@ export function ProductCreateDialog() {
               onClick={submit}
               disabled={isSubmitting || isAnalyzing}
               id="btn-submit-create-product"
-              className="px-6 h-10 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+              className="px-6 h-10 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] disabled:bg-[#E2E2E2] disabled:text-[#9E9E9E] disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
             >
               {isSubmitting ? (
                 <Loader2 size={15} className="animate-spin" />

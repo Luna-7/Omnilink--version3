@@ -1,4 +1,5 @@
 export type ProductCategorySuggestion = {
+  categoryId?: string
   category: string
   path: string[]
   confidence: number
@@ -6,15 +7,18 @@ export type ProductCategorySuggestion = {
 }
 
 export type CategoryRule = {
+  categoryId?: string
   category: string
   path: string[]
   keywords: string[]
 }
 
+// Build rules dynamically from SEED_CATEGORIES + explicit prioritized rules
 export const CATEGORY_RULES: CategoryRule[] = [
   {
+    categoryId: 'cat-eyewear-sunglasses',
     category: '太阳镜',
-    path: ['眼镜', '太阳镜'],
+    path: ['珠宝配饰与眼镜', '太阳镜'],
     keywords: [
       'sunglasses',
       'sun glasses',
@@ -25,11 +29,14 @@ export const CATEGORY_RULES: CategoryRule[] = [
       '墨镜',
       '偏光镜',
       '偏光太阳镜',
+      '驾驶镜',
+      '防紫外线眼镜',
     ],
   },
   {
-    category: '光学眼镜',
-    path: ['眼镜', '光学眼镜'],
+    categoryId: 'cat-eyewear-optical',
+    category: '光学眼镜与镜框',
+    path: ['珠宝配饰与眼镜', '光学眼镜与镜框'],
     keywords: [
       'optical glasses',
       'prescription glasses',
@@ -39,11 +46,15 @@ export const CATEGORY_RULES: CategoryRule[] = [
       '镜框',
       '光学眼镜',
       '近视眼镜',
+      '防蓝光眼镜',
+      '纯钛眼镜',
+      '配镜',
     ],
   },
   {
-    category: '耳机',
-    path: ['消费电子', '耳机'],
+    categoryId: 'cat-electronics-audio',
+    category: '影音娱乐',
+    path: ['数码家电', '影音娱乐'],
     keywords: [
       'headphone',
       'headphones',
@@ -59,11 +70,14 @@ export const CATEGORY_RULES: CategoryRule[] = [
       '蓝牙耳机',
       '无线耳机',
       '降噪耳机',
+      '音箱',
+      '回音壁',
     ],
   },
   {
-    category: '智能手表',
-    path: ['智能穿戴', '智能手表'],
+    categoryId: 'cat-electronics-wearables',
+    category: '智能穿戴',
+    path: ['数码家电', '智能穿戴'],
     keywords: [
       'smart watch',
       'smartwatch',
@@ -73,9 +87,13 @@ export const CATEGORY_RULES: CategoryRule[] = [
       'smart band',
       '智能手表',
       '运动手表',
+      '智能手环',
+      '手环',
+      'VR眼镜',
     ],
   },
   {
+    categoryId: 'cat-sports-shoes',
     category: '运动鞋',
     path: ['运动户外', '运动鞋'],
     keywords: [
@@ -87,25 +105,65 @@ export const CATEGORY_RULES: CategoryRule[] = [
       '运动鞋',
       '跑鞋',
       '球鞋',
-      '休闲鞋',
+      '板鞋',
+      '慢跑鞋',
+      '篮球鞋',
     ],
+  },
+  {
+    categoryId: 'cat-apparel-women',
+    category: '女装',
+    path: ['服饰鞋包', '女装'],
+    keywords: ['连衣裙', '半身裙', '女装', '小香风', '雪纺衫', '吊带裙', '女士T恤'],
+  },
+  {
+    categoryId: 'cat-apparel-men',
+    category: '男装',
+    path: ['服饰鞋包', '男装'],
+    keywords: ['男士夹克', '西服', 'POLO衫', '男装', '工装裤', '男士卫衣'],
+  },
+  {
+    categoryId: 'cat-apparel-bags',
+    category: '箱包',
+    path: ['服饰鞋包', '箱包'],
+    keywords: ['双肩包', '单肩包', '手提包', '行李箱', '斜挎包', '托特包', '背包'],
+  },
+  {
+    categoryId: 'cat-beauty-skincare',
+    category: '面部护肤',
+    path: ['美妆个护', '面部护肤'],
+    keywords: ['精华液', '面霜', '乳液', '爽肤水', '面膜', '防晒霜', '眼霜', '洁面乳'],
+  },
+  {
+    categoryId: 'cat-food-snacks',
+    category: '休闲零食',
+    path: ['食品饮料', '休闲零食'],
+    keywords: ['坚果', '巧克力', '薯片', '肉脯', '零食', '饼干', '糖果'],
+  },
+  {
+    categoryId: 'cat-pet-food',
+    category: '宠物主粮',
+    path: ['宠物生活', '宠物主粮'],
+    keywords: ['猫粮', '狗粮', '冻干', '主食罐', '幼猫粮'],
   },
 ]
 
 export const COMMON_CATEGORY_OPTIONS = [
   '太阳镜',
-  '光学眼镜',
-  '眼镜',
-  '耳机',
-  '智能手表',
-  '运动鞋',
-  '消费电子',
-  '智能家居',
-  '数码周边',
+  '光学眼镜与镜框',
+  '影音娱乐',
   '智能穿戴',
-  '运动户外',
-  '生活美学',
-  '其他',
+  '运动鞋',
+  '女装',
+  '男装',
+  '箱包',
+  '手机数码',
+  '电脑办公',
+  '面部护肤',
+  '彩妆香氛',
+  '户外露营',
+  '休闲零食',
+  '宠物主粮',
 ]
 
 function normalizeText(input: string): string {
@@ -150,6 +208,7 @@ export function suggestProductCategory(
   }
 
   return {
+    categoryId: best.rule.categoryId,
     category: best.rule.category,
     path: best.rule.path,
     confidence: Math.min(
