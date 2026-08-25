@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser, getOwnedStoreId } from '@/lib/api/auth'
+import { requireUser, getOwnedStore } from '@/lib/api/auth'
 import type { Database } from '@/lib/database.types'
 import {
   saveCanonicalProductAttributes,
@@ -35,14 +35,14 @@ export async function GET() {
   const { supabase, user } = auth
 
   try {
-    const storeId = await getOwnedStoreId(supabase, user)
-    if (!storeId) {
-      return NextResponse.json({ products: [] })
+    const store = await getOwnedStore(supabase, user)
+    if (!store) {
+      return NextResponse.json({ error: 'Store not found', code: 'STORE_NOT_FOUND' }, { status: 404 })
     }
     const { data: products, error } = await supabase
       .from('products')
       .select('id, store_id, sku, name, description, price, currency, inventory, status, raw_data, semantic_data, created_at, updated_at')
-      .eq('store_id', storeId)
+      .eq('store_id', store.id)
       .order('created_at', { ascending: false })
       .limit(50)
     if (error) {
@@ -63,26 +63,16 @@ export async function POST(request: NextRequest) {
   const { supabase, user } = auth
 
   try {
-    const storeId = await getOwnedStoreId(supabase, user)
-    if (!storeId) {
-      return NextResponse.json({ error: 'No store for this merchant' }, { status: 404 })
-    }
-
-    // Retrieve store's base_currency as the single source of truth
-    const { data: store, error: storeError } = await supabase
-      .from('stores')
-      .select('id, base_currency, currency')
-      .eq('id', storeId)
-      .single()
-
-    if (storeError || !store) {
+    const store = await getOwnedStore(supabase, user)
+    if (!store) {
+      console.error('[POST /api/merchant/products] Store lookup failed', { userId: user.id })
       return NextResponse.json(
-        { error: 'Store not found or store base currency unavailable' },
+        { error: 'Store not found', code: 'STORE_NOT_FOUND' },
         { status: 404 },
       )
     }
 
-    const storeBaseCurrency = store.base_currency || store.currency || 'CNY'
+    const storeBaseCurrency = store.base_currency
 
     const body = await request.json()
     if (!body?.name || body?.price == null) {
@@ -100,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     const insert: ProductInsert = {
-      store_id: storeId,
+      store_id: store.id,
       ...pickInsert(body),
       raw_data: rawData,
       // Enforce store base currency as single source of truth (must be after pickInsert)
@@ -113,7 +103,11 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('[POST /api/merchant/products] Product creation failed', { 
+        storeId: store.id, 
+        error: error.message 
+      })
+      return NextResponse.json({ error: error.message, code: 'PRODUCT_CREATE_FAILED' }, { status: 500 })
     }
 
     // Process attributes if present via Canonical Service
@@ -211,8 +205,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, product, ai_ready: false }, { status: 201 })
   } catch (error) {
+    console.error('[POST /api/merchant/products] Unexpected error', { 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    })
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 },
     )
   }

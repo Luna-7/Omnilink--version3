@@ -52,26 +52,57 @@ export async function requireUser(): Promise<AuthResult> {
   return { ok: true, supabase, user: demoUser }
 }
 
-/** Resolve the caller's (first) owned store id, or null. */
+/** Resolve the caller's owned store id, or null if not found. */
 export async function getOwnedStoreId(
   supabase: SbClient,
   user: User
 ): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('stores')
     .select('id')
     .eq('owner_id', user.id)
     .limit(1)
     .maybeSingle()
-  if (data?.id) return data.id
+  
+  if (error) {
+    console.error('[getOwnedStoreId] Store lookup failed', { userId: user.id, error: error.message })
+    return null
+  }
+  
+  return data?.id ?? null
+}
 
-  // Fallback to first existing store if user has no store yet or in demo mode
-  const { data: firstStore } = await supabase
+/** Resolve the caller's owned store with base_currency, or null if not found. */
+export async function getOwnedStore(
+  supabase: SbClient,
+  user: User
+): Promise<{ id: string; owner_id: string; base_currency: string } | null> {
+  const { data, error } = await supabase
     .from('stores')
-    .select('id')
+    .select('id, owner_id, base_currency')
+    .eq('owner_id', user.id)
     .limit(1)
     .maybeSingle()
-  return firstStore?.id ?? '00000000-0000-0000-0000-000000000001'
+  
+  if (error) {
+    console.error('[getOwnedStore] Store lookup failed', { userId: user.id, error: error.message })
+    return null
+  }
+  
+  if (!data) {
+    return null
+  }
+  
+  if (!data.base_currency) {
+    console.error('[getOwnedStore] Store found but base_currency is missing', { storeId: data.id })
+    return null
+  }
+  
+  return {
+    id: data.id,
+    owner_id: data.owner_id,
+    base_currency: data.base_currency,
+  }
 }
 
 /** Verify the caller owns the given store. (RLS also enforces this.) */

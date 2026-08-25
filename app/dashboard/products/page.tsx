@@ -60,21 +60,11 @@ async function ProductsListContent() {
     user = null
   }
 
-  // Resolve store_id the exact same way as API routes (requireUser + getOwnedStoreId)
+  // Resolve store_id the exact same way as API routes (requireUser + getOwnedStore)
   let storeId: string | null = null
   if (user) {
     const store = await getStoreByOwnerId(user.id).catch(() => null)
     storeId = store?.id ?? null
-  }
-
-  if (!storeId) {
-    // Check first existing store in database
-    const { data: firstStore } = await supabase
-      .from('stores')
-      .select('id')
-      .limit(1)
-      .maybeSingle()
-    storeId = firstStore?.id ?? null
   }
 
   const dbProducts = storeId ? await getRealProducts(storeId) : []
