@@ -124,11 +124,17 @@ export function ProductCreateDialog() {
   const [moreSettingsExpanded, setMoreSettingsExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<'attributes' | 'variants' | 'packaging' | 'seo'>('attributes')
 
-  // Attributes / Specs
-  const [coreMaterial, setCoreMaterial] = useState('')
-  const [coreDimensions, setCoreDimensions] = useState('')
-  const [coreWeight, setCoreWeight] = useState('')
-  const [coreOrigin, setCoreOrigin] = useState('')
+  // Attributes / Specs - Unified canonical attributes
+  const [canonicalAttributes, setCanonicalAttributes] = useState<
+    Array<{
+      key: string
+      label: string
+      value: string
+      type: 'text' | 'number' | 'boolean' | 'select'
+      unit: string | null
+      confidence: number
+    }>
+  >([])
   const [customAttributes, setCustomAttributes] = useState<CustomAttributeItem[]>([])
 
   // Variants & Options
@@ -170,14 +176,10 @@ export function ProductCreateDialog() {
     setAcceptedModules([])
     setDismissedModules([])
     setEditableAttributes([])
+    setCanonicalAttributes([])
     setAnalysisSource(null)
     setMoreSettingsExpanded(false)
     setActiveTab('attributes')
-
-    setCoreMaterial('')
-    setCoreDimensions('')
-    setCoreWeight('')
-    setCoreOrigin('')
     setCustomAttributes([])
     setOptions([])
     setVariants([])
@@ -276,21 +278,9 @@ export function ProductCreateDialog() {
         }
 
         setEditableAttributes(draft.attributes || [])
+        setCanonicalAttributes(draft.attributes || [])
         setAcceptedModules([])
         setDismissedModules([])
-
-        // Auto-fill some extended fields if found in draft
-        draft.attributes?.forEach((attr) => {
-          if (attr.key.toLowerCase().includes('material') || attr.label.includes('材质')) {
-            setCoreMaterial(attr.value)
-          } else if (attr.key.toLowerCase().includes('dimension') || attr.label.includes('尺寸')) {
-            setCoreDimensions(attr.value)
-          } else if (attr.key.toLowerCase().includes('weight') || attr.label.includes('重量')) {
-            setCoreWeight(attr.value)
-          } else if (attr.key.toLowerCase().includes('origin') || attr.label.includes('产地')) {
-            setCoreOrigin(attr.value)
-          }
-        })
 
         if (imageFiles.length > 0 && title.trim()) {
           setAnalysisSource('multimodal')
@@ -409,49 +399,8 @@ export function ProductCreateDialog() {
     let semanticFailed = false
 
     try {
-      // Collect all consolidated attributes
-      const allAttributes = [...editableAttributes]
-
-      if (coreMaterial.trim()) {
-        allAttributes.push({
-          key: 'core_material',
-          label: isZh ? '主要材质' : 'Material',
-          value: coreMaterial.trim(),
-          type: 'text',
-          unit: null,
-          confidence: 1.0,
-        })
-      }
-      if (coreDimensions.trim()) {
-        allAttributes.push({
-          key: 'core_dimensions',
-          label: isZh ? '尺寸规格' : 'Dimensions',
-          value: coreDimensions.trim(),
-          type: 'text',
-          unit: null,
-          confidence: 1.0,
-        })
-      }
-      if (coreWeight.trim()) {
-        allAttributes.push({
-          key: 'core_weight',
-          label: isZh ? '机身净重' : 'Net Weight',
-          value: coreWeight.trim(),
-          type: 'number',
-          unit: 'g',
-          confidence: 1.0,
-        })
-      }
-      if (coreOrigin.trim()) {
-        allAttributes.push({
-          key: 'core_origin',
-          label: isZh ? '制造产地' : 'Origin',
-          value: coreOrigin.trim(),
-          type: 'text',
-          unit: null,
-          confidence: 1.0,
-        })
-      }
+      // Collect all consolidated attributes from canonicalAttributes
+      const allAttributes = [...canonicalAttributes, ...editableAttributes]
 
       customAttributes.forEach((ca) => {
         if (ca.key.trim() && ca.value.trim()) {
@@ -1120,59 +1069,111 @@ export function ProductCreateDialog() {
                   const activeTemplate = getCategoryTemplate(category)
                   return (
                     <div className="space-y-4">
-                      {/* 通用基础物理属性 */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-800 mb-1">
-                            {isZh ? '主要材质 (Material)' : 'Material'}
-                          </label>
-                          <input
-                            type="text"
-                            value={coreMaterial}
-                            onChange={(e) => setCoreMaterial(e.target.value)}
-                            placeholder={isZh ? '例如：钛合金 / TR90' : 'e.g. Titanium / TR90'}
-                            className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
-                          />
-                        </div>
+                      {/* Canonical Attributes - Dynamic List */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3">
+                        {canonicalAttributes.map((attr, idx) => (
+                          <div key={attr.key || idx} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <label className="block text-xs font-semibold text-slate-800 mb-1">
+                                {attr.label || attr.key}
+                              </label>
+                              <input
+                                type={attr.type === 'number' ? 'number' : 'text'}
+                                value={attr.value}
+                                onChange={(e) => {
+                                  const updated = [...canonicalAttributes]
+                                  updated[idx] = { ...updated[idx], value: e.target.value }
+                                  setCanonicalAttributes(updated)
+                                }}
+                                placeholder={attr.label || attr.key}
+                                className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
+                              />
+                            </div>
+                            {attr.unit && (
+                              <span className="text-xs text-slate-500 mt-5">{attr.unit}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
 
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-800 mb-1">
-                            {isZh ? '机身尺寸 (Dimensions)' : 'Dimensions'}
-                          </label>
-                          <input
-                            type="text"
-                            value={coreDimensions}
-                            onChange={(e) => setCoreDimensions(e.target.value)}
-                            placeholder={isZh ? '例如：145 x 48 x 140 mm' : 'e.g. 145 x 48 x 140 mm'}
-                            className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-800 mb-1">
-                            {isZh ? '机身净重 (Weight)' : 'Net Weight'}
-                          </label>
-                          <input
-                            type="text"
-                            value={coreWeight}
-                            onChange={(e) => setCoreWeight(e.target.value)}
-                            placeholder={isZh ? '例如：28g' : 'e.g. 28g'}
-                            className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-800 mb-1">
-                            {isZh ? '制造产地 (Origin)' : 'Origin'}
-                          </label>
-                          <input
-                            type="text"
-                            value={coreOrigin}
-                            onChange={(e) => setCoreOrigin(e.target.value)}
-                            placeholder={isZh ? '例如：中国 (China)' : 'e.g. China'}
-                            className="w-full h-9 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800"
-                          />
-                        </div>
+                      {/* Quick Add Common Attributes */}
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCanonicalAttributes((prev) => [
+                              ...prev,
+                              {
+                                key: 'core_material',
+                                label: isZh ? '主要材质' : 'Material',
+                                value: '',
+                                type: 'text',
+                                unit: null,
+                                confidence: 1.0,
+                              },
+                            ])
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold cursor-pointer"
+                        >
+                          {isZh ? '+ 材质' : '+ Material'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCanonicalAttributes((prev) => [
+                              ...prev,
+                              {
+                                key: 'core_dimensions',
+                                label: isZh ? '尺寸规格' : 'Dimensions',
+                                value: '',
+                                type: 'text',
+                                unit: null,
+                                confidence: 1.0,
+                              },
+                            ])
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold cursor-pointer"
+                        >
+                          {isZh ? '+ 尺寸' : '+ Dimensions'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCanonicalAttributes((prev) => [
+                              ...prev,
+                              {
+                                key: 'core_weight',
+                                label: isZh ? '机身净重' : 'Net Weight',
+                                value: '',
+                                type: 'number',
+                                unit: 'g',
+                                confidence: 1.0,
+                              },
+                            ])
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold cursor-pointer"
+                        >
+                          {isZh ? '+ 重量' : '+ Weight'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCanonicalAttributes((prev) => [
+                              ...prev,
+                              {
+                                key: 'core_origin',
+                                label: isZh ? '制造产地' : 'Origin',
+                                value: '',
+                                type: 'text',
+                                unit: null,
+                                confidence: 1.0,
+                              },
+                            ])
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold cursor-pointer"
+                        >
+                          {isZh ? '+ 产地' : '+ Origin'}
+                        </button>
                       </div>
 
                       {/* 品类规格模板 */}
