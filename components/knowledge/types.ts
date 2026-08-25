@@ -199,3 +199,20 @@ export interface ResearchModel {
   description: string
   contextWindow: string
 }
+
+export interface SavedArtifact {
+  id: string
+  title: string
+  type: string
+  typeLabel: string
+  icon?: string
+  keywords?: string[]
+  summary: string
+  content: string
+  createdAt: string
+  sourceCount: number
+  sourcesText: string
+  pinned?: boolean
+  wordCount?: number
+  skillId?: string
+}

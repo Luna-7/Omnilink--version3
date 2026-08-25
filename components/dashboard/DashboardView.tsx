@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { useLanguage } from '@/context/LanguageContext'
+import { motion, AnimatePresence } from 'motion/react'
 import {
   TrendingUp,
   Users,
@@ -308,7 +309,7 @@ export function DashboardView({
     productName: string
     productImage: string
     amount: string
-    timeAgo: string
+    timestamp: number
     isNew?: boolean
   }
 
@@ -322,7 +323,7 @@ export function DashboardView({
       productName: 'Adidas Ultraboost 22',
       productImage: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=80&auto=format&fit=crop&q=80',
       amount: '$180',
-      timeAgo: '刚刚',
+      timestamp: Date.now() - 1000,
       isNew: true,
     },
     {
@@ -334,7 +335,7 @@ export function DashboardView({
       productName: 'Sony WH-1000XM5',
       productImage: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80&auto=format&fit=crop&q=80',
       amount: '$399',
-      timeAgo: '12秒前',
+      timestamp: Date.now() - 12000,
     },
     {
       id: 'tx-3',
@@ -345,7 +346,7 @@ export function DashboardView({
       productName: 'Samsung Watch 6',
       productImage: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80&auto=format&fit=crop&q=80',
       amount: '$299',
-      timeAgo: '35秒前',
+      timestamp: Date.now() - 35000,
     },
     {
       id: 'tx-4',
@@ -356,11 +357,28 @@ export function DashboardView({
       productName: 'AirPods Pro 2',
       productImage: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=80&auto=format&fit=crop&q=80',
       amount: '$249',
-      timeAgo: '1分钟前',
+      timestamp: Date.now() - 61000,
     },
   ]
 
   const [liveTransactions, setLiveTransactions] = useState<LiveTransaction[]>(INITIAL_TRANSACTIONS)
+  const [tick, setTick] = useState(0)
+
+  // Ticking effect to refresh dynamic "timeAgo" every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick((t) => t + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const formatTimeAgo = (ts: number) => {
+    const seconds = Math.max(1, Math.floor((Date.now() - ts) / 1000))
+    if (seconds < 5) return '1s ago'
+    if (seconds < 60) return `${seconds}s ago`
+    const minutes = Math.floor(seconds / 60)
+    return `${minutes}m ago`
+  }
 
   // 实时模拟交易流轮播
   useEffect(() => {
@@ -384,7 +402,7 @@ export function DashboardView({
         productName: item.product,
         productImage: item.img,
         amount: item.amount,
-        timeAgo: '刚刚',
+        timestamp: Date.now(),
         isNew: true,
       }
       setLiveTransactions((prev) => [newTx, ...prev.slice(0, 3).map((t) => ({ ...t, isNew: false }))])
@@ -1007,11 +1025,11 @@ export function DashboardView({
             <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-slate-200/50 pb-3 lg:pb-0 lg:pr-5 flex flex-col justify-between h-full">
               <div className="flex items-center justify-between mb-1.5">
                 <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-                  <TrendingUp size={14} className="text-[#10B981]" />
+                  <TrendingUp size={14} className="text-[#024AD8]" />
                   <span>利润统计</span>
                 </h4>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/80 text-[11px] font-black animate-pulse shadow-2xs">
-                  ↑ +24% <span className="text-[10px] font-bold text-emerald-500">较昨日</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#024AD8] border border-blue-200/80 text-[11px] font-black animate-pulse shadow-2xs">
+                  ↑ +24% <span className="text-[10px] font-bold text-blue-500">较昨日</span>
                 </span>
               </div>
 
@@ -1025,7 +1043,7 @@ export function DashboardView({
                   </div>
                   <div className="text-[10px] font-bold text-slate-500 mt-1 flex items-center gap-1">
                     <span>周利润增长</span>
-                    <span className="font-extrabold text-emerald-600">36%</span>
+                    <span className="font-extrabold text-[#024AD8]">36%</span>
                   </div>
                 </div>
 
@@ -1035,8 +1053,8 @@ export function DashboardView({
                     <svg viewBox="0 0 200 60" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                       <defs>
                         <linearGradient id="profitTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10B981" stopOpacity="0.45" />
-                          <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                          <stop offset="0%" stopColor="#024AD8" stopOpacity="0.45" />
+                          <stop offset="100%" stopColor="#024AD8" stopOpacity="0.0" />
                         </linearGradient>
                       </defs>
 
@@ -1050,23 +1068,23 @@ export function DashboardView({
                       <path
                         d="M 0 45 C 20 42, 35 30, 55 22 C 75 14, 90 32, 110 18 C 130 4, 150 25, 170 12 C 185 2, 195 10, 200 8"
                         fill="none"
-                        stroke="#10B981"
+                        stroke="#024AD8"
                         strokeWidth="2.5"
                         strokeLinecap="round"
                       />
 
                       {/* 最高点 Label 与高亮节点 */}
                       <g transform="translate(130, 4)">
-                        <circle r="3.5" fill="#10B981" stroke="#FFFFFF" strokeWidth="1.5" />
-                        <text x="0" y="-5" fontSize="8" fontWeight="900" fill="#047857" textAnchor="middle">
+                        <circle r="3.5" fill="#024AD8" stroke="#FFFFFF" strokeWidth="1.5" />
+                        <text x="0" y="-5" fontSize="8" fontWeight="900" fill="#003198" textAnchor="middle">
                           高 $2,150
                         </text>
                       </g>
 
                       {/* 最低点 Label 与节点 */}
                       <g transform="translate(0, 45)">
-                        <circle r="3" fill="#6EE7B7" stroke="#FFFFFF" strokeWidth="1.5" />
-                        <text x="10" y="10" fontSize="7" fontWeight="800" fill="#059669" textAnchor="start">
+                        <circle r="3" fill="#93C5FD" stroke="#FFFFFF" strokeWidth="1.5" />
+                        <text x="10" y="10" fontSize="7" fontWeight="800" fill="#00226B" textAnchor="start">
                           低 $1,200
                         </text>
                       </g>
@@ -1097,44 +1115,58 @@ export function DashboardView({
                 <span className="text-[10px] text-slate-400 font-bold">实时同步</span>
               </div>
 
-              {/* 2 笔最新交易卡片 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {liveTransactions.slice(0, 2).map((tx) => (
-                  <div
-                    key={tx.id}
-                    className={`p-2 sm:p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
-                      tx.isNew
-                        ? 'bg-blue-50/90 border-[#024AD8]/50 shadow-2xs animate-pulse'
-                        : 'bg-white/80 border-slate-200/80 hover:bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="relative shrink-0">
-                        <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-200 relative">
-                          <Image
-                            src={tx.avatar}
-                            alt={tx.buyerName}
-                            fill
-                            className="object-cover"
-                            referrerPolicy="no-referrer"
-                          />
+              {/* 实时流水弹幕 (Feed Stream) */}
+              <div className="relative h-[115px] overflow-hidden flex flex-col gap-2 pt-1">
+                <AnimatePresence initial={false}>
+                  {liveTransactions.slice(0, 2).map((tx) => (
+                    <motion.div
+                      key={tx.id}
+                      initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                      className="p-2 px-3 rounded-lg flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.01)] backdrop-blur-md"
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        {/* 第一行：头像 + 姓名 + 国旗图标 + 时间 */}
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+                          <div className="w-5 h-5 rounded-full overflow-hidden border border-slate-100 shrink-0 relative">
+                            <Image
+                              src={tx.avatar}
+                              alt={tx.buyerName}
+                              fill
+                              className="object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <span className="font-extrabold text-slate-800 truncate max-w-[85px]">
+                            {tx.buyerName}
+                          </span>
+                          <span className="text-[11px] shrink-0" title={tx.countryName}>
+                            {tx.flag}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-normal ml-auto shrink-0 flex items-center gap-1">
+                            <Clock size={9} className="text-slate-300" />
+                            {formatTimeAgo(tx.timestamp)}
+                          </span>
                         </div>
-                        <span className="absolute -bottom-1 -right-1 text-[10px] leading-none">
-                          {tx.flag}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[11px] font-bold text-slate-900 truncate block">
-                          {tx.buyerName}
-                        </span>
-                        <span className="text-[9px] text-slate-500 truncate block">
+
+                        {/* 第二行：商品名称 */}
+                        <div className="text-[11px] font-bold text-slate-600 truncate mt-1 pl-6.5">
                           {tx.productName}
-                        </span>
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-xs font-black text-[#024AD8] shrink-0 tnum">{tx.amount}</span>
-                  </div>
-                ))}
+
+                      {/* 右侧/突出：高亮金额，带有高亮蓝色的微光 */}
+                      <div className="text-xs font-black text-[#024AD8] bg-[#EFF4FF] px-2.5 py-1 rounded-[4px] shadow-[0_0_8px_rgba(2,74,216,0.18)] shrink-0 font-mono">
+                        +{tx.amount}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </div>
 
