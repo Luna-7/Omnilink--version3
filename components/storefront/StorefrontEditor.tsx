@@ -582,14 +582,18 @@ export default function StorefrontEditor({
     setIsPublishing(true)
 
     try {
-      await saveStorefrontSchemaAction(store.id, schema)
-      const result = await publishStorefrontAction(store.id)
+      // Pass the editor's current schema as the publish source of truth —
+      // do NOT re-read from the database, otherwise any unsaved (or in-memory
+      // only) edits would be overwritten by the previously-persisted version.
+      const result = await publishStorefrontAction(store.id, schema)
       if (result.success) {
         setSchema((prev) => ({
           ...prev,
           meta: { ...prev.meta, published: true },
         }))
         showToast(isZh ? '已发布上线' : 'Published live')
+      } else {
+        showToast(result.error || (isZh ? '发布失败' : 'Publish failed'), 'err')
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to publish'

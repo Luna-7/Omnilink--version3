@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClientServer } from '@/lib/supabase/server'
 import type { StorefrontSchema } from '@/lib/storefront/schema'
 import { normalizeStorefrontSchema, validateSchema } from '@/lib/storefront/schema'
@@ -109,9 +110,28 @@ export async function loadStorefrontSchemaAction(storeId: string): Promise<Store
 }
 
 /**
- * Publish Storefront - mark schema as published
+ * Publish Storefront — mark the editor's current schema as live.
+ *
+ * Source of truth = the `schema` argument passed in by the caller (typically
+ * StorefrontEditor). We deliberately do NOT re-read the schema from the
+ * database here: that would mean the editor's latest in-memory edits are
+ * overwritten by the previously-persisted version the moment the user clicks
+ * 全网发布.
+ *
+ * The flow:
+ *   1. Auth + ownership verification
+ *   2. Validate the passed schema (defensive — guards against UI bugs)
+ *   3. Normalize it to canonical StorefrontSchema shape
+ *   4. Mark meta.published = true and refresh meta.lastModified
+ *   5. Upsert store_settings.theme_config (canonical source)
+ *   6. Upsert store_pages (legacy compat; error is logged but does not fail
+ *      the publish because the canonical write is what public routes read)
+ *   7. revalidatePath the public storefront so any cached variants refresh
  */
-export async function publishStorefrontAction(storeId: string) {
+export async function publishStorefrontAction(
+  storeId: string,
+  schema: StorefrontSchema
+) {
   if (storeId === 'demo-store') {
     return { success: true, published: true }
   }
@@ -127,7 +147,7 @@ export async function publishStorefrontAction(storeId: string) {
     // Verify store ownership
     const { data: store, error: storeError } = await supabase
       .from('stores')
-      .select('id, owner_id, store_name, description')
+      .select('id, owner_id, store_slug')
       .eq('id', storeId)
       .single()
 
@@ -135,43 +155,30 @@ export async function publishStorefrontAction(storeId: string) {
       return { success: false, error: 'Store not found or forbidden' }
     }
 
-    // Load current schema
-    let schema = await loadStorefrontSchemaAction(storeId)
-    if (!schema) {
-      const base = normalizeStorefrontSchema({ theme_id: 'electric-violet' })
-      if (!base) {
-        return { success: false, error: 'Failed to initialize storefront schema' }
-      }
-      schema = {
-        ...base,
-        sections: base.sections.map((s) =>
-          s.type === 'hero'
-            ? {
-                ...s,
-                content: {
-                  ...s.content,
-                  title: store.store_name,
-                  description: store.description ?? s.content.description,
-                },
-              }
-            : s.type === 'header' || s.type === 'footer'
-            ? { ...s, content: { ...s.content, title: store.store_name } }
-            : s
-        ),
-      }
+    // Validate the passed schema (defensive — the editor already validates,
+    // but a bad input from a future caller should not silently corrupt DB).
+    if (!validateSchema(schema)) {
+      return { success: false, error: 'Invalid storefront schema' }
     }
 
-    // Mark as published
+    // Normalize to canonical shape (defensive — keeps published schema in
+    // canonical form even if a caller passed a slightly off-shape object).
+    const normalized = normalizeStorefrontSchema(schema)
+    if (!normalized) {
+      return { success: false, error: 'Failed to normalize storefront schema' }
+    }
+
+    // Mark as published, refresh lastModified
     const publishedSchema: StorefrontSchema = {
-      ...schema,
+      ...normalized,
       meta: {
-        ...schema.meta,
+        ...normalized.meta,
         published: true,
         lastModified: new Date().toISOString(),
       },
     }
 
-    // Upsert store_settings with published schema
+    // 1) Persist canonical schema to store_settings.theme_config
     const { error: settingsError } = await supabase
       .from('store_settings')
       .upsert(
@@ -184,11 +191,17 @@ export async function publishStorefrontAction(storeId: string) {
       )
 
     if (settingsError) {
-      return { success: false, error: settingsError.message }
+      return {
+        success: false,
+        error: `Failed to save storefront: ${settingsError.message}`,
+      }
     }
 
-    // Also update store_pages for compatibility
-    await supabase
+    // 2) Legacy compat: also update store_pages so any older code path that
+    //    still reads store_pages sees the latest. We log but do not fail the
+    //    publish when this fails — the canonical write above is what the
+    //    public storefront actually reads.
+    const { error: pagesError } = await supabase
       .from('store_pages')
       .upsert(
         {
@@ -200,8 +213,30 @@ export async function publishStorefrontAction(storeId: string) {
         { onConflict: 'store_id' }
       )
 
+    if (pagesError) {
+      console.error(
+        'publishStorefrontAction: store_pages legacy sync failed (non-fatal):',
+        pagesError.message
+      )
+    }
+
+    // 3) Invalidate the public storefront cache. The route is dynamic so
+    //    Next.js will re-fetch on the next request anyway, but
+    //    revalidatePath ensures any cached variants are explicitly cleared.
+    if (store.store_slug) {
+      try {
+        revalidatePath(`/store/${store.store_slug}`)
+      } catch (revalidateErr) {
+        console.error(
+          'publishStorefrontAction: revalidatePath failed (non-fatal):',
+          revalidateErr
+        )
+      }
+    }
+
     return { success: true, published: true }
   } catch (err) {
+    console.error('publishStorefrontAction error:', err)
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Publish action failed',
