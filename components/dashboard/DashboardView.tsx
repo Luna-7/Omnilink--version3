@@ -480,6 +480,7 @@ export function DashboardView({
               el.getAttribute('name') ||
               el.getAttribute('class') ||
               el.getAttribute('id') ||
+              el.getAttribute('title') ||
               '',
             id: el.getAttribute('id') || '',
           }))
@@ -852,6 +853,7 @@ export function DashboardView({
             {worldPaths.map((p, idx) => {
               const pName = p.name.toLowerCase()
               const pId = p.id.toLowerCase()
+              const isActive = activeCountryNames.has(pId) || activeCountryNames.has(pName)
               const isSelected =
                 selectedNode &&
                 (pName.includes(selectedNode.name.toLowerCase()) ||
@@ -862,11 +864,11 @@ export function DashboardView({
                 <path
                   key={idx}
                   d={p.d}
-                  fill={isSelected ? '#024AD8' : 'none'}
-                  fillOpacity={isSelected ? 0.25 : 0}
+                  fill={isSelected ? '#024AD8' : isActive ? '#024AD8' : 'none'}
+                  fillOpacity={isSelected ? 0.25 : isActive ? 0.14 : 0}
                   stroke="#024AD8"
-                  strokeWidth={isSelected ? 1.2 : 0.45}
-                  strokeOpacity={isSelected ? 0.8 : 0.2}
+                  strokeWidth={isSelected ? 1.2 : isActive ? 0.7 : 0.45}
+                  strokeOpacity={isSelected ? 0.8 : isActive ? 0.5 : 0.2}
                   className="transition-all duration-300 cursor-pointer hover:stroke-opacity-60"
                   onClick={() => {
                     const matched = GLOBAL_NODES.find(
