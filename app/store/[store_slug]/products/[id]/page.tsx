@@ -9,6 +9,8 @@
  */
 
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
+import type { StorefrontProduct } from '@/lib/storefront/types'
 import ThemeRoot from '@/components/theme/ThemeRoot'
 import ProductPage from '@/components/theme/templates/ProductPage'
 import {
@@ -16,6 +18,8 @@ import {
   getRelatedProducts,
   getStorefrontProduct,
 } from '@/lib/storefront/service'
+import { getStorefrontDemoProducts } from '@/lib/storefront/demo-products'
+import { resolveStorefrontLanguage } from '@/lib/storefront/locale'
 import { buildProductJsonLd, serializeJsonLd } from './jsonld'
 
 export default async function PublicProductPage({
@@ -30,12 +34,31 @@ export default async function PublicProductPage({
     notFound()
   }
 
-  const product = await getStorefrontProduct(store, id)
+  // Demo storefront serves static demo products; demo IDs must not hit Supabase.
+  const isDemo = store.id === 'demo-store'
+
+  let product: StorefrontProduct | null
+  let relatedProducts: StorefrontProduct[] = []
+
+  if (isDemo) {
+    const headerList = await headers()
+    const acceptLang = headerList.get('accept-language') || ''
+    const effectiveLang = resolveStorefrontLanguage(undefined, acceptLang)
+    product =
+      getStorefrontDemoProducts(effectiveLang === 'zh' ? 'zh' : 'en').find(
+        (p) => p.id === id
+      ) ?? null
+  } else {
+    product = await getStorefrontProduct(store, id)
+    if (product) {
+      relatedProducts = await getRelatedProducts(store, id)
+    }
+  }
+
   if (!product) {
     notFound()
   }
 
-  const relatedProducts = await getRelatedProducts(store, id)
   const jsonLd = buildProductJsonLd(product)
 
   return (

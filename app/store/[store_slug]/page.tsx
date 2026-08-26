@@ -20,6 +20,7 @@ import { headers } from 'next/headers'
 import ThemeRoot from '@/components/theme/ThemeRoot'
 import DynamicSectionRenderer from '@/components/storefront/DynamicSectionRenderer'
 import { getPublicStorefront, getStorefrontProducts } from '@/lib/storefront/service'
+import { getStorefrontDemoProducts } from '@/lib/storefront/demo-products'
 import { storefrontThemeOverrides } from '@/lib/storefront/theme-overrides'
 
 import { resolveStorefrontLanguage } from '@/lib/storefront/locale'
@@ -37,10 +38,16 @@ export default async function PublicStorePage({
   }
 
   const { store, schema } = data
-  const products = await getStorefrontProducts(store)
   const headerList = await headers()
   const acceptLang = headerList.get('accept-language') || ''
   const effectiveLang = resolveStorefrontLanguage(schema.theme?.language, acceptLang)
+
+  // Demo storefront (e.g. /store/omnilink-flagship) serves static demo products.
+  // Real stores continue to read active products from Supabase via getStorefrontProducts.
+  const products =
+    store.id === 'demo-store'
+      ? getStorefrontDemoProducts(effectiveLang === 'zh' ? 'zh' : 'en')
+      : await getStorefrontProducts(store)
   const overrides = storefrontThemeOverrides(schema.theme, acceptLang)
   const orderedSections = [...schema.sections].sort((a, b) => a.order - b.order)
 
