@@ -212,7 +212,7 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
           }
         />
       ) : viewMode === 'grid' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-3.5 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
           {filtered.map((p) => (
             <ProductCard
               key={p.id}
@@ -388,88 +388,63 @@ function ProductCard({
   selected: boolean
   onToggleSelect: (e: React.MouseEvent) => void
 }) {
-  const aiReady = Boolean(p.semantic_data)
   const { isZh } = useLanguage()
 
   return (
-    <div
-      className={`group relative bg-[#F4F5F7]/70 hover:bg-white border rounded-2xl p-4 flex flex-col justify-between gap-3 transition-all duration-200 hover:shadow-md ${
-        selected ? 'border-[#111827] bg-white ring-1 ring-[#111827]' : 'border-[#E5E7EB] hover:border-[#111827]/20'
+    <Link
+      href={`/dashboard/products/${p.id}/edit`}
+      prefetch={true}
+      className={`group relative bg-white dark:bg-slate-900 border rounded-[8px] p-3 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-[#024AD8] cursor-pointer ${
+        selected
+          ? 'border-[#024AD8] ring-2 ring-[#024AD8] shadow-xs'
+          : 'border-slate-200 dark:border-slate-800'
       }`}
     >
       {/* 顶部多选复选框 */}
       <button
         type="button"
         onClick={onToggleSelect}
-        className="absolute top-6 left-6 z-10 p-1 rounded-md bg-white/80 backdrop-blur-xs text-[#111827] shadow-xs hover:bg-white transition-all"
-        title="Select"
+        className="absolute top-2.5 left-2.5 z-10 p-1 rounded-[4px] bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs text-[#111827] dark:text-white shadow-2xs hover:bg-white transition-all cursor-pointer"
+        title={isZh ? '选择商品' : 'Select'}
       >
-        {selected ? <CheckSquare size={15} className="text-[#111827]" /> : <Square size={15} className="text-[#9CA3AF]" />}
+        {selected ? <CheckSquare size={14} className="text-[#024AD8]" /> : <Square size={14} className="text-slate-400" />}
       </button>
 
       <div>
         {/* 商品图：方形圆角 */}
-        <Link href={`/dashboard/products/${p.id}/edit`} prefetch={true} className="block relative">
-          <div className="w-full aspect-square rounded-xl overflow-hidden bg-white border border-[#E5E7EB] flex items-center justify-center">
-            {p.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={p.image_url}
-                alt={p.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            ) : (
-              <Package size={28} strokeWidth={1.5} className="text-[#9CA3AF]" />
-            )}
-          </div>
-        </Link>
+        <div className="w-full aspect-square rounded-[6px] overflow-hidden bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center relative">
+          {p.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={p.image_url}
+              alt={p.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <Package size={24} strokeWidth={1.5} className="text-slate-400" />
+          )}
+        </div>
 
-        <div className="min-w-0 mt-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-mono text-[#9CA3AF] uppercase truncate">{p.sku || 'SKU'}</span>
-            <span className="text-[10px] font-semibold text-[#6B7280]">{p.category || (isZh ? '通用' : 'General')}</span>
+        <div className="min-w-0 mt-2.5 space-y-1">
+          <div className="flex items-center justify-between gap-1 text-[10px]">
+            <span className="font-mono text-slate-400 uppercase truncate">{p.sku || 'SKU'}</span>
+            <span className="font-semibold text-slate-500 dark:text-slate-400 truncate">{p.category || (isZh ? '通用' : 'General')}</span>
           </div>
 
-          <Link href={`/dashboard/products/${p.id}/edit`} prefetch={true} className="block">
-            <h4 className="text-xs font-bold text-[#111827] truncate group-hover:text-[#111827] transition-colors mt-0.5" title={p.name}>
-              {p.name}
-            </h4>
-          </Link>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-[#024AD8] transition-colors" title={p.name}>
+            {p.name}
+          </h4>
 
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-sm font-bold text-[#111827] tnum">
-              {p.price != null && p.price !== '' ? `¥${p.price}` : '未定价'}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs font-extrabold text-[#024AD8] dark:text-[#5B8FF9] tnum">
+              {p.price != null && p.price !== '' ? `¥${p.price}` : (isZh ? '未定价' : 'Unpriced')}
             </span>
-            <span className="text-[10px] text-[#6B7280] font-medium">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
               {isZh ? `库存: ${p.inventory ?? 0}` : `Stock: ${p.inventory ?? 0}`}
             </span>
           </div>
         </div>
       </div>
-
-      {/* 底部功能条: 语义徽标与快捷进入按钮 */}
-      <div className="flex items-center justify-between pt-2.5 border-t border-[#E5E7EB]/80">
-        <AiBadge ready={aiReady} />
-        
-        <div className="flex items-center gap-1.5">
-          <Link
-            href={`/dashboard/products/${p.id}/node`}
-            prefetch={true}
-            className="p-1 rounded-lg hover:bg-[#F4F5F7] text-[#6B7280] hover:text-[#111827] transition-colors"
-            title={isZh ? '查看 AI 语义节点' : 'Semantic Node'}
-          >
-            <Cpu size={13} />
-          </Link>
-          <Link
-            href={`/dashboard/products/${p.id}/edit`}
-            prefetch={true}
-            className="text-[11px] font-semibold text-[#6B7280] group-hover:text-[#024AD8] transition-all inline-flex items-center gap-0.5"
-          >
-            <span>{isZh ? '编辑' : 'Edit'}</span>
-            <ChevronRight size={12} />
-          </Link>
-        </div>
-      </div>
-    </div>
+    </Link>
   )
 }

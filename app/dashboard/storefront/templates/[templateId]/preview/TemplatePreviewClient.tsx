@@ -200,9 +200,9 @@ export default function TemplatePreviewClient({
           </button>
           <div className="h-4 w-px bg-gray-200 hidden sm:block" />
           <div className="hidden sm:flex items-center gap-2">
-            <Sparkles size={15} className="text-purple-600" />
+            <Sparkles size={15} className="text-[#024AD8]" />
             <span className="text-xs font-extrabold text-gray-900">{templateName}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-mono font-bold border border-purple-200">
+            <span className="text-[10px] px-2 py-0.5 rounded-[4px] bg-[#EFF4FF] text-[#024AD8] font-mono font-bold border border-[#D0E0FC]">
               Template Preview
             </span>
           </div>
@@ -214,16 +214,16 @@ export default function TemplatePreviewClient({
           <button
             type="button"
             onClick={() => setPreviewLanguage((prev) => (prev === 'zh' ? 'en' : 'zh'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-900 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] border border-[#D1D1D1] bg-white hover:bg-[#F7F7F7] text-[#1C1C1C] text-xs font-bold transition-all cursor-pointer shadow-2xs"
             title={isZh ? '切换展示语言与币种 ($ / ¥)' : 'Toggle Display Language & Currency ($ / ¥)'}
           >
-            <Globe size={13} className="text-[#FB7185]" />
+            <Globe size={13} className="text-[#024AD8]" />
             <span>{previewLanguage === 'zh' ? '中文 (¥)' : 'English ($)'}</span>
           </button>
 
           <button
             onClick={handleEditTemplate}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-800 text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[4px] border border-[#D1D1D1] hover:bg-[#F7F7F7] text-[#1C1C1C] text-xs font-bold transition-all cursor-pointer"
           >
             <Edit3 size={13} />
             <span>{isZh ? '编辑模板' : 'Edit Template'}</span>
@@ -232,7 +232,7 @@ export default function TemplatePreviewClient({
           <button
             onClick={handleApplyTemplate}
             disabled={isApplying}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
           >
             {isApplying ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
             <span>{isZh ? '使用此风格' : 'Apply to Store'}</span>

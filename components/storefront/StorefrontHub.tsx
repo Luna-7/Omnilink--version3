@@ -44,16 +44,16 @@ export function StorefrontHub({
   return (
     <div className="space-y-4 max-w-7xl mx-auto">
       {/* ============================================================
-          1. Apple HIG Segmented Control (分段控制器)
+          1. Segmented Control (分段控制器 - 主题色 #024AD8)
           ============================================================ */}
-      <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-gray-100/80 border border-gray-200/40 shadow-[inset_0_1px_1.5px_rgba(0,0,0,0.02)] max-w-max overflow-x-auto">
+      <div className="flex items-center gap-1 p-1 rounded-[6px] bg-slate-100 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 max-w-max">
         <button
           type="button"
           onClick={() => setActiveTab('editor')}
-          className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all shrink-0 cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-[4px] text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeTab === 'editor'
-              ? 'bg-white text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0.5px_1px_rgba(0,0,0,0.03)]'
-              : 'text-gray-500 hover:text-gray-800'
+              ? 'bg-[#024AD8] text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           {isZh ? '视觉装修' : 'Visual Builder'}
@@ -62,10 +62,10 @@ export function StorefrontHub({
         <button
           type="button"
           onClick={() => setActiveTab('templates')}
-          className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all shrink-0 cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-[4px] text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeTab === 'templates'
-              ? 'bg-white text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0.5px_1px_rgba(0,0,0,0.03)]'
-              : 'text-gray-500 hover:text-gray-800'
+              ? 'bg-[#024AD8] text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           {isZh ? '视觉风格库' : 'Style Gallery'}

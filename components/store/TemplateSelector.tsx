@@ -135,16 +135,17 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border border-purple-200/80 rounded-2xl p-4">
+      {/* AI 商业模板工厂 (主题色 #024AD8) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#EFF4FF] dark:bg-[#024AD8]/10 border border-[#D0E0FC] dark:border-[#024AD8]/30 rounded-[8px] p-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-9 h-9 rounded-[4px] bg-[#024AD8] text-white flex items-center justify-center shrink-0 shadow-xs">
             <Sparkles size={18} />
           </div>
           <div>
-            <h3 className="text-xs font-extrabold text-gray-900">
+            <h3 className="text-xs font-extrabold text-[#024AD8] dark:text-[#5B8FF9]">
               {isZh ? 'AI 商业模板工厂' : 'AI Template Factory'}
             </h3>
-            <p className="text-[11px] text-gray-600">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
               {isZh
                 ? '根据您的品牌定位与品类，一键智能生成 10-Module 架构的定制商业模板'
                 : 'Generate a custom 10-Module commerce template matching your brand identity'}
@@ -153,7 +154,7 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
         </div>
         <Link
           href="/dashboard/storefront/templates/create"
-          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+          className="px-4 py-2 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all shrink-0"
         >
           <Sparkles size={13} />
           <span>{isZh ? '创建 AI 模板' : 'Create AI Template'}</span>
@@ -162,8 +163,8 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
 
       {appliedSuccess && (
         <div className="flex justify-end">
-          <span className="px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center gap-1.5 border border-emerald-200 shadow-sm animate-fade-in">
-            <CheckCircle2 size={14} className="text-emerald-600" />
+          <span className="px-3.5 py-1.5 rounded-[4px] bg-[#EFF4FF] text-[#024AD8] text-xs font-bold flex items-center gap-1.5 border border-[#D0E0FC] shadow-xs animate-fade-in">
+            <CheckCircle2 size={14} className="text-[#024AD8]" />
             <span>{isZh ? '视觉风格已成功应用至店铺！' : 'Style successfully applied to store!'}</span>
           </span>
         </div>
@@ -177,16 +178,16 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
           return (
             <div
               key={template.id}
-              className={`rounded-2xl border transition-all overflow-hidden flex flex-col justify-between bg-white ${
+              className={`rounded-[8px] border transition-all overflow-hidden flex flex-col justify-between bg-white dark:bg-slate-900 ${
                 isSelected
-                  ? 'border-gray-900 ring-2 ring-gray-900 shadow-md'
-                  : 'border-gray-200 hover:border-gray-400 hover:shadow-sm'
+                  ? 'border-[#024AD8] ring-2 ring-[#024AD8] shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-[#024AD8]/60 hover:shadow-xs'
               }`}
             >
               {/* 顶部预览图（点击打开预览） */}
               <div
                 onClick={() => handlePreview(template.id)}
-                className="h-36 w-full bg-gray-100 relative overflow-hidden cursor-pointer group"
+                className="h-36 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden cursor-pointer group"
                 title={isZh ? '点击全屏预览模板' : 'Click to preview template'}
               >
                 {template.preview_url ? (
@@ -198,28 +199,28 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  <div className="w-full h-full flex items-center justify-center text-slate-400">
                     <Layout size={24} />
                   </div>
                 )}
 
                 {/* 遮罩及悬浮提示 */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <span className="px-3 py-1.5 rounded-full bg-white/95 text-gray-900 text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                  <span className="px-3 py-1.5 rounded-[4px] bg-white/95 text-[#111827] text-xs font-bold flex items-center gap-1.5 shadow-md">
                     <Eye size={13} />
                     <span>{isZh ? '预览模板' : 'Preview'}</span>
                   </span>
                 </div>
 
                 {/* 行业分类标签 */}
-                <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-gray-900/80 backdrop-blur-md text-white text-[10px] font-semibold">
+                <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-[4px] bg-[#EFF4FF] dark:bg-slate-900/90 text-[#024AD8] dark:text-[#5B8FF9] text-[10px] font-bold border border-[#D0E0FC] dark:border-slate-700">
                   {isZh ? template.industry || '综合' : template.industry_en || 'General'}
                 </div>
 
                 {/* 选中指示标记 */}
                 {isSelected && (
-                  <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-amber-400 text-gray-900 flex items-center justify-center shadow-md">
-                    <Check size={14} className="stroke-[3]" />
+                  <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-[#024AD8] text-white flex items-center justify-center shadow-md">
+                    <Check size={13} className="stroke-[3]" />
                   </div>
                 )}
               </div>
@@ -228,7 +229,7 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
               <div className="p-4 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-bold text-gray-900">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
                       {isZh ? template.name : template.name_en || template.name}
                     </h4>
                     {template.accent_color && (
@@ -239,17 +240,17 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
                       />
                     )}
                   </div>
-                  <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {isZh ? template.description : template.description_en || template.description}
                   </p>
                 </div>
 
                 {/* 底部功能按钮拆分：[预览模板] 与 [使用此风格] */}
-                <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => handlePreview(template.id)}
-                    className="flex-1 py-1.5 px-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    className="flex-1 py-1.5 px-2 rounded-[4px] border border-[#D1D1D1] hover:bg-[#F7F7F7] text-[#1C1C1C] dark:text-slate-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
                     <Eye size={12} />
                     <span>{isZh ? '预览' : 'Preview'}</span>
@@ -259,10 +260,10 @@ export function TemplateSelector({ storeId, currentTemplateId, onTemplateSelect 
                     type="button"
                     onClick={() => handleApply(template.id)}
                     disabled={isApplying}
-                    className={`flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    className={`flex-1 py-1.5 px-2 rounded-[4px] text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-purple-600 hover:bg-purple-700 text-white shadow-sm'
+                        ? 'bg-[#024AD8] text-white shadow-xs'
+                        : 'bg-white hover:bg-[#EFF4FF] text-[#024AD8] border border-[#024AD8]'
                     } disabled:opacity-50`}
                   >
                     {isApplying ? (

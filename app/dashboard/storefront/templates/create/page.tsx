@@ -73,7 +73,7 @@ export default function CreateAITemplatePage() {
           </Link>
           <div>
             <h1 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
-              <Sparkles size={16} className="text-purple-600" />
+              <Sparkles size={16} className="text-[#024AD8]" />
               <span>{isZh ? 'AI 商业模板工厂' : 'AI Template Factory'}</span>
             </h1>
             <p className="text-xs text-gray-500">
@@ -87,9 +87,9 @@ export default function CreateAITemplatePage() {
 
       {/* 主内容 */}
       <main className="flex-1 max-w-3xl w-full mx-auto p-6 sm:p-10">
-        <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-10 shadow-sm space-y-8">
+        <div className="bg-white border border-gray-200 rounded-[12px] p-6 sm:p-10 shadow-sm space-y-8">
           <div className="space-y-2 border-b border-gray-100 pb-6">
-            <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold inline-flex items-center gap-1">
+            <span className="px-3 py-1 rounded-[4px] bg-[#EFF4FF] text-[#024AD8] text-xs font-bold inline-flex items-center gap-1 border border-[#D0E0FC]">
               <Wand2 size={12} />
               <span>Omnilink Commerce Engine AI</span>
             </span>
@@ -174,7 +174,7 @@ export default function CreateAITemplatePage() {
                     placeholder={isZh ? '例如：追求高品质生活的审美客群' : 'e.g. High-net-worth design enthusiasts'}
                     value={form.targetAudience}
                     onChange={(e) => setForm({ ...form, targetAudience: e.target.value })}
-                    className="w-full px-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2.5 text-xs border border-gray-200 rounded-[4px] focus:outline-none focus:ring-2 focus:ring-[#024AD8]"
                   />
                 </div>
               </div>
@@ -182,7 +182,7 @@ export default function CreateAITemplatePage() {
 
             {/* Step 3: 视觉调性 */}
             <div className="space-y-4 border-t border-gray-100 pt-6">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-purple-600 flex items-center gap-1.5">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#024AD8] flex items-center gap-1.5">
                 <Palette size={14} />
                 <span>3. {isZh ? '视觉风格调性 (Style Library Alignment)' : 'Visual Direction'}</span>
               </h3>
@@ -222,9 +222,9 @@ export default function CreateAITemplatePage() {
                         visualDirection: style.id as any,
                       })
                     }
-                    className={`p-3.5 rounded-2xl border text-left transition-all relative overflow-hidden ${
+                    className={`p-3.5 rounded-[6px] border text-left transition-all relative overflow-hidden cursor-pointer ${
                       form.visualDirection === style.id
-                        ? 'border-purple-600 ring-2 ring-purple-600 bg-purple-50/50'
+                        ? 'border-[#024AD8] ring-2 ring-[#024AD8] bg-[#EFF4FF] dark:bg-[#024AD8]/10'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
@@ -240,7 +240,7 @@ export default function CreateAITemplatePage() {
 
             {/* Step 4: 语言选择 */}
             <div className="space-y-4 border-t border-gray-100 pt-6">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-purple-600 flex items-center gap-1.5">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#024AD8] flex items-center gap-1.5">
                 <Globe size={14} />
                 <span>4. {isZh ? '生成语言' : 'Language'}</span>
               </h3>
@@ -251,7 +251,7 @@ export default function CreateAITemplatePage() {
                     name="lang"
                     checked={form.language === 'zh'}
                     onChange={() => setForm({ ...form, language: 'zh' })}
-                    className="text-purple-600 focus:ring-purple-500"
+                    className="text-[#024AD8] focus:ring-[#024AD8]"
                   />
                   <span>中文 (Simplified Chinese)</span>
                 </label>
@@ -261,7 +261,7 @@ export default function CreateAITemplatePage() {
                     name="lang"
                     checked={form.language === 'en'}
                     onChange={() => setForm({ ...form, language: 'en' })}
-                    className="text-purple-600 focus:ring-purple-500"
+                    className="text-[#024AD8] focus:ring-[#024AD8]"
                   />
                   <span>English</span>
                 </label>
@@ -273,7 +273,7 @@ export default function CreateAITemplatePage() {
               <button
                 type="submit"
                 disabled={isGenerating}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50"
+                className="w-full sm:w-auto px-8 py-3 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] active:bg-[#00226B] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isGenerating ? (
                   <>
