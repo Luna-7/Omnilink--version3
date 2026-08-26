@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClientServer } from '@/lib/supabase/server'
 import { getStoreByOwnerId } from '@/lib/stores/service'
-import { getStorefrontProducts } from '@/lib/storefront/service'
+import { getEditorStorefrontProducts } from '@/lib/storefront/editor-products'
 import { loadStorefrontSchemaAction } from '@/app/actions/store'
 import { StorefrontHub } from '@/components/storefront/StorefrontHub'
 
@@ -67,7 +67,7 @@ export default async function StorefrontDashboardPage() {
 
   let storefrontProducts: any[] = []
   try {
-    storefrontProducts = await getStorefrontProducts({
+    storefrontProducts = await getEditorStorefrontProducts({
       id: store.id,
       slug: store.store_slug,
       currency: store.currency,
