@@ -28,12 +28,13 @@ import {
   type StoreSocialConfig,
 } from './schema'
 
-/** 商品白名单列：只取 UI 需要的字段，绝不暴露 raw_data/sku/inventory 等内部字段。 */
+/** 商品白名单列：只取 UI 需要的字段，绝不暴露 raw_data/sku/inventory 等内部字段。
+ *  product_semantics(semantic_data, updated_at) 为 canonical 语义事实源（经 RLS 作用域限定）。 */
 const PRODUCT_SELECT =
-  'id, name, description, price, currency, semantic_data, product_assets(url, asset_type)'
+  'id, name, description, price, currency, semantic_data, product_assets(url, asset_type), product_semantics(semantic_data, updated_at)'
 
 const PRODUCT_DETAIL_SELECT =
-  'id, name, description, price, currency, semantic_data, product_assets(url, asset_type), product_options(id, name, code, position, values), product_variants(id, sku, price, currency, inventory, status, option_values)'
+  'id, name, description, price, currency, semantic_data, product_assets(url, asset_type), product_semantics(semantic_data, updated_at), product_options(id, name, code, position, values), product_variants(id, sku, price, currency, inventory, status, option_values)'
 
 type StoreRef = Pick<StorefrontStore, 'id' | 'slug'> & {
   currency?: string | null
@@ -323,7 +324,7 @@ export async function getStorefrontProducts(
   const storeSlug = typeof storeOrId === 'string' ? 'store' : ('slug' in storeOrId ? storeOrId.slug : storeOrId.store_slug) || 'store'
   const storeCurrency = typeof storeOrId === 'string' ? null : storeOrId?.currency
 
-  if (!storeId || storeId === 'demo-store') {
+  if (!storeId) {
     return []
   }
 
@@ -339,7 +340,11 @@ export async function getStorefrontProducts(
       .limit(limit)
 
     if (error) {
-      console.error('getStorefrontProducts error:', error.message)
+      console.error('[Storefront][getStorefrontProducts] query failed', {
+        storeId,
+        errorCode: error.code ?? null,
+        errorMessage: error.message,
+      })
       return []
     }
 
@@ -348,7 +353,10 @@ export async function getStorefrontProducts(
       { storeSlug, storeCurrency }
     )
   } catch (err) {
-    console.error('getStorefrontProducts exception:', err)
+    console.error('[Storefront][getStorefrontProducts] exception', {
+      storeId,
+      error: err instanceof Error ? err.message : String(err),
+    })
     return []
   }
 }
@@ -391,7 +399,15 @@ export async function getStorefrontProduct(
     .eq('status', 'active')
     .maybeSingle()
 
-  if (basicError) throw new Error(basicError.message)
+  if (basicError) {
+    console.error('[Storefront][getStorefrontProduct] query failed', {
+      storeId: store.id,
+      productId,
+      errorCode: basicError.code ?? null,
+      errorMessage: basicError.message,
+    })
+    throw new Error(basicError.message)
+  }
   if (!basicData) return null
 
   return normalizeProduct(basicData as unknown as StorefrontProductRow, {

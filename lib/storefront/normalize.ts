@@ -21,6 +21,15 @@ export interface StorefrontProductRow {
   price: number | string | null
   currency: string | null
   semantic_data: unknown
+  /**
+   * Canonical semantic records (产品管理 → product_semantics 写入)。
+   * 一个 product 可能残留多条（按 product_id,schema_id upsert，但历史行可能留存），
+   * 读取时必须取 updated_at 最新的一条。JOIN 由 service 层 SELECT 注入。
+   */
+  product_semantics?: Array<{
+    semantic_data: unknown
+    updated_at: string | null
+  }> | null
   product_assets?: Array<{
     url: string | null
     asset_type: string | null
@@ -125,6 +134,99 @@ function flattenSemanticData(input: unknown): Record<string, string> {
   return out
 }
 
+/**
+ * 从一条 semantic record 安全提取扁平属性 Map。
+ * 兼容两种存储形态：
+ *   - 嵌套：{ attributes: { color: "Black", material: "Acetate" } }
+ *   - 扁平：{ color: "Black", material: "Acetate" }
+ * 同时兼容值被包裹为 { value: x } 的写法（拍平为 x）。
+ * 返回 null 表示输入非对象 / 无可提取内容。
+ */
+function extractAttributesFromSemantic(
+  input: unknown
+): Record<string, string> | null {
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    return null
+  }
+  const obj = input as Record<string, unknown>
+
+  // 解嵌套：{ attributes: {...} } → 取内部对象
+  const target =
+    obj.attributes &&
+    typeof obj.attributes === 'object' &&
+    !Array.isArray(obj.attributes)
+      ? (obj.attributes as Record<string, unknown>)
+      : obj
+
+  // 解 { value: x } 包裹（兼容历史写入形态）
+  const unwrapped: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(target)) {
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      'value' in (value as Record<string, unknown>)
+    ) {
+      unwrapped[key] = (value as Record<string, unknown>).value
+    } else {
+      unwrapped[key] = value
+    }
+  }
+
+  const flat = flattenSemanticData(unwrapped)
+  return Object.keys(flat).length > 0 ? flat : null
+}
+
+/**
+ * 在多条 product_semantics 记录中取 updated_at 最新的一条 semantic_data。
+ * product_semantics 按 (product_id, schema_id) upsert，但历史可能残留多行；
+ * 必须取最新，避免读到过期 canonical。
+ */
+function pickLatestSemanticData(
+  list: StorefrontProductRow['product_semantics']
+): unknown | null {
+  if (!Array.isArray(list) || list.length === 0) return null
+  const sorted = [...list].sort((a, b) => {
+    const ta = a.updated_at ? new Date(a.updated_at).getTime() : 0
+    const tb = b.updated_at ? new Date(b.updated_at).getTime() : 0
+    return tb - ta
+  })
+  const latest = sorted[0]
+  if (latest && latest.semantic_data !== null && latest.semantic_data !== undefined) {
+    return latest.semantic_data
+  }
+  return null
+}
+
+/**
+ * 解析商品公开属性（canonical 优先级链）：
+ *   1. latest product_semantics.semantic_data  ← canonical 事实源
+ *   2. products.semantic_data                  ← legacy 兜底（已是死列，但保留兼容）
+ *   3. {}                                       ← 兜底空对象
+ *
+ * 不允许读 products.raw_data 作为公网 canonical source（anon 列级 REVOKE 已屏蔽）。
+ * 输出 Record<string,string>（如 { color, material, origin }）。
+ */
+export function resolveCanonicalAttributes(
+  row: StorefrontProductRow
+): Record<string, string> {
+  // 1. canonical（最新 product_semantics 记录）
+  const canonical = pickLatestSemanticData(row.product_semantics)
+  if (canonical !== null) {
+    const extracted = extractAttributesFromSemantic(canonical)
+    if (extracted) return extracted
+  }
+
+  // 2. legacy fallback：products.semantic_data
+  if (row.semantic_data !== null && row.semantic_data !== undefined) {
+    const legacy = extractAttributesFromSemantic(row.semantic_data)
+    if (legacy) return legacy
+  }
+
+  // 3. 兜底空对象
+  return {}
+}
+
 function normalizeOptions(
   rawOptions?: StorefrontProductRow['product_options']
 ): StorefrontProductOption[] | undefined {
@@ -180,7 +282,7 @@ export function normalizeProduct(
     images: gallery.all.length > 0 ? gallery.all : (gallery.primary ? [gallery.primary] : []),
     href: `/store/${opts.storeSlug}/products/${id}`,
     description: row.description ?? null,
-    attributes: flattenSemanticData(row.semantic_data),
+    attributes: resolveCanonicalAttributes(row),
     badges: [],
     options,
     variants,

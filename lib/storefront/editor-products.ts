@@ -18,9 +18,10 @@ import {
 } from './normalize'
 import type { StorefrontProduct } from './types'
 
-/** 商品白名单列：只取 UI 需要的字段，绝不暴露 raw_data/sku/inventory 等内部字段。 */
+/** 商品白名单列：只取 UI 需要的字段，绝不暴露 raw_data/sku/inventory 等内部字段。
+ *  与公开 Storefront 共用 product_semantics(semantic_data, updated_at) 读源（normalize 共享）。 */
 const PRODUCT_SELECT =
-  'id, name, description, price, currency, semantic_data, product_assets(url, asset_type)'
+  'id, name, description, price, currency, semantic_data, product_assets(url, asset_type), product_semantics(semantic_data, updated_at)'
 
 type EditorStoreRef =
   | string
