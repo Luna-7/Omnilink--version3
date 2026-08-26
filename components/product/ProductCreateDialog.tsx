@@ -137,12 +137,12 @@ export function ProductCreateDialog() {
           category_id: formData.categoryId || undefined,
           origin: formData.origin.trim(),
           attributes: validCanonicalAttributes,
+          options: variantOptions.length > 0 ? variantOptions : undefined,
           raw_data: {
             category: formData.category,
             category_id: formData.categoryId || undefined,
             origin: formData.origin.trim(),
             attributes: validCanonicalAttributes,
-            options: variantOptions.length > 0 ? variantOptions : undefined,
           },
         }),
       })
@@ -160,21 +160,11 @@ export function ProductCreateDialog() {
         throw new Error(isZh ? '无法获取新建商品 ID' : 'Could not retrieve created product ID')
       }
 
-      // 3. Persist composition origin (using Devin's existing product composition domain)
-      try {
-        await fetch(`/api/merchant/products/${createdId}/composition`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            component_name: 'Product Origin',
-            component_type: 'assembly',
-            origin_country: formData.origin.trim(),
-            is_primary: true,
-          }),
-        })
-      } catch (compErr) {
-        console.warn('Composition origin sync note:', compErr)
-      }
+      // NOTE (P0, 2026-08-26): Origin is no longer faked as a `component_type = assembly`
+      // entry on the product composition table. Origin lives on `products.raw_data.origin`
+      // (canonical) and on the canonical attribute `country_of_origin` (line ~101 above).
+      // A future Product Knowledge provenance task may introduce a real composition domain
+      // for multi-component products; for now, do NOT POST /composition here.
 
       // 4. Upload product images sequentially if provided
       if (images.length > 0) {

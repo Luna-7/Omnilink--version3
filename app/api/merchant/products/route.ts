@@ -6,6 +6,7 @@ import {
   CanonicalProductAttribute,
 } from '@/lib/products/canonical-attributes'
 import { ProductAttributeValidationError } from '@/lib/product/errors'
+import { createProductWithVariants } from '@/lib/products/product-with-variants-service'
 
 type ProductInsert = Database['public']['Tables']['products']['Insert']
 
@@ -89,25 +90,54 @@ export async function POST(request: NextRequest) {
       rawData.category = body.category
     }
 
-    const insert: ProductInsert = {
-      store_id: store.id,
-      ...pickInsert(body),
-      raw_data: rawData,
-      // Enforce store base currency as single source of truth (must be after pickInsert)
-      currency: storeBaseCurrency,
-    } as ProductInsert
+    // Extract options from body if present
+    const options = Array.isArray(body.options) ? body.options : undefined
 
-    const { data: product, error } = await supabase
-      .from('products')
-      .insert(insert)
-      .select()
-      .single()
-    if (error) {
-      console.error('[POST /api/merchant/products] Product creation failed', { 
+    // Use orchestration service to create product with options and variants
+    const orchestrationResult = await createProductWithVariants({
+      name: body.name,
+      sku: body.sku,
+      price: body.price,
+      currency: storeBaseCurrency,
+      inventory: body.inventory,
+      description: body.description,
+      status: body.status,
+      category: body.category,
+      category_id: body.category_id,
+      origin: body.origin,
+      attributes: body.attributes,
+      raw_data: rawData,
+      store_id: store.id,
+      options: options,
+    })
+
+    if (!orchestrationResult.success || !orchestrationResult.productId) {
+      console.error('[POST /api/merchant/products] Product with variants creation failed', { 
         storeId: store.id, 
-        error: error.message 
+        error: orchestrationResult.error 
       })
-      return NextResponse.json({ error: error.message, code: 'PRODUCT_CREATE_FAILED' }, { status: 500 })
+      return NextResponse.json({ 
+        error: orchestrationResult.error || 'Failed to create product', 
+        code: 'PRODUCT_CREATE_FAILED' 
+      }, { status: 500 })
+    }
+
+    // Fetch the created product for response
+    const { data: product, error: fetchError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', orchestrationResult.productId)
+      .single()
+    
+    if (fetchError || !product) {
+      console.error('[POST /api/merchant/products] Failed to fetch created product', { 
+        productId: orchestrationResult.productId, 
+        error: fetchError?.message 
+      })
+      return NextResponse.json({ 
+        error: 'Product created but failed to fetch', 
+        code: 'PRODUCT_FETCH_FAILED' 
+      }, { status: 500 })
     }
 
     // Process attributes if present via Canonical Service
@@ -203,7 +233,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, product, ai_ready: false }, { status: 201 })
+    return NextResponse.json({ 
+      success: true, 
+      product, 
+      ai_ready: false,
+      optionsCreated: orchestrationResult.optionsCreated,
+      variantsCreated: orchestrationResult.variantsCreated,
+    }, { status: 201 })
   } catch (error) {
     console.error('[POST /api/merchant/products] Unexpected error', { 
       error: error instanceof Error ? error.message : 'Unknown error' 
