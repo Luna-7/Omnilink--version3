@@ -55,6 +55,17 @@ export default function DynamicSectionRenderer({
   const localizedSection = localizeSectionContent(section, language)
   const { type, content, style, visible } = localizedSection
 
+  if (type === 'featured_products') {
+    console.error('[StorefrontDebug][Renderer]', {
+      sectionId: section.id,
+      sectionType: type,
+      visible: visible,
+      productCount: products.length,
+      productNames: products.map((p) => p.name),
+      contentCount: (content as { count?: number }).count,
+    })
+  }
+
   if (!visible) return null
 
   const paddingClass = getPaddingClass(style?.padding)
@@ -312,6 +323,13 @@ function ProductGridSection({
     typeof content.count === 'number' && content.count > 0 ? content.count : 4
   const showPrice = content.showPrice !== false
   const visibleProducts = products.slice(0, count)
+
+  console.error('[StorefrontDebug][ProductGrid]', {
+    incomingCount: products.length,
+    count,
+    visibleCount: visibleProducts.length,
+    visibleNames: visibleProducts.map((p) => p.name),
+  })
 
   return (
     <div id="products" className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">

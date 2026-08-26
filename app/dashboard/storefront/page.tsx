@@ -76,6 +76,15 @@ export default async function StorefrontDashboardPage() {
     console.error('Failed to load storefront products:', error)
   }
 
+  console.error('[StorefrontDebug][Dashboard]', {
+    userId: user?.id ?? null,
+    storeId: store?.id ?? null,
+    storeSlug: store?.store_slug ?? null,
+    ownerId: (store as { owner_id?: string | null })?.owner_id ?? null,
+    storefrontProductsCount: storefrontProducts?.length ?? 0,
+    storefrontProductNames: (storefrontProducts ?? []).map((p: { name?: string }) => p?.name),
+  })
+
   return (
     <StorefrontHub
       store={store}

@@ -364,6 +364,14 @@ export default function StorefrontEditor({
     return products.length > 0 ? products : getPreviewProductsForLanguage(isZh ? 'zh' : 'en')
   }, [products, isZh])
 
+  console.error('[StorefrontDebug][Editor]', {
+    incomingProductsCount: products.length,
+    incomingProductNames: products.map((p) => p.name),
+    displayProductsCount: displayProducts.length,
+    displayProductNames: displayProducts.map((p) => p.name),
+    demoFallbackCount: getPreviewProductsForLanguage(isZh ? 'zh' : 'en').length,
+  })
+
   function updateGlobalInfo(
     contactPartial: Partial<StoreContactConfig>,
     socialPartial: Partial<StoreSocialConfig>,

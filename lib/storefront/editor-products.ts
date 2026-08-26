@@ -57,15 +57,34 @@ export async function getEditorStorefrontProducts(
       .order('created_at', { ascending: false })
       .limit(limit)
 
+    console.error('[StorefrontDebug][EditorProducts]', {
+      storeId,
+      queryStatus: error ? 'error' : 'success',
+      errorMessage: error?.message ?? null,
+      rawCount: data?.length ?? 0,
+      rawProducts: (data ?? []).map((p: Record<string, unknown>) => ({
+        id: p.id,
+        name: p.name,
+        status: p.status ?? null,
+      })),
+    })
+
     if (error) {
       console.error('getEditorStorefrontProducts error:', error.message)
       return []
     }
 
-    return normalizeProducts(
+    const normalized = normalizeProducts(
       (data ?? []) as unknown as StorefrontProductRow[],
       { storeSlug, storeCurrency }
     )
+
+    console.error('[StorefrontDebug][EditorProductsNormalized]', {
+      normalizedCount: normalized.length,
+      normalizedNames: normalized.map((p) => p.name),
+    })
+
+    return normalized
   } catch (err) {
     console.error('getEditorStorefrontProducts exception:', err)
     return []
