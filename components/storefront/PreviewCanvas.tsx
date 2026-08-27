@@ -318,11 +318,6 @@ export default function PreviewCanvas({
     return () => observer.disconnect()
   }, [isAutoFit, calculateFitZoom])
 
-  // 当右侧边栏开启或关闭状态变化时，强制触发一次自适应 (Fit) 缩放，确保内容完美适配
-  useEffect(() => {
-    handleFit()
-  }, [rightPanelOpen, handleFit])
-
   // 目标市场货币 (Target Market Currency)
   const targetCurrency = currentMarket.currency
 

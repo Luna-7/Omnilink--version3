@@ -30,19 +30,52 @@ export async function PATCH(
   if (!auth.ok) return auth.response
   const { supabase, user } = auth
 
-  const { owned } = await ownsProduct(supabase, user, id)
+  const { owned, storeId } = await ownsProduct(supabase, user, id)
   if (!owned) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   try {
     const update = pickUpdate(await request.json())
-    const { data, error } = await supabase
+    const { data: existing } = await supabase
       .from('products')
-      .update(update)
+      .select('id')
       .eq('id', id)
-      .select()
-      .single()
+      .maybeSingle()
+
+    let data
+    let error
+    if (existing) {
+      const res = await supabase
+        .from('products')
+        .update(update)
+        .eq('id', id)
+        .select()
+        .single()
+      data = res.data
+      error = res.error
+    } else {
+      const insertPayload = {
+        id,
+        store_id: storeId,
+        name: update.name || 'Untitled Product',
+        sku: update.sku || `SKU-${id}`,
+        price: update.price ?? 0,
+        currency: update.currency || 'CNY',
+        inventory: update.inventory ?? 0,
+        status: update.status || 'draft',
+        description: update.description || '',
+        raw_data: update.raw_data || {},
+      }
+      const res = await supabase
+        .from('products')
+        .upsert(insertPayload)
+        .select()
+        .single()
+      data = res.data
+      error = res.error
+    }
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }

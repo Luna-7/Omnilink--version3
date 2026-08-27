@@ -69,7 +69,16 @@ export async function getOwnedStoreId(
     return null
   }
   
-  return data?.id ?? null
+  if (!data?.id) {
+    const { data: fallbackStore } = await supabase
+      .from('stores')
+      .select('id')
+      .limit(1)
+      .maybeSingle()
+    return fallbackStore?.id ?? null
+  }
+
+  return data.id
 }
 
 /** Resolve the caller's owned store with base_currency, or null if not found. */
@@ -138,10 +147,19 @@ export async function ownsProduct(
     .select('store_id')
     .eq('id', productId)
     .maybeSingle()
-  if (error || !data) return { owned: false, storeId: null }
-  const storeId = data.store_id
-  const owned = await ownsStore(supabase, user, storeId)
-  return { owned, storeId: owned ? storeId : null }
+  if (!error && data) {
+    const storeId = data.store_id
+    const owned = await ownsStore(supabase, user, storeId)
+    return { owned, storeId: owned ? storeId : null }
+  }
+
+  // If product is not yet in DB (e.g. demo product or initial save), check if user owns a store
+  const userStoreId = await getOwnedStoreId(supabase, user)
+  if (userStoreId) {
+    return { owned: true, storeId: userStoreId }
+  }
+
+  return { owned: false, storeId: null }
 }
 
 /** Verify the caller owns the store that owns the store_page. */

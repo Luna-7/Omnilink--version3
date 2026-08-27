@@ -41,8 +41,8 @@ import {
   Trophy,
 } from 'lucide-react'
 
-// ===== 全球节点网络架构数据（精确对齐 2000x857 SVG 投影坐标） =====
-const WORLD_VIEWBOX = { w: 2000, h: 857 }
+// ===== 全球节点网络架构数据（精确对齐 1010x666 MapSVG 投影坐标） =====
+const WORLD_VIEWBOX = { w: 1010, h: 666 }
 
 export interface GlobalNode {
   code: string
@@ -76,8 +76,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '12ms',
     status: 'Optimal',
     zhStatus: '最优',
-    cx: 475,
-    cy: 275,
+    cx: 220,
+    cy: 310,
     isTop: true,
     activeOrders: 428,
     fulfillRate: '99.8%',
@@ -94,8 +94,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '45ms',
     status: 'Active',
     zhStatus: '畅通',
-    cx: 690,
-    cy: 620,
+    cx: 355,
+    cy: 496,
     isTop: true,
     activeOrders: 184,
     fulfillRate: '98.5%',
@@ -112,8 +112,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '18ms',
     status: 'Optimal',
     zhStatus: '最优',
-    cx: 1105,
-    cy: 110,
+    cx: 548,
+    cy: 218,
     isTop: true,
     activeOrders: 92,
     fulfillRate: '99.9%',
@@ -130,8 +130,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '36ms',
     status: 'Surging',
     zhStatus: '激增',
-    cx: 1435,
-    cy: 365,
+    cx: 728,
+    cy: 396,
     isTop: true,
     activeOrders: 67,
     fulfillRate: '97.6%',
@@ -148,8 +148,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '16ms',
     status: 'Optimal',
     zhStatus: '最优',
-    cx: 1050,
-    cy: 190,
+    cx: 511,
+    cy: 288,
     isTop: false,
     activeOrders: 215,
     fulfillRate: '99.7%',
@@ -166,8 +166,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '14ms',
     status: 'Optimal',
     zhStatus: '最优',
-    cx: 1690,
-    cy: 280,
+    cx: 852,
+    cy: 360,
     isTop: false,
     activeOrders: 310,
     fulfillRate: '99.9%',
@@ -184,8 +184,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '15ms',
     status: 'Optimal',
     zhStatus: '最优',
-    cx: 1515,
-    cy: 485,
+    cx: 766,
+    cy: 459,
     isTop: false,
     activeOrders: 162,
     fulfillRate: '99.4%',
@@ -202,8 +202,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '28ms',
     status: 'Optimal',
     zhStatus: '最优',
-    cx: 1295,
-    cy: 345,
+    cx: 627,
+    cy: 392,
     isTop: false,
     activeOrders: 119,
     fulfillRate: '99.1%',
@@ -220,8 +220,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '32ms',
     status: 'Optimal',
     zhStatus: '最优',
-    cx: 1720,
-    cy: 670,
+    cx: 840,
+    cy: 550,
     isTop: false,
     activeOrders: 88,
     fulfillRate: '98.9%',
@@ -238,8 +238,8 @@ const GLOBAL_NODES: GlobalNode[] = [
     latency: '52ms',
     status: 'Active',
     zhStatus: '畅通',
-    cx: 1120,
-    cy: 710,
+    cx: 545,
+    cy: 593,
     isTop: false,
     activeOrders: 54,
     fulfillRate: '98.1%',
@@ -248,15 +248,15 @@ const GLOBAL_NODES: GlobalNode[] = [
 
 // 跨洲全球路由互联干线贝塞尔航线
 const GLOBAL_ROUTES = [
-  { from: 'us', to: 'de', d: 'M 475 275 Q 760 140 1050 190' },
-  { from: 'de', to: 'fi', d: 'M 1050 190 Q 1070 145 1105 110' },
-  { from: 'de', to: 'ae', d: 'M 1050 190 Q 1180 240 1295 345' },
-  { from: 'ae', to: 'bd', d: 'M 1295 345 Q 1365 330 1435 365' },
-  { from: 'bd', to: 'sg', d: 'M 1435 365 Q 1485 410 1515 485' },
-  { from: 'sg', to: 'jp', d: 'M 1515 485 Q 1630 390 1690 280' },
-  { from: 'sg', to: 'au', d: 'M 1515 485 Q 1610 590 1720 670' },
-  { from: 'us', to: 'br', d: 'M 475 275 Q 540 460 690 620' },
-  { from: 'br', to: 'za', d: 'M 690 620 Q 905 730 1120 710' },
+  { from: 'us', to: 'de', d: 'M 220 310 Q 365 230 511 288' },
+  { from: 'de', to: 'fi', d: 'M 511 288 Q 520 230 548 218' },
+  { from: 'de', to: 'ae', d: 'M 511 288 Q 590 310 627 392' },
+  { from: 'ae', to: 'bd', d: 'M 627 392 Q 677 370 728 396' },
+  { from: 'bd', to: 'sg', d: 'M 728 396 Q 747 410 766 459' },
+  { from: 'sg', to: 'jp', d: 'M 766 459 Q 825 380 852 360' },
+  { from: 'sg', to: 'au', d: 'M 766 459 Q 820 490 840 550' },
+  { from: 'us', to: 'br', d: 'M 220 310 Q 260 410 355 496' },
+  { from: 'br', to: 'za', d: 'M 355 496 Q 450 580 545 593' },
 ]
 
 type WorldPath = { d: string; name: string; id: string }
@@ -477,10 +477,10 @@ export function DashboardView({
           .map((el) => ({
             d: el.getAttribute('d') || '',
             name:
+              el.getAttribute('title') ||
               el.getAttribute('name') ||
               el.getAttribute('class') ||
               el.getAttribute('id') ||
-              el.getAttribute('title') ||
               '',
             id: el.getAttribute('id') || '',
           }))
@@ -811,7 +811,7 @@ export function DashboardView({
           {/* 全点阵网格底层 (Dot-Matrix Overlay) */}
           <g id="matrix-map-overlay" className="pointer-events-none">
             {/* 北美洲点阵群 */}
-            <g transform="translate(380, 180)">
+            <g transform="translate(160, 240)">
               <use href="#dot" x="20" y="20"/><use href="#dot" x="40" y="20"/><use href="#dot" x="60" y="20"/><use href="#glow-dot" x="80" y="20"/><use href="#dot" x="100" y="20"/>
               <use href="#dot" x="10" y="40"/><use href="#glow-dot" x="30" y="40"/><use href="#dot" x="50" y="40"/><use href="#dot" x="70" y="40"/><use href="#dot" x="90" y="40"/>
               <use href="#dot" x="20" y="60"/><use href="#dot" x="40" y="60"/><use href="#glow-dot" x="60" y="60"/><use href="#dot" x="80" y="60"/><use href="#dot" x="100" y="60"/>
@@ -819,7 +819,7 @@ export function DashboardView({
             </g>
 
             {/* 南美洲点阵群 */}
-            <g transform="translate(620, 520)">
+            <g transform="translate(320, 470)">
               <use href="#dot" x="20" y="20"/><use href="#dot" x="40" y="20"/><use href="#dot" x="60" y="20"/>
               <use href="#dot" x="30" y="40"/><use href="#glow-dot" x="50" y="40"/><use href="#dot" x="70" y="40"/>
               <use href="#dot" x="40" y="60"/><use href="#dot" x="60" y="60"/>
@@ -827,7 +827,7 @@ export function DashboardView({
             </g>
 
             {/* 欧洲与非洲点阵群 */}
-            <g transform="translate(980, 120)">
+            <g transform="translate(490, 200)">
               <use href="#glow-dot" x="20" y="0"/><use href="#dot" x="40" y="0"/><use href="#dot" x="60" y="0"/>
               <use href="#dot" x="10" y="20"/><use href="#dot" x="30" y="20"/><use href="#glow-dot" x="50" y="20"/>
               <use href="#dot" x="20" y="160"/><use href="#dot" x="40" y="160"/><use href="#dot" x="60" y="160"/>
@@ -835,14 +835,14 @@ export function DashboardView({
             </g>
 
             {/* 亚洲点阵群 */}
-            <g transform="translate(1350, 160)">
+            <g transform="translate(680, 240)">
               <use href="#dot" x="40" y="20"/><use href="#dot" x="60" y="20"/><use href="#dot" x="80" y="20"/><use href="#dot" x="100" y="20"/><use href="#dot" x="120" y="20"/>
               <use href="#dot" x="20" y="40"/><use href="#glow-dot" x="40" y="40"/><use href="#dot" x="60" y="40"/><use href="#dot" x="80" y="40"/><use href="#dot" x="100" y="40"/>
               <use href="#dot" x="0" y="60"/><use href="#dot" x="20" y="60"/><use href="#dot" x="40" y="60"/><use href="#glow-dot" x="60" y="60"/><use href="#dot" x="80" y="60"/>
             </g>
 
             {/* 大洋洲点阵群 */}
-            <g transform="translate(1620, 580)">
+            <g transform="translate(780, 500)">
               <use href="#dot" x="20" y="20"/><use href="#glow-dot" x="40" y="20"/><use href="#dot" x="60" y="20"/>
               <use href="#dot" x="10" y="40"/><use href="#dot" x="30" y="40"/><use href="#dot" x="50" y="40"/>
             </g>

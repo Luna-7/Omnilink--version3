@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -80,8 +80,10 @@ export default function ProductHero({
     return initial
   })
 
-  // Synchronize options and gallery whenever product changes
-  useEffect(() => {
+  const [prevProductId, setPrevProductId] = useState(product.id)
+
+  if (product.id !== prevProductId) {
+    setPrevProductId(product.id)
     setActiveImageIndex(0)
     const initial: Record<string, string> = {}
     if (product.options && product.options.length > 0) {
@@ -93,7 +95,7 @@ export default function ProductHero({
       }
     }
     setSelectedOptions(initial)
-  }, [product.id, product.options])
+  }
 
   // Quantity State
   const [quantity, setQuantity] = useState(1)

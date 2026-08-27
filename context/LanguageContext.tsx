@@ -14,17 +14,23 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('zh')
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('omnilink_lang') as Language | null
+        if (stored === 'zh' || stored === 'en') {
+          return stored
+        }
+      } catch {}
+    }
+    return 'zh'
+  })
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('omnilink_lang') as Language | null
-      if (stored === 'zh' || stored === 'en') {
-        setLanguageState(stored)
-        document.documentElement.lang = stored === 'zh' ? 'zh-CN' : 'en'
-      }
+      document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en'
     } catch {}
-  }, [])
+  }, [language])
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
