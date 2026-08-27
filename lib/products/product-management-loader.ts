@@ -36,11 +36,15 @@ function readStatus(
   return 'draft'
 }
 
+import { isUuid, toValidUuid } from '@/lib/utils/uuid'
+
 export async function loadProductManagementModel(
   productId: string,
 ): Promise<ProductManagementModel> {
   const supabase =
     await createClientServer()
+
+  const targetId = isUuid(productId) ? productId : toValidUuid(productId)
 
   const { data: dbData, error } =
     await supabase
@@ -57,7 +61,7 @@ export async function loadProductManagementModel(
         raw_data,
         updated_at
       `)
-      .eq('id', productId)
+      .eq('id', targetId)
       .maybeSingle()
 
   const data = dbData || {

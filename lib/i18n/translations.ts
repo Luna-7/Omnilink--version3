@@ -5,6 +5,10 @@ export interface TranslationSchema {
     customerService: string
     dashboard: string
     products: string
+    provenance: string
+    capabilities: string
+    network: string
+    ai: string
     agentApi: string
     knowledge: string
     storefront: string
@@ -203,14 +207,18 @@ export interface TranslationSchema {
 export const translations: Record<Language, TranslationSchema> = {
   zh: {
     nav: {
-      customerService: 'AI 客服中心',
-      dashboard: '控制台',
-      products: '商品管理',
-      agentApi: 'Agent 接口',
+      customerService: 'AI',
+      dashboard: '概览',
+      products: '商品',
+      provenance: '来源',
+      capabilities: '能力',
+      network: '网络',
+      ai: 'AI',
+      agentApi: '网络与接口',
       knowledge: '知识库',
-      storefront: '店铺装修',
+      storefront: '网页设计',
       store: '店铺控制台',
-      plugins: '能力与网络',
+      plugins: '能力中心',
       account: '账户信息',
       settings: '全局设置',
       logout: '退出登录',
@@ -402,14 +410,18 @@ export const translations: Record<Language, TranslationSchema> = {
   },
   en: {
     nav: {
-      customerService: 'Customer Service',
-      dashboard: 'Dashboard',
+      customerService: 'AI',
+      dashboard: 'Overview',
       products: 'Products',
+      provenance: 'Provenance',
+      capabilities: 'Capabilities',
+      network: 'Network',
+      ai: 'AI',
       agentApi: 'Agent API',
       knowledge: 'Knowledge',
       storefront: 'Storefront',
       store: 'Store Console',
-      plugins: 'Capabilities & Network',
+      plugins: 'Capabilities',
       account: 'Account',
       settings: 'Settings',
       logout: 'Log Out',

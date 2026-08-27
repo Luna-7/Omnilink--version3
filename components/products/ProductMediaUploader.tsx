@@ -443,12 +443,12 @@ export const ProductMediaUploader = forwardRef<ProductMediaUploaderRef, ProductM
                   {isVideoUrl(urlInput.trim()) ? (
                     <>
                       <Film size={10} />
-                      <span>Video Preview</span>
+                      <span>{isZh ? '视频预览' : 'Video Preview'}</span>
                     </>
                   ) : (
                     <>
                       <Play size={10} />
-                      <span>Image Preview</span>
+                      <span>{isZh ? '图片预览' : 'Image Preview'}</span>
                     </>
                   )}
                 </span>
@@ -464,7 +464,7 @@ export const ProductMediaUploader = forwardRef<ProductMediaUploaderRef, ProductM
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={urlInput.trim()}
-                    alt="Live URL Preview"
+                    alt={isZh ? '实时预览' : 'Live URL Preview'}
                     className="max-h-48 max-w-full rounded object-contain"
                     onError={() => {
                       setUrlError(isZh ? '媒体链接可能失效或不支持跨域加载' : 'Media URL could be invalid or restricted by CORS')
@@ -538,7 +538,7 @@ export const ProductMediaUploader = forwardRef<ProductMediaUploaderRef, ProductM
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={asset.url}
-                        alt="Product Asset"
+                        alt={isZh ? '商品素材' : 'Product Asset'}
                         className="w-full h-full object-cover"
                       />
                     )}

@@ -12,13 +12,15 @@ import { logoutAction } from '@/app/actions/auth'
 import {
   LayoutGrid,
   Package,
-  Brain,
-  Globe,
+  Fingerprint,
+  BookOpen,
+  Palette,
   Blocks,
+  Globe,
+  Sparkles,
   User,
   Settings,
   LogOut,
-  Sparkles,
   ChevronRight,
 } from 'lucide-react'
 
@@ -30,12 +32,14 @@ export type Profile = {
 }
 
 type NavItemKey =
-  | 'customerService'
   | 'dashboard'
   | 'products'
+  | 'provenance'
   | 'knowledge'
   | 'storefront'
-  | 'plugins'
+  | 'capabilities'
+  | 'network'
+  | 'ai'
   | 'account'
   | 'settings'
 
@@ -47,15 +51,8 @@ type NavItem = {
   isSpecialSprite?: boolean
 }
 
-/* 严格对应 app/dashboard 目录下的同名模块，客服中心放置于最上方且具备独立彩色圆球精灵 */
+/* 主导航：概览、商品、来源、知识库、网页设计、能力、网络、AI */
 const NAV_ITEMS: NavItem[] = [
-  {
-    key: 'customerService',
-    href: '/dashboard/customer-service',
-    icon: Sparkles,
-    match: (p) => p.startsWith('/dashboard/customer-service'),
-    isSpecialSprite: true,
-  },
   {
     key: 'dashboard',
     href: '/dashboard',
@@ -69,22 +66,41 @@ const NAV_ITEMS: NavItem[] = [
     match: (p) => p.startsWith('/dashboard/products'),
   },
   {
+    key: 'provenance',
+    href: '/dashboard/provenance',
+    icon: Fingerprint,
+    match: (p) => p.startsWith('/dashboard/provenance'),
+  },
+  {
     key: 'knowledge',
     href: '/dashboard/knowledge',
-    icon: Brain,
+    icon: BookOpen,
     match: (p) => p.startsWith('/dashboard/knowledge'),
   },
   {
     key: 'storefront',
     href: '/dashboard/storefront',
-    icon: Globe,
+    icon: Palette,
     match: (p) => p.startsWith('/dashboard/storefront') || p.startsWith('/dashboard/store'),
   },
   {
-    key: 'plugins',
+    key: 'capabilities',
     href: '/dashboard/plugins',
     icon: Blocks,
     match: (p) => p.startsWith('/dashboard/plugins'),
+  },
+  {
+    key: 'network',
+    href: '/dashboard/agent-api',
+    icon: Globe,
+    match: (p) => p.startsWith('/dashboard/agent-api'),
+  },
+  {
+    key: 'ai',
+    href: '/dashboard/customer-service',
+    icon: Sparkles,
+    match: (p) => p.startsWith('/dashboard/customer-service'),
+    isSpecialSprite: true,
   },
 ]
 
@@ -136,10 +152,28 @@ export default function OmnilinkLayout({
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className="hidden lg:flex flex-col justify-between bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800/80 py-3.5 px-1.5 shrink-0 sticky top-0 h-screen z-40 overflow-y-auto shadow-[1px_0_8px_rgba(0,0,0,0.02)] scrollbar-thin"
       >
-        {/* 上半部分：商户/用户区块（排位最高）、菜单导航 */}
-        <div className="flex flex-col gap-3.5 w-full">
-          {/* 商户/用户账号信息卡片 (排位最高) */}
-          <div className={cn("w-full transition-all duration-300 pb-2.5 border-b border-slate-100 dark:border-slate-800/60", isSidebarExpanded ? "px-1" : "flex flex-col items-center")}>
+        {/* 上半部分：Logo、商户/用户区块、菜单导航 */}
+        <div className="flex flex-col gap-2.5 w-full">
+          {/* Logo 区域 */}
+          <Link
+            href="/dashboard"
+            className={cn(
+              "flex items-center gap-2 px-1 py-1 rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors group cursor-pointer",
+              isSidebarExpanded ? "justify-start px-2" : "justify-center"
+            )}
+          >
+            <div className="w-7 h-7 rounded-[4px] bg-[#024AD8] flex items-center justify-center text-white font-black text-xs shrink-0 shadow-[0_2px_6px_rgba(2,74,216,0.3)]">
+              O
+            </div>
+            {isSidebarExpanded && (
+              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white truncate">
+                Omnilink
+              </span>
+            )}
+          </Link>
+
+          {/* 商户/用户账号信息卡片 */}
+          <div className={cn("w-full transition-all duration-300 pb-2 border-b border-slate-100 dark:border-slate-800/60", isSidebarExpanded ? "px-1" : "flex flex-col items-center")}>
             {isSidebarExpanded ? (
               <Link
                 href="/dashboard/account"

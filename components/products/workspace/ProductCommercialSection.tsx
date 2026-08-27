@@ -41,13 +41,8 @@ export function ProductCommercialSection({
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              {isZh ? '商业定价与库存 (Commercial)' : 'Commercial'}
+              {isZh ? '商业定价与库存' : 'Commercial'}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isZh
-                ? '商品售价、店铺基础货币、可售库存量与在售状态'
-                : 'Selling price, store base currency, available stock units, and sales status'}
-            </p>
           </div>
         </div>
       </div>
@@ -107,9 +102,9 @@ export function ProductCommercialSection({
             disabled={disabled}
             className="w-full h-10 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#024AD8] disabled:opacity-50 transition-all cursor-pointer"
           >
-            <option value="active">{isZh ? '已上架 (Active)' : 'Active'}</option>
-            <option value="draft">{isZh ? '草稿箱 (Draft)' : 'Draft'}</option>
-            <option value="archived">{isZh ? '已归档 (Archived)' : 'Archived'}</option>
+            <option value="active">{isZh ? '已上架' : 'Active'}</option>
+            <option value="draft">{isZh ? '草稿箱' : 'Draft'}</option>
+            <option value="archived">{isZh ? '已归档' : 'Archived'}</option>
           </select>
         </div>
       </div>

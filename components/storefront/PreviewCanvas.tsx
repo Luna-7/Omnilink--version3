@@ -340,15 +340,6 @@ export default function PreviewCanvas({
     })
   }, [products, effectiveLanguage, storeBaseCurrency, targetCurrency])
 
-  console.error('[StorefrontDebug][PreviewCanvas]', {
-    incomingProductsCount: products.length,
-    incomingProductNames: products.map((p) => p.name),
-    displayProductsCount: displayProducts.length,
-    displayProductNames: displayProducts.map((p) => p.name),
-    activePage,
-    effectiveLanguage,
-  })
-
   const activeProduct = useMemo(() => {
     if (selectedProductId) {
       const found = displayProducts.find((p) => p.id === selectedProductId)

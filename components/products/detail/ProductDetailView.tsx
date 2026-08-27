@@ -78,7 +78,7 @@ export function ProductDetailView({
               {model.name || '未命名商品'}
             </h1>
             <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 font-mono">
-              <span>SKU: {model.sku || '—'}</span>
+              <span>编号: {model.sku || '—'}</span>
               <span>·</span>
               <span className="font-sans">{model.category || '未分类'}</span>
               <span>·</span>
@@ -314,7 +314,7 @@ export function ProductDetailView({
                         {rel.targetProduct.name}
                       </div>
                       <div className="font-mono text-[10px] text-slate-400 truncate">
-                        SKU: {rel.targetProduct.sku || '—'}
+                        编号: {rel.targetProduct.sku || '—'}
                       </div>
                       {rel.targetProduct.price !== undefined &&
                         rel.targetProduct.price !== null && (

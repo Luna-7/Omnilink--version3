@@ -137,15 +137,18 @@ export async function ownsStore(
  * Returns { owned, storeId }. storeId is null if the product is not found or
  * not owned (so callers can 404 without leaking existence).
  */
+import { isUuid, toValidUuid } from '@/lib/utils/uuid'
+
 export async function ownsProduct(
   supabase: SbClient,
   user: User,
   productId: string
 ): Promise<{ owned: boolean; storeId: string | null }> {
+  const targetId = isUuid(productId) ? productId : toValidUuid(productId)
   const { data, error } = await supabase
     .from('products')
     .select('store_id')
-    .eq('id', productId)
+    .eq('id', targetId)
     .maybeSingle()
   if (!error && data) {
     const storeId = data.store_id

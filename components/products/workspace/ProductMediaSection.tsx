@@ -35,19 +35,9 @@ export function ProductMediaSection({
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              {isZh ? '商品展示媒体 (Product Media)' : 'Product Media'}
+              {isZh ? '商品展示媒体' : 'Product Media'}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isZh
-                ? '商品公开展示与 AI 视觉理解所使用的资产'
-                : 'Assets used for public storefront display and AI visual recognition'}
-            </p>
           </div>
-        </div>
-
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-600">
-          <Shield size={12} className="text-emerald-600" />
-          <span>{isZh ? '自动生成 WebP & 隐私脱敏' : 'Auto WebP & Privacy Protected'}</span>
         </div>
       </div>
 

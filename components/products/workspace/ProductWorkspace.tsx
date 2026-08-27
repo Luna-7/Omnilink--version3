@@ -10,10 +10,7 @@ import { ProductIdentitySection } from './ProductIdentitySection'
 import { ProductMediaSection } from './ProductMediaSection'
 import { ProductCommercialSection } from './ProductCommercialSection'
 import { ProductDescriptionSection } from './ProductDescriptionSection'
-import { ProductAttributesSection, ProductAttributeValue } from './ProductAttributesSection'
-import { ProductVariantsSection } from './ProductVariantsSection'
 import { ProductKnowledgeSection } from './ProductKnowledgeSection'
-import { ProductSeoSection } from './ProductSeoSection'
 import { ProductRelationsSection } from './ProductRelationsSection'
 import { FuturePreviewModal } from './FuturePreviewModal'
 
@@ -41,7 +38,6 @@ interface ProductWorkspaceProps {
     options?: ProductOption[]
     variants?: ProductVariant[]
     existingAssets?: ExistingAsset[]
-    attributes?: ProductAttributeValue[]
   }
 }
 
@@ -67,31 +63,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
   const [inventory, setInventory] = useState<string | number>(initialData?.inventory ?? demoFallback?.inventory ?? 100)
   const [description, setDescription] = useState(initialData?.description || demoFallback?.description || '')
   const [status, setStatus] = useState<'active' | 'draft' | 'archived'>(initialData?.status || demoFallback?.status || 'active')
-
-  // Unified Canonical Attribute View Model State
-  const [attributeValues, setAttributeValues] = useState<ProductAttributeValue[]>(() => {
-    if (initialData?.attributes && initialData.attributes.length > 0) {
-      return initialData.attributes
-    }
-    if (demoFallback?.semantic_data?.attributes) {
-      return Object.entries(demoFallback.semantic_data.attributes).map(([key, val]) => ({
-        fieldKey: key,
-        label: key,
-        value: String(val),
-        type: 'text' as const,
-        isStandard: true,
-      }))
-    }
-    return []
-  })
-  const [attributesLoading, setAttributesLoading] = useState(false)
-  const [attributesError, setAttributesError] = useState<string | null>(null)
-  const [isUsingLegacyFallback, setIsUsingLegacyFallback] = useState(false)
-  const initialAttributeKeysRef = useRef<Set<string>>(
-    new Set(
-      (initialData?.attributes || []).map((a) => a.fieldKey.toLowerCase())
-    )
-  )
 
   // Options & Variants
   const [options, setOptions] = useState<ProductOption[]>(() => {
@@ -192,7 +163,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     // If it's a demo product, initial states are already set without needing any network calls
     if (demoFallback) {
       setIsLoading(false)
-      setAttributesLoading(false)
       return
     }
 
@@ -200,8 +170,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     if (!initialData) {
       setIsLoading(true)
     }
-    setAttributesLoading(true)
-    setAttributesError(null)
 
     try {
       const [mgmtSettled, assetsSettled, optionsSettled, variantsSettled, relationsSettled] = await Promise.allSettled([
@@ -224,11 +192,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           setStatus(model.status)
           setCategory(model.category || '')
           setCategoryId(model.categoryId || null)
-          setAttributeValues(model.attributes || [])
-          initialAttributeKeysRef.current = new Set(
-            (model.attributes || []).map((a) => a.fieldKey.toLowerCase())
-          )
-          setIsUsingLegacyFallback(Boolean(model.metadata?.isLegacy))
           if (model.seo) {
             setSeoTitle(model.seo.title || '')
             setSeoDescription(model.seo.description || '')
@@ -274,7 +237,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
       console.error('Failed to load product details in background:', err)
     } finally {
       setIsLoading(false)
-      setAttributesLoading(false)
     }
   }, [productId, demoFallback, initialData, getSaveController])
 
@@ -350,20 +312,8 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         throw new Error(isZh ? '无法获取目标商品ID' : 'Target product ID is missing')
       }
 
-      // Compute valid attributes and explicit deletions
-      const currentKeys = new Set(attributeValues.map((a) => a.fieldKey.toLowerCase()))
-      const missingKeys = Array.from(initialAttributeKeysRef.current).filter((k) => !currentKeys.has(k))
-      const emptyKeys = attributeValues.filter((a) => !a.value || !a.value.trim()).map((a) => a.fieldKey)
-      const allDeletions = Array.from(new Set([...missingKeys, ...emptyKeys]))
-      const validAttributes = attributeValues
-        .filter((a) => a.value && a.value.trim().length > 0)
-        .map((a) => ({
-          ...a,
-          isStandard: Boolean(a.isStandard),
-        }))
-
-      // Save Product Management (Basic + Canonical Attributes)
-      const saveResult = await saveProductManagement({
+      // Save Product Management (Basic Fields + SEO)
+      await saveProductManagement({
         productId: targetProductId,
         basic: {
           name: name.trim(),
@@ -376,18 +326,8 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         },
         category: category || null,
         categoryId: categoryId || null,
-        attributes: validAttributes,
-        deletions: allDeletions.length > 0 ? allDeletions : undefined,
         seo: { title: seoTitle, description: seoDescription },
       })
-
-      if (saveResult.canonical?.attributes) {
-        setAttributeValues(saveResult.canonical.attributes)
-        initialAttributeKeysRef.current = new Set(
-          saveResult.canonical.attributes.map((a: ProductAttributeValue) => a.fieldKey.toLowerCase())
-        )
-        setIsUsingLegacyFallback(Boolean(saveResult.canonical.is_legacy))
-      }
 
       // Handle media file upload if there are pending files
       let mediaNotice = ''
@@ -495,27 +435,27 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
               {productId
                 ? name || (isZh ? '未命名商品' : 'Untitled Product')
                 : isZh
-                ? '新建商品 (New Product)'
+                ? '新建商品'
                 : 'New Product'}
             </h1>
             {/* SKU Badge */}
             <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-mono">
-              SKU: {sku || '—'}
+              {isZh ? '编号' : 'SKU'}: {sku || '—'}
             </span>
             {/* Product Status Badge */}
             {status === 'active' && (
               <span className="px-2 py-0.5 rounded-[4px] bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                {isZh ? '已上架 (Active)' : 'Active'}
+                {isZh ? '已上架' : 'Active'}
               </span>
             )}
             {status === 'draft' && (
               <span className="px-2 py-0.5 rounded-[4px] bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">
-                {isZh ? '草稿箱 (Draft)' : 'Draft'}
+                {isZh ? '草稿箱' : 'Draft'}
               </span>
             )}
             {status === 'archived' && (
               <span className="px-2 py-0.5 rounded-[4px] bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-bold">
-                {isZh ? '已归档 (Archived)' : 'Archived'}
+                {isZh ? '已归档' : 'Archived'}
               </span>
             )}
           </div>
@@ -672,38 +612,10 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           </div>
         </div>
 
-        {/* ZONE 2: PRODUCT SPECIFICATIONS (⭐ CORE WORKSPACE FOCUS) */}
-        <div>
-          <ProductAttributesSection
-            productId={productId}
-            category={category}
-            categoryId={categoryId}
-            attributeValues={attributeValues}
-            onChangeAttributeValues={setAttributeValues}
-            isLoading={isLoading || attributesLoading}
-            isLegacyFallback={isUsingLegacyFallback}
-            error={attributesError}
-            onRetry={loadProductDetails}
-            disabled={isSaving}
-            onOpenPreview={handleOpenPreview}
-          />
-        </div>
-
-        {/* ZONE 3: SPECIFICATIONS AND VARIANTS MATRIX */}
-        <div>
-          <ProductVariantsSection
-            productId={productId}
-            options={options}
-            setOptions={setOptions}
-            variants={variants}
-            setVariants={setVariants}
-            disabled={isSaving}
-          />
-        </div>
-
-        {/* ZONE 3.5: PRODUCT RELATIONSHIPS */}
+        {/* ZONE 3: PRODUCT RELATIONSHIPS */}
         <div>
           <ProductRelationsSection
+            productId={productId}
             relations={relations}
             onChange={setRelations}
             disabled={isSaving}
@@ -715,19 +627,6 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
           <ProductKnowledgeSection
             productId={productId}
             onOpenPreview={handleOpenPreview}
-          />
-        </div>
-
-        {/* ZONE 6: SEO & META */}
-        <div>
-          <ProductSeoSection
-            seoTitle={seoTitle}
-            setSeoTitle={setSeoTitle}
-            seoDescription={seoDescription}
-            setSeoDescription={setSeoDescription}
-            productName={name}
-            productDescription={description}
-            disabled={isSaving}
           />
         </div>
       </div>

@@ -277,8 +277,11 @@ function mergeLegacyAttributes(
   return [...map.values()]
 }
 
+import { isUuid, toValidUuid } from '@/lib/utils/uuid'
+
 async function loadProductContext(productId: string) {
   const supabase = await createClientServer()
+  const targetId = isUuid(productId) ? productId : toValidUuid(productId)
 
   let product
   const { data: initialProduct, error } = await supabase
@@ -296,7 +299,7 @@ async function loadProductContext(productId: string) {
       )
     `,
     )
-    .eq('id', productId)
+    .eq('id', targetId)
     .maybeSingle()
   product = initialProduct
 
@@ -309,7 +312,7 @@ async function loadProductContext(productId: string) {
       const { data: created } = await supabase
         .from('products')
         .upsert({
-          id: productId,
+          id: targetId,
           store_id: store.id,
           name: 'Product',
           price: 0,

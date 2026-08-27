@@ -87,11 +87,11 @@ export function ProductIdentitySection({
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              {isZh ? '商品基本标识 (Product Identity)' : 'Product Identity'}
+              {isZh ? '商品基本标识' : 'Product Identity'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {isZh
-                ? '商品核心名称、全局唯一 SKU 与标准两级分类体系'
+                ? '商品核心名称、全局唯一商品编号与标准两级分类体系'
                 : 'Core product name, SKU identifier, and structured 2-level taxonomy'}
             </p>
           </div>
@@ -113,7 +113,7 @@ export function ProductIdentitySection({
             disabled={disabled}
             placeholder={
               isZh
-                ? '例如：Ray-Ban 经典太阳镜 或 Sony WH-1000XM6'
+                ? '例如：经典款太阳镜 或 高性能无线降噪耳机'
                 : 'e.g. Ray-Ban Classic Sunglasses or Sony WH-1000XM6'
             }
             className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#024AD8]/20 focus:border-[#024AD8] disabled:opacity-50 transition-all"
@@ -173,7 +173,7 @@ export function ProductIdentitySection({
         {/* SKU */}
         <div>
           <label htmlFor="workspace-sku" className="block text-xs font-semibold text-slate-800 mb-1.5">
-            {isZh ? '商品 SKU / 货号' : 'Product SKU'}
+            {isZh ? '商品编号 / 货号' : 'Product SKU'}
           </label>
           <div className="relative">
             <input
@@ -182,7 +182,7 @@ export function ProductIdentitySection({
               value={sku}
               onChange={(e) => setSku(e.target.value)}
               disabled={disabled}
-              placeholder="e.g. OMNI-SKU-9021"
+              placeholder={isZh ? '例如：PROD-9021' : 'e.g. PROD-9021'}
               className="w-full h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#024AD8]/20 focus:border-[#024AD8] disabled:opacity-50 transition-all"
             />
           </div>
@@ -192,7 +192,7 @@ export function ProductIdentitySection({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label htmlFor="workspace-category" className="block text-xs font-semibold text-slate-800">
-              {isZh ? '商品分类 (Category)' : 'Product Category'}
+              {isZh ? '商品分类' : 'Product Category'}
             </label>
             <span className="text-[10px] text-slate-400">
               {isZh ? '支持搜索 / 热门胶囊 / 两级级联' : 'Search / Popular / 2-Level'}

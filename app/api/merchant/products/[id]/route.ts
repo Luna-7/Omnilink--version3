@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, ownsProduct } from '@/lib/api/auth'
 import type { Database } from '@/lib/database.types'
 
+import { isUuid, toValidUuid } from '@/lib/utils/uuid'
+
 type ProductUpdate = Database['public']['Tables']['products']['Update']
 
 const PRODUCT_UPDATE_KEYS: (keyof ProductUpdate)[] = [
@@ -26,6 +28,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const targetId = isUuid(id) ? id : toValidUuid(id)
   const auth = await requireUser()
   if (!auth.ok) return auth.response
   const { supabase, user } = auth
@@ -40,7 +43,7 @@ export async function PATCH(
     const { data: existing } = await supabase
       .from('products')
       .select('id')
-      .eq('id', id)
+      .eq('id', targetId)
       .maybeSingle()
 
     let data
@@ -49,14 +52,14 @@ export async function PATCH(
       const res = await supabase
         .from('products')
         .update(update)
-        .eq('id', id)
+        .eq('id', targetId)
         .select()
         .single()
       data = res.data
       error = res.error
     } else {
       const insertPayload = {
-        id,
+        id: targetId,
         store_id: storeId,
         name: update.name || 'Untitled Product',
         sku: update.sku || `SKU-${id}`,
@@ -94,6 +97,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const targetId = isUuid(id) ? id : toValidUuid(id)
   const auth = await requireUser()
   if (!auth.ok) return auth.response
   const { supabase, user } = auth
@@ -103,7 +107,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { error } = await supabase.from('products').delete().eq('id', id)
+  const { error } = await supabase.from('products').delete().eq('id', targetId)
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

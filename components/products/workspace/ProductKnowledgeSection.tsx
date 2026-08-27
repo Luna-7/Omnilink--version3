@@ -19,17 +19,12 @@ export function ProductKnowledgeSection({ productId, onOpenPreview }: ProductKno
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-[4px] bg-blue-50 text-[#024AD8] flex items-center justify-center font-mono font-bold text-xs">
-            07
+            06
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              {isZh ? '产品资料与关联文档 (Product Documents)' : 'Product Documents'}
+              {isZh ? '产品资料与关联文档' : 'Product Documents'}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isZh
-                ? '上传产品说明书、认证资质、规格PDF等真实文档资料'
-                : 'Upload product manuals, certification documents, and specification PDFs'}
-            </p>
           </div>
         </div>
 

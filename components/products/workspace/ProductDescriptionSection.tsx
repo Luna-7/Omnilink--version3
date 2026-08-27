@@ -45,13 +45,8 @@ export function ProductDescriptionSection({
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              {isZh ? '商品详细描述 (Description)' : 'Description'}
+              {isZh ? '商品详细描述' : 'Description'}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isZh
-                ? '详细规格卖点、适用场景与使用说明'
-                : 'Detailed specifications, selling points, and usage guidelines'}
-            </p>
           </div>
         </div>
 
@@ -62,7 +57,7 @@ export function ProductDescriptionSection({
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-semibold border border-violet-200 transition-colors cursor-pointer disabled:opacity-50"
         >
           <Sparkles size={13} className="text-violet-600" />
-          <span>{isAIAssisting ? (isZh ? 'AI 正在整理...' : 'AI Assisting...') : isZh ? 'AI Assist' : 'AI Assist'}</span>
+          <span>{isAIAssisting ? (isZh ? 'AI 正在整理...' : 'AI Assisting...') : isZh ? 'AI 智能生成描述' : 'AI Assist'}</span>
         </button>
       </div>
 

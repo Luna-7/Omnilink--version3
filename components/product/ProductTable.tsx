@@ -5,16 +5,17 @@ import {
   Search,
   Package,
   Plus,
-  ChevronRight,
   LayoutGrid,
   List,
   Sparkles,
-  Cpu,
   CheckSquare,
   Square,
   Download,
+  Edit2,
+  Trash2,
+  Eye,
 } from 'lucide-react'
-import { AiBadge, EmptyState } from '@/components/dashboard/kit'
+import { EmptyState } from '@/components/dashboard/kit'
 import { useLanguage } from '@/context/LanguageContext'
 import Link from 'next/link'
 
@@ -31,12 +32,39 @@ export type ProductRow = {
   sales_count?: number
 }
 
-type FilterStatus = 'all' | 'active' | 'ai_ready' | 'low_stock'
+type FilterStatus = 'all' | 'active' | 'draft' | 'low_stock'
+
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; bg: string; text: string; border: string; dot: string }
+> = {
+  active: {
+    label: '已发布',
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-700 font-bold',
+    border: 'border-emerald-200',
+    dot: 'bg-emerald-500 ring-2 ring-emerald-300/50 animate-pulse',
+  },
+  draft: {
+    label: '草稿',
+    bg: 'bg-amber-50',
+    text: 'text-amber-800 font-bold',
+    border: 'border-amber-200',
+    dot: 'bg-amber-500 ring-2 ring-amber-300/50',
+  },
+  archived: {
+    label: '已下架',
+    bg: 'bg-slate-100',
+    text: 'text-slate-600 font-semibold',
+    border: 'border-slate-200',
+    dot: 'bg-slate-400',
+  },
+}
 
 export function ProductTable({ products }: { products: ProductRow[] }) {
   const [query, setQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const { t, isZh } = useLanguage()
 
@@ -47,8 +75,8 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
     // 状态过滤
     if (filterStatus === 'active') {
       list = list.filter((p) => (p.status || 'active') === 'active')
-    } else if (filterStatus === 'ai_ready') {
-      list = list.filter((p) => Boolean(p.semantic_data))
+    } else if (filterStatus === 'draft') {
+      list = list.filter((p) => p.status === 'draft')
     } else if (filterStatus === 'low_stock') {
       list = list.filter((p) => (Number(p.inventory) || 0) < 100)
     }
@@ -83,67 +111,77 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* 搜索栏、状态过滤器与视图切换 */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* 状态分类药丸 */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           <FilterPill
             active={filterStatus === 'all'}
             onClick={() => setFilterStatus('all')}
-            label={isZh ? '全部商品' : 'All'}
+            label="全部商品"
             count={products.length}
           />
           <FilterPill
             active={filterStatus === 'active'}
             onClick={() => setFilterStatus('active')}
-            label={isZh ? '在售中' : 'Active'}
+            label="已发布"
             count={products.filter((p) => (p.status || 'active') === 'active').length}
+          />
+          <FilterPill
+            active={filterStatus === 'draft'}
+            onClick={() => setFilterStatus('draft')}
+            label="草稿箱"
+            count={products.filter((p) => p.status === 'draft').length}
           />
           <FilterPill
             active={filterStatus === 'low_stock'}
             onClick={() => setFilterStatus('low_stock')}
-            label={isZh ? '库存预警' : 'Low Stock'}
+            label="库存预警"
             count={products.filter((p) => (Number(p.inventory) || 0) < 100).length}
           />
         </div>
 
         {/* 搜索与视图切换 */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <div className="relative w-full sm:w-64">
             <Search
               size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] pointer-events-none"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={isZh ? '搜索商品名称 / SKU / 分类...' : 'Search name, SKU, category...'}
-              aria-label="Search products"
-              className="w-full h-9 pl-9 pr-4 rounded-full bg-[#F4F5F7] border border-[#E5E7EB] text-xs text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-1 focus:ring-[#111827] transition-all"
+              placeholder="搜索商品名称、编号或分类..."
+              aria-label="搜索商品"
+              className="w-full h-9 pl-9 pr-4 rounded-full bg-slate-100/80 border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#024AD8] focus:border-[#024AD8] transition-all"
             />
           </div>
 
-          <div className="flex items-center p-0.5 rounded-full bg-[#F4F5F7] border border-[#E5E7EB] shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-full transition-all ${
-                viewMode === 'grid' ? 'bg-white text-[#111827] shadow-sm' : 'text-[#9CA3AF] hover:text-[#111827]'
-              }`}
-              title={isZh ? '网格视图' : 'Grid View'}
-            >
-              <LayoutGrid size={14} />
-            </button>
+          <div className="flex items-center p-0.5 rounded-full bg-slate-100 border border-slate-200 shrink-0">
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-full transition-all ${
-                viewMode === 'table' ? 'bg-white text-[#111827] shadow-sm' : 'text-[#9CA3AF] hover:text-[#111827]'
+              className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white text-[#024AD8] shadow-xs font-semibold'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
-              title={isZh ? '表格视图' : 'Table View'}
+              title="表格视图"
             >
               <List size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-white text-[#024AD8] shadow-xs font-semibold'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="网格视图"
+            >
+              <LayoutGrid size={14} />
             </button>
           </div>
         </div>
@@ -151,59 +189,55 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
 
       {/* 批量操作工具条 (当有选择时浮现) */}
       {selectedIds.length > 0 && (
-        <div className="p-3 rounded-2xl bg-[#111827] text-white flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-md">
+        <div className="p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-md">
           <div className="flex items-center gap-2 text-xs font-semibold pl-2">
-            <CheckSquare size={16} className="text-[#edbc40]" />
-            <span>
-              {isZh ? `已选择 ${selectedIds.length} 项商品` : `Selected ${selectedIds.length} items`}
-            </span>
+            <CheckSquare size={16} className="text-amber-400" />
+            <span>已选择 {selectedIds.length} 项商品</span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => alert(isZh ? `已启动 ${selectedIds.length} 个商品的 AI 语义批量重构任务` : 'Triggered batch AI semantic generation')}
+              onClick={() =>
+                alert(`已启动 ${selectedIds.length} 个商品的语义重构任务`)
+              }
               className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Sparkles size={13} className="text-[#edbc40]" />
-              <span>{isZh ? 'AI 批量重构' : 'Batch AI Generate'}</span>
+              <Sparkles size={13} className="text-amber-400" />
+              <span>批量处理</span>
             </button>
             <button
               type="button"
-              onClick={() => alert(isZh ? `正在导出 ${selectedIds.length} 项商品 CSV` : 'Exporting CSV')}
+              onClick={() => alert(`正在导出 ${selectedIds.length} 项商品`)}
               className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Download size={13} />
-              <span>{isZh ? '导出 CSV' : 'Export CSV'}</span>
+              <span>导出数据</span>
             </button>
             <button
               type="button"
               onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 rounded-full bg-white text-[#111827] hover:bg-gray-100 text-xs font-bold transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-full bg-white text-slate-900 hover:bg-slate-100 text-xs font-bold transition-colors cursor-pointer"
             >
-              {isZh ? '取消选择' : 'Deselect'}
+              取消选择
             </button>
           </div>
         </div>
       )}
 
-      {/* 内容区域: 网格视图 vs 列表视图 */}
+      {/* 内容区域: 表格视图 vs 网格视图 */}
       {filtered.length === 0 ? (
         <EmptyState
           icon={Package}
-          title={query ? (isZh ? '未找到匹配商品' : 'No matching products') : t.products.noProducts}
+          title={query ? '未找到匹配商品' : t.products.noProducts}
           description={
-            query
-              ? isZh
-                ? '请尝试调整搜索关键词或清除筛选。'
-                : 'Try adjusting your search keywords or clear the filter.'
-              : t.products.noProductsDesc
+            query ? '请尝试调整搜索关键词或清除筛选。' : t.products.noProductsDesc
           }
           action={
             !query ? (
               <Link
                 href="/dashboard/products/new"
-                className="px-5 py-2.5 rounded-full bg-[#111827] hover:bg-black text-white text-xs font-semibold shadow-sm transition-all inline-flex items-center gap-1.5"
+                className="px-5 py-2.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] text-white text-xs font-semibold shadow-xs transition-all inline-flex items-center gap-1.5"
               >
                 <Plus size={14} />
                 <span>{t.products.addProduct}</span>
@@ -211,7 +245,199 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
             ) : undefined
           }
         />
-      ) : viewMode === 'grid' ? (
+      ) : viewMode === 'table' ? (
+        /* 表格视图：无详细描述列，整洁利落的精炼布局 */
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+          <table className="w-full text-left text-xs bg-white">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold select-none">
+                <th className="py-3.5 px-4 w-10 text-center">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="text-slate-400 hover:text-slate-900 inline-flex items-center justify-center cursor-pointer"
+                    title="全选"
+                  >
+                    {selectedIds.length === filtered.length && filtered.length > 0 ? (
+                      <CheckSquare size={16} className="text-[#024AD8]" />
+                    ) : (
+                      <Square size={16} />
+                    )}
+                  </button>
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-slate-700 min-w-[220px]">
+                  商品名称
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-slate-700 min-w-[120px]">
+                  商品编号
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-slate-700 min-w-[100px]">
+                  商品分类
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-slate-700 min-w-[90px]">
+                  售价
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-slate-700 min-w-[90px]">
+                  库存
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-slate-700 min-w-[100px]">
+                  状态
+                </th>
+                <th className="py-3.5 px-4 font-semibold text-slate-700 text-right min-w-[110px]">
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map((p) => {
+                const isSelected = selectedIds.includes(p.id)
+                const statusKey = p.status || 'active'
+                const statusInfo = STATUS_CONFIG[statusKey] || {
+                  label: statusKey === 'draft' ? '草稿' : '已发布',
+                  bg: 'bg-slate-50',
+                  text: 'text-slate-600',
+                  border: 'border-slate-200',
+                  dot: 'bg-slate-400',
+                }
+
+                return (
+                  <tr
+                    key={p.id}
+                    className={`hover:bg-slate-50/90 transition-colors ${
+                      isSelected ? 'bg-blue-50/40' : ''
+                    }`}
+                  >
+                    {/* 选择框 */}
+                    <td className="py-3.5 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleSelectOne(p.id, e)}
+                        className="text-slate-400 hover:text-slate-900 inline-flex items-center justify-center cursor-pointer"
+                      >
+                        {isSelected ? (
+                          <CheckSquare size={16} className="text-[#024AD8]" />
+                        ) : (
+                          <Square size={16} />
+                        )}
+                      </button>
+                    </td>
+
+                    {/* 商品主图 + 名称 (含 Hover 放大预览效果) */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="group/img relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center transition-all duration-300 hover:border-[#024AD8] hover:shadow-md cursor-pointer">
+                          {p.image_url ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={p.image_url}
+                                alt={p.name}
+                                className="w-full h-full object-cover rounded-md transition-transform duration-300 ease-out group-hover/img:scale-125"
+                              />
+                              {/* 悬浮弹出高分辨率大图预览框 */}
+                              <div className="absolute left-12 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 invisible group-hover/img:opacity-100 group-hover/img:visible transition-all duration-200 ease-out scale-95 group-hover/img:scale-100">
+                                <div className="p-1.5 bg-white rounded-xl shadow-2xl border border-slate-200 ring-1 ring-slate-900/10 backdrop-blur-md">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={p.image_url}
+                                    alt={p.name}
+                                    className="w-36 h-36 object-cover rounded-lg bg-slate-50 shadow-inner"
+                                  />
+                                  <div className="mt-1.5 px-1 max-w-[144px]">
+                                    <p className="text-[11px] font-bold text-slate-900 truncate">
+                                      {p.name}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <Package size={18} className="text-slate-400" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 max-w-sm">
+                          <Link
+                            href={`/dashboard/products/${p.id}/edit`}
+                            prefetch={true}
+                            className="font-bold text-slate-900 hover:text-[#024AD8] transition-colors truncate block"
+                            title={p.name}
+                          >
+                            {p.name}
+                          </Link>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* 商品编号 */}
+                    <td className="py-3.5 px-4 font-mono text-slate-600 font-medium">
+                      {p.sku || <span className="text-slate-300 font-normal">未设置</span>}
+                    </td>
+
+                    {/* 商品分类 */}
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 text-[11px] font-medium text-slate-700 border border-slate-200/60">
+                        {p.category || '通用'}
+                      </span>
+                    </td>
+
+                    {/* 售价 */}
+                    <td className="py-3.5 px-4 font-bold text-slate-900 text-sm">
+                      {p.price != null && p.price !== '' ? `¥${Number(p.price).toFixed(2)}` : '—'}
+                    </td>
+
+                    {/* 库存 */}
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                          (Number(p.inventory) || 0) < 100
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        }`}
+                      >
+                        {p.inventory ?? 0} 件
+                      </span>
+                    </td>
+
+                    {/* 状态徽章（视觉高对比区分） */}
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs ${statusInfo.bg} ${statusInfo.text} ${statusInfo.border}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
+                        {statusInfo.label}
+                      </span>
+                    </td>
+
+                    {/* 操作列 */}
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/dashboard/products/${p.id}/edit`}
+                          prefetch={true}
+                          className="p-1.5 text-slate-500 hover:text-[#024AD8] hover:bg-blue-50 rounded-[4px] transition-colors"
+                          title="编辑商品"
+                        >
+                          <Edit2 size={14} />
+                        </Link>
+                        <Link
+                          href={`/dashboard/products/${p.id}`}
+                          prefetch={true}
+                          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-[4px] transition-colors"
+                          title="查看"
+                        >
+                          <Eye size={14} />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        /* 网格卡片视图 */
         <div className="grid gap-3.5 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
           {filtered.map((p) => (
             <ProductCard
@@ -221,123 +447,6 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
               onToggleSelect={(e) => toggleSelectOne(p.id, e)}
             />
           ))}
-        </div>
-      ) : (
-        /* 表格视图 */
-        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB]">
-          <table className="w-full text-left text-xs bg-white">
-            <thead>
-              <tr className="border-b border-[#E5E7EB] bg-[#F4F5F7]/70 text-[#6B7280] font-semibold">
-                <th className="py-3 px-4 w-10">
-                  <button
-                    type="button"
-                    onClick={toggleSelectAll}
-                    className="text-[#9CA3AF] hover:text-[#111827]"
-                  >
-                    {selectedIds.length === filtered.length && filtered.length > 0 ? (
-                      <CheckSquare size={16} className="text-[#111827]" />
-                    ) : (
-                      <Square size={16} />
-                    )}
-                  </button>
-                </th>
-                <th className="py-3 px-4">{isZh ? '商品主档' : 'Product'}</th>
-                <th className="py-3 px-4">{isZh ? 'SKU' : 'SKU'}</th>
-                <th className="py-3 px-4">{isZh ? '分类' : 'Category'}</th>
-                <th className="py-3 px-4">{isZh ? '售价' : 'Price'}</th>
-                <th className="py-3 px-4">{isZh ? '库存' : 'Stock'}</th>
-                <th className="py-3 px-4">{isZh ? 'AI 语义节点' : 'Semantic Status'}</th>
-                <th className="py-3 px-4 text-right">{isZh ? '操作' : 'Actions'}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E5E7EB]/60">
-              {filtered.map((p) => {
-                const isSelected = selectedIds.includes(p.id)
-                const aiReady = Boolean(p.semantic_data)
-                return (
-                  <tr key={p.id} className="hover:bg-[#F4F5F7]/50 transition-colors group">
-                    <td className="py-3 px-4">
-                      <button
-                        type="button"
-                        onClick={(e) => toggleSelectOne(p.id, e)}
-                        className="text-[#9CA3AF] hover:text-[#111827]"
-                      >
-                        {isSelected ? (
-                          <CheckSquare size={16} className="text-[#111827]" />
-                        ) : (
-                          <Square size={16} />
-                        )}
-                      </button>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#F4F5F7] border border-[#E5E7EB] shrink-0 flex items-center justify-center">
-                          {p.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <Package size={18} className="text-[#9CA3AF]" />
-                          )}
-                        </div>
-                        <div className="min-w-0 max-w-xs">
-                          <Link
-                            href={`/dashboard/products/${p.id}/edit`}
-                            prefetch={true}
-                            className="font-bold text-[#111827] hover:underline truncate block"
-                          >
-                            {p.name}
-                          </Link>
-                          <span className="text-[10px] text-[#9CA3AF]">ID: {p.id}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-[#6B7280]">{p.sku || '-'}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded-md bg-[#F4F5F7] text-[11px] font-medium text-[#111827]">
-                        {p.category || '通用'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-[#111827]">
-                      {p.price != null && p.price !== '' ? `¥${p.price}` : '-'}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          (Number(p.inventory) || 0) < 100
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-green-100 text-green-800'
-                        }`}
-                      >
-                        {p.inventory ?? 0} 件
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <AiBadge ready={aiReady} />
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Link
-                          href={`/dashboard/products/${p.id}/edit`}
-                          prefetch={true}
-                          className="px-2.5 py-1 rounded-[4px] bg-[#F4F5F7] hover:bg-[#EFF4FF] hover:text-[#024AD8] text-[11px] font-semibold text-[#111827] transition-colors focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
-                        >
-                          {isZh ? '编辑' : 'Edit'}
-                        </Link>
-                        <Link
-                          href={`/dashboard/products/${p.id}/node`}
-                          prefetch={true}
-                          className="p-1 rounded-[4px] hover:bg-[#F4F5F7] text-[#6B7280] hover:text-[#111827] focus-visible:outline-2 focus-visible:outline-[#024AD8] focus-visible:outline-offset-2"
-                          title={isZh ? '查看语义节点' : 'View Node'}
-                        >
-                          <Cpu size={14} />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
@@ -361,15 +470,15 @@ function FilterPill({
       onClick={onClick}
       className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
         active
-          ? 'bg-[#111827] text-white shadow-sm'
-          : 'bg-[#F4F5F7] text-[#6B7280] hover:text-[#111827] hover:bg-[#E5E7EB]'
+          ? 'bg-[#024AD8] text-white shadow-xs'
+          : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
       }`}
     >
       <span>{label}</span>
       {count != null && (
         <span
           className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-            active ? 'bg-white/20 text-white' : 'bg-white text-[#111827]'
+            active ? 'bg-white/20 text-white' : 'bg-white text-slate-800'
           }`}
         >
           {count}
@@ -388,31 +497,33 @@ function ProductCard({
   selected: boolean
   onToggleSelect: (e: React.MouseEvent) => void
 }) {
-  const { isZh } = useLanguage()
-
   return (
     <Link
       href={`/dashboard/products/${p.id}/edit`}
       prefetch={true}
-      className={`group relative bg-white dark:bg-slate-900 border rounded-[8px] p-3 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-[#024AD8] cursor-pointer ${
+      className={`group relative bg-white border rounded-[8px] p-3 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-[#024AD8] cursor-pointer ${
         selected
           ? 'border-[#024AD8] ring-2 ring-[#024AD8] shadow-xs'
-          : 'border-slate-200 dark:border-slate-800'
+          : 'border-slate-200'
       }`}
     >
       {/* 顶部多选复选框 */}
       <button
         type="button"
         onClick={onToggleSelect}
-        className="absolute top-2.5 left-2.5 z-10 p-1 rounded-[4px] bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs text-[#111827] dark:text-white shadow-2xs hover:bg-white transition-all cursor-pointer"
-        title={isZh ? '选择商品' : 'Select'}
+        className="absolute top-2.5 left-2.5 z-10 p-1 rounded-[4px] bg-white/90 backdrop-blur-xs text-slate-900 shadow-2xs hover:bg-white transition-all cursor-pointer"
+        title="选择商品"
       >
-        {selected ? <CheckSquare size={14} className="text-[#024AD8]" /> : <Square size={14} className="text-slate-400" />}
+        {selected ? (
+          <CheckSquare size={14} className="text-[#024AD8]" />
+        ) : (
+          <Square size={14} className="text-slate-400" />
+        )}
       </button>
 
       <div>
-        {/* 商品图：方形圆角 */}
-        <div className="w-full aspect-square rounded-[6px] overflow-hidden bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center relative">
+        {/* 商品图：方形圆角 + Hover 放大 */}
+        <div className="w-full aspect-square rounded-[6px] overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center relative">
           {p.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -427,20 +538,27 @@ function ProductCard({
 
         <div className="min-w-0 mt-2.5 space-y-1">
           <div className="flex items-center justify-between gap-1 text-[10px]">
-            <span className="font-mono text-slate-400 uppercase truncate">{p.sku || 'SKU'}</span>
-            <span className="font-semibold text-slate-500 dark:text-slate-400 truncate">{p.category || (isZh ? '通用' : 'General')}</span>
+            <span className="font-mono text-slate-400 truncate">
+              {p.sku || '未设置'}
+            </span>
+            <span className="font-semibold text-slate-500 truncate">
+              {p.category || '通用'}
+            </span>
           </div>
 
-          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-[#024AD8] transition-colors" title={p.name}>
+          <h4
+            className="text-xs font-bold text-slate-900 truncate group-hover:text-[#024AD8] transition-colors"
+            title={p.name}
+          >
             {p.name}
           </h4>
 
           <div className="flex items-center justify-between pt-1">
-            <span className="text-xs font-extrabold text-[#024AD8] dark:text-[#5B8FF9] tnum">
-              {p.price != null && p.price !== '' ? `¥${p.price}` : (isZh ? '未定价' : 'Unpriced')}
+            <span className="text-xs font-extrabold text-[#024AD8]">
+              {p.price != null && p.price !== '' ? `¥${Number(p.price).toFixed(2)}` : '未定价'}
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-              {isZh ? `库存: ${p.inventory ?? 0}` : `Stock: ${p.inventory ?? 0}`}
+            <span className="text-[10px] text-slate-500 font-medium">
+              库存: {p.inventory ?? 0}
             </span>
           </div>
         </div>
