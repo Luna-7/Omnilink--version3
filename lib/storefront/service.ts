@@ -345,7 +345,7 @@ export async function getStorefrontProducts(
         errorCode: error.code ?? null,
         errorMessage: error.message,
       })
-      return []
+      throw new Error(`Failed to load storefront products: ${error.message}`)
     }
 
     return normalizeProducts(
@@ -357,7 +357,7 @@ export async function getStorefrontProducts(
       storeId,
       error: err instanceof Error ? err.message : String(err),
     })
-    return []
+    throw new Error(`Failed to load storefront products: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 

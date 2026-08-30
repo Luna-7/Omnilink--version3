@@ -283,8 +283,7 @@ async function loadProductContext(productId: string) {
   const supabase = await createClientServer()
   const targetId = isUuid(productId) ? productId : toValidUuid(productId)
 
-  let product
-  const { data: initialProduct, error } = await supabase
+  const { data: product, error } = await supabase
     .from('products')
     .select(
       `
@@ -301,42 +300,9 @@ async function loadProductContext(productId: string) {
     )
     .eq('id', targetId)
     .maybeSingle()
-  product = initialProduct
 
   if (error || !product) {
-    const { data: userAuth } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
-    const demoUser = userAuth?.user || ({ id: '00000000-0000-0000-0000-000000000001' } as any)
-    const { getOwnedStore } = await import('@/lib/api/auth')
-    const store = await getOwnedStore(supabase, demoUser)
-    if (store) {
-      const { data: created } = await supabase
-        .from('products')
-        .upsert({
-          id: targetId,
-          store_id: store.id,
-          name: 'Product',
-          price: 0,
-          currency: store.base_currency || 'CNY',
-          inventory: 0,
-          status: 'draft',
-          raw_data: {},
-        })
-        .select(`id, raw_data, semantic_data, store_id, stores(industries(slug))`)
-        .maybeSingle()
-      if (created) {
-        product = created
-      }
-    }
-  }
-
-  if (!product) {
-    product = {
-      id: productId,
-      raw_data: {},
-      semantic_data: {},
-      store_id: '00000000-0000-0000-0000-000000000000',
-      stores: { industries: { slug: 'eyewear' } },
-    } as any
+    throw new Error('Product not found')
   }
 
   const rawData = isRecord(product.raw_data)

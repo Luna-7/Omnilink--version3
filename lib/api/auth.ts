@@ -37,19 +37,16 @@ export async function requireUser(): Promise<AuthResult> {
       return { ok: true, supabase, user }
     }
   } catch {
-    // Continue to fallback
+    // authentication failure falls through to 401
   }
 
-  // Graceful fallback for preview / demo environment
-  const demoUser: User = {
-    id: '00000000-0000-0000-0000-000000000001',
-    app_metadata: {},
-    user_metadata: { name: 'Demo Merchant', full_name: 'Demo Merchant' },
-    aud: 'authenticated',
-    created_at: new Date().toISOString(),
-    email: 'merchant@omnilink.demo',
+  return {
+    ok: false,
+    response: NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    ),
   }
-  return { ok: true, supabase, user: demoUser }
 }
 
 /** Resolve the caller's owned store id, or null if not found. */
@@ -69,16 +66,7 @@ export async function getOwnedStoreId(
     return null
   }
   
-  if (!data?.id) {
-    const { data: fallbackStore } = await supabase
-      .from('stores')
-      .select('id')
-      .limit(1)
-      .maybeSingle()
-    return fallbackStore?.id ?? null
-  }
-
-  return data.id
+  return data?.id ?? null
 }
 
 /** Resolve the caller's owned store with base_currency, or null if not found. */
@@ -120,9 +108,6 @@ export async function ownsStore(
   user: User,
   storeId: string
 ): Promise<boolean> {
-  if (user.id === '00000000-0000-0000-0000-000000000001') {
-    return true
-  }
   const { data, error } = await supabase
     .from('stores')
     .select('id')
@@ -150,19 +135,14 @@ export async function ownsProduct(
     .select('store_id')
     .eq('id', targetId)
     .maybeSingle()
-  if (!error && data) {
-    const storeId = data.store_id
-    const owned = await ownsStore(supabase, user, storeId)
-    return { owned, storeId: owned ? storeId : null }
+  
+  if (error || !data) {
+    return { owned: false, storeId: null }
   }
 
-  // If product is not yet in DB (e.g. demo product or initial save), check if user owns a store
-  const userStoreId = await getOwnedStoreId(supabase, user)
-  if (userStoreId) {
-    return { owned: true, storeId: userStoreId }
-  }
-
-  return { owned: false, storeId: null }
+  const storeId = data.store_id
+  const owned = await ownsStore(supabase, user, storeId)
+  return { owned, storeId: owned ? storeId : null }
 }
 
 /** Verify the caller owns the store that owns the store_page. */
