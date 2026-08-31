@@ -1,10 +1,13 @@
 import { createClientServer } from '@/lib/supabase/server'
 import {
-  getSchemaByIndustrySlug,
   getSemanticFieldsBySchemaId,
   saveProductSemantics,
   saveUnknownFields,
 } from '@/lib/semantic/processor'
+import {
+  resolveSchemaByIndustrySlug,
+  SchemaNotFoundError,
+} from '@/lib/semantic/schema-service'
 import { mapDraftAttributes, type InputAttribute } from '@/lib/product-ai/attribute-mapper'
 import { getCategoryTemplate } from '@/lib/product/category-templates'
 import {
@@ -319,29 +322,23 @@ async function loadProductContext(productId: string) {
   const industriesObj = isRecord(storeObj?.industries) ? storeObj?.industries : null
   const industrySlug = typeof industriesObj?.slug === 'string' ? industriesObj.slug : 'eyewear'
 
-  let schemaId = await getSchemaByIndustrySlug(
-    industrySlug,
-    '1.0',
-  )
+  const industryResolution = await resolveSchemaByIndustrySlug(industrySlug, '1.0')
+  let schemaId: string | null = industryResolution.found ? industryResolution.schemaId : null
+  let schemaVersion: string = industryResolution.found ? industryResolution.version : '1.0'
 
   if (!schemaId) {
-    schemaId = await getSchemaByIndustrySlug(
-      'eyewear',
-      '1.0',
-    )
+    const eyewearResolution = await resolveSchemaByIndustrySlug('eyewear', '1.0')
+    if (eyewearResolution.found) {
+      schemaId = eyewearResolution.schemaId
+      schemaVersion = eyewearResolution.version
+    }
   }
 
   if (!schemaId) {
-    throw new Error('Semantic schema not found')
+    throw new SchemaNotFoundError(industrySlug, '1.0')
   }
 
   const fields = await getSemanticFieldsBySchemaId(schemaId)
-
-  const { data: schemaRow } = await supabase
-    .from('semantic_schemas')
-    .select('id, version')
-    .eq('id', schemaId)
-    .maybeSingle()
 
   const { data: productSemantic } = await supabase
     .from('product_semantics')
@@ -362,7 +359,7 @@ async function loadProductContext(productId: string) {
     rawData,
     category,
     schemaId,
-    schemaVersion: schemaRow?.version ?? '1.0',
+    schemaVersion,
     fields,
     productSemantic,
   }

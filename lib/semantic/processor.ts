@@ -7,6 +7,10 @@ import {
   SemanticFieldResult,
   LegacySemanticProcessingResult,
 } from './types'
+import {
+  getSchemaIdByIndustrySlug,
+  resolveSchemaByIndustrySlug,
+} from './schema-service'
 import { matchSemanticFields } from './matcher'
 import { normalizeValue, validateValue } from './normalizer'
 import { analyzeSemanticResult } from './analyzer'
@@ -38,29 +42,20 @@ export async function getSemanticFieldsBySchemaId(
   }))
 }
 
+/**
+ * Resolve a semantic schema id by industry slug + version.
+ *
+ * Delegates to the trusted server-side schema reader (service-role client),
+ * which is the only sanctioned way to read the SERVICE_ROLE_ONLY
+ * `semantic_schemas` table. Throws a precise error
+ * (SchemaNotFoundError / SchemaAccessDeniedError / SchemaQueryFailedError)
+ * instead of returning null, so callers can map the failure correctly.
+ */
 export async function getSchemaByIndustrySlug(
   industrySlug: string,
   version: string = '1.0',
-): Promise<string | null> {
-  const supabase = await createClientServer()
-
-  const { data, error } = await supabase
-    .from('semantic_schemas')
-    .select('id')
-    .eq('industry_id', (await supabase
-      .from('industries')
-      .select('id')
-      .eq('slug', industrySlug)
-      .single()
-      .then(({ data }) => data?.id)))
-    .eq('version', version)
-    .single()
-
-  if (error) {
-    return null
-  }
-
-  return data?.id || null
+): Promise<string> {
+  return getSchemaIdByIndustrySlug(industrySlug, version)
 }
 
 function calculateOverallConfidence(semanticData: SemanticDataResult): number {
@@ -269,9 +264,6 @@ export async function processProductSemantic(productId: string): Promise<void> {
     const industrySlug = store?.industries?.slug || 'eyewear'
 
     const schemaId = await getSchemaByIndustrySlug(industrySlug, '1.0')
-    if (!schemaId) {
-      throw new Error('No semantic schema found for this industry')
-    }
 
     const result = await processSemanticData(rawData, schemaId)
 
@@ -302,7 +294,8 @@ export async function processProductSemantic(productId: string): Promise<void> {
       { semantic_data: result.semantic_data, analysis },
     )
   } catch (error) {
-    const schemaId = await getSchemaByIndustrySlug('eyewear', '1.0')
+    const eyewearResolution = await resolveSchemaByIndustrySlug('eyewear', '1.0')
+    const schemaId = eyewearResolution.found ? eyewearResolution.schemaId : ''
     await logSemanticProcessing(
       productId,
       schemaId || '',
