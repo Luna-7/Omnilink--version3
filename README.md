@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Omnilink
 
-## Getting Started
+> AI-native 多商家独立站 SaaS —— 帮每一个品牌，在几分钟内拥有真正属于自己的线上店面。
 
-First, run the development server:
+Omnilink 是一个面向商家的独立站平台。你不需要懂代码，也不用寄身于某个大平台的分销位：注册、开店、选一套视觉主题、上架商品，就能拥有一个带独立品牌、可对外访问的店面，并跑通从浏览、加购、结账到订单的完整购物链路。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 你能用它做什么（功能一览）
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **拥有真正属于你的品牌店面**——不是平台里的一个摊位，而是独立的、可对外访问的站点。
+- **可视化装修，无需写代码**——从多套内置主题中选择，调整强调色与圆角等视觉令牌，所见即所得。
+- **AI 辅助上架商品**——描述你的商品，平台理解其语义并辅助结构化属性与内容。
+- **一套后台管全店**——商品、店面、订单集中管理，发布即生效。
+- **数据隔离、归属清晰**——每个商家拥有独立店铺，数据按店铺严格隔离。
+- **云端托管，开箱即用**——无需自建服务器，注册即可开始。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 核心功能
 
-To learn more about Next.js, take a look at the following resources:
+### 1. 独立品牌店面
+每个商家拥有自己的店铺与店面地址，品牌视觉、商品与内容均由你定义，不依附于任何中心化卖场。域名与品牌完全归你，顾客记住的是你的店，不是某个平台的二级页面。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 2. 可视化主题与模板
+内置多套设计主题（如 Electric Violet、Glass、Minimal、Tech、Diffuse），以设计令牌（颜色、圆角、间距）驱动视觉。编辑器预览与对外发布共用同一套渲染，确保"所见即所得"——你在后台看到的，就是顾客看到的。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. 商品管理与变体
+商品支持变体（如规格、尺寸）、图片资源与结构化属性。多规格、多库存的商品也能清晰组织，不靠手工拼表。
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 适合谁
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **品牌商 / 独立设计师**：想要不被平台抽成、保留品牌调性的官方店面。
+- **跨境 / 多市场卖家**：需要可定制、可独立访问的站点。
+- **内容创作者 / 达人**：把个人影响力转化为自有货架，而非寄居于第三方橱窗。
+- **试水新品的团队**：用最低成本快速验证一个店面是否成立。
+
+---
+
+## 怎么开始
+
+1. **注册账号**——邮箱注册，几秒完成。
+2. **一键开店**——填写店铺基本信息，系统为你初始化店铺与设置。
+3. **装修与上架**——选择主题、上架商品（AI 辅助补全信息）。
+4. **发布**——获得你的独立店面地址，开始接待顾客。
+
