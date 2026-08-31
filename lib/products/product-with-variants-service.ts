@@ -1,12 +1,8 @@
 import { createClientServer } from '@/lib/supabase/server'
-import { 
-  createProductOption, 
-  createProductVariant 
-} from './variants/service'
-import { 
-  normalizeOptionCode, 
+import {
+  normalizeOptionCode,
   validateOptionValues,
-  generateVariantCombinations 
+  generateVariantCombinations,
 } from './variants/validation'
 
 /**
@@ -51,17 +47,17 @@ export interface CreateProductWithVariantsResult {
  * Generate deterministic SKU for a variant based on product SKU and option values
  */
 function generateVariantSKU(
-  productSku: string | undefined, 
-  optionValues: Record<string, string>
+  productSku: string | undefined,
+  optionValues: Record<string, string>,
 ): string {
   const baseSku = productSku || 'PROD'
-  
+
   // Create a normalized suffix from option values
   const suffixParts: string[] = []
-  
+
   // Sort keys for consistent ordering
   const sortedKeys = Object.keys(optionValues).sort()
-  
+
   for (const key of sortedKeys) {
     const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 3)
     const normalizedValue = optionValues[key]
@@ -70,241 +66,154 @@ function generateVariantSKU(
       .substring(0, 3)
     suffixParts.push(`${normalizedKey}-${normalizedValue}`)
   }
-  
+
   const suffix = suffixParts.join('-')
-  
+
   // Combine base SKU with suffix, ensuring total length <= 100
   const maxLength = 100
   const baseLength = maxLength - suffix.length - 1
-  
+
   if (baseLength <= 0) {
     // If suffix is too long, truncate it
     return suffix.substring(0, maxLength)
   }
-  
+
   const truncatedBase = baseSku.substring(0, baseLength)
   return `${truncatedBase}-${suffix}`.substring(0, maxLength)
 }
 
 /**
- * Create a product with options and variants in a coordinated manner
- * 
- * This function orchestrates the creation of:
- * 1. Product record
- * 2. Product Option records (if options provided)
- * 3. Product Variant records (generated from option combinations)
- * 
- * Error handling: If any step fails, attempts to clean up created records
+ * Minimal structural type for the atomic RPC response.
+ */
+interface AtomicCreateResult {
+  success: boolean
+  product_id: string
+  options_created: number
+  variants_created: number
+}
+
+/**
+ * Typed accessor for supabase.rpc so we can call the not-yet-generated
+ * `create_product_atomic` function without widening the Database type here.
+ */
+type AtomicRpcClient = {
+  rpc: (
+    fn: string,
+    params: Record<string, unknown>,
+  ) => Promise<{ data: AtomicCreateResult | null; error: { message: string } | null }>
+}
+
+/**
+ * Create a product with options and variants atomically.
+ *
+ * The option/variant *combination* logic stays in the application layer (where it
+ * is unit-tested), but ALL inserts are performed by a single database transaction
+ * via the `create_product_atomic` SECURITY INVOKER RPC. RLS still applies inside
+ * the function, so the store-ownership boundary (99c8337) is preserved and a
+ * non-owned store_id is rejected by the database.
+ *
+ * Because the entire create is one transaction, a failure at any step rolls back
+ * every inserted row — no orphan products, options, or partial variant sets.
  */
 export async function createProductWithVariants(
-  input: CreateProductWithVariantsInput
+  input: CreateProductWithVariantsInput,
 ): Promise<CreateProductWithVariantsResult> {
   const supabase = await createClientServer()
-  
-  let createdProductId: string | undefined = undefined
-  const createdOptionIds: string[] = []
-  const createdVariantIds: string[] = []
-  
-  try {
-    // Step 1: Create the product
-    const { data: product, error: productError } = await supabase
-      .from('products')
-      .insert({
-        store_id: input.store_id,
-        name: input.name,
-        sku: input.sku || null,
-        price: input.price || 0,
-        currency: input.currency || 'USD',
-        inventory: input.inventory || 0,
-        description: input.description || null,
-        status: input.status || 'draft',
-        // NOTE: Do NOT write `category` / `category_id` as top-level columns on `products`.
-        // The `products` table does not have these columns. Category compatibility lives in
-        // `raw_data.category` / `raw_data.category_id` (already set by the route from
-        // `body.category` / `body.category_id`). See P0 audit (2026-08-26).
-        raw_data: {
-          ...input.raw_data,
-          origin: input.origin,
-          attributes: input.attributes,
-          // DO NOT write options to raw_data - they go to product_options table
-        },
-      })
-      .select()
-      .single()
-    
-    if (productError || !product) {
-      throw new Error(productError?.message || 'Failed to create product')
-    }
-    
-    createdProductId = product.id
-    
-    // If no options provided, we're done (single-SKU product)
-    if (!input.options || input.options.length === 0) {
-      return {
-        success: true,
-        productId: createdProductId,
-        optionsCreated: 0,
-        variantsCreated: 0,
-      }
-    }
-    
-    // Step 2: Create product options
+
+  // Product core payload. NOTE: `category` / `category_id` are intentionally NOT
+  // written as top-level columns on `products` (the table has none). Category
+  // compatibility lives under raw_data (set by the route from body.category /
+  // body.category_id). See P0 audit (2026-08-26).
+  const productPayload: Record<string, unknown> = {
+    name: input.name,
+    sku: input.sku ?? null,
+    price: input.price ?? 0,
+    currency: input.currency ?? 'USD',
+    inventory: input.inventory ?? 0,
+    description: input.description ?? null,
+    status: input.status ?? 'draft',
+    raw_data: {
+      ...(input.raw_data ?? {}),
+      origin: input.origin,
+      attributes: input.attributes,
+      // DO NOT write options to raw_data - they go to product_options table
+    },
+  }
+
+  const optionsPayload: Array<Record<string, unknown>> = []
+  const variantsPayload: Array<Record<string, unknown>> = []
+
+  // Single-SKU product: no options → variants array stays empty.
+  if (input.options && input.options.length > 0) {
     const normalizedOptions: Array<{ code: string; values: string[] }> = []
-    
+
     for (const option of input.options) {
-      // Validate option values
       const valuesValidation = validateOptionValues(option.values)
       if (!valuesValidation.valid) {
-        throw new Error(`Invalid option values for ${option.name}: ${valuesValidation.error}`)
+        return {
+          success: false,
+          error: `Invalid option values for ${option.name}: ${valuesValidation.error}`,
+        }
       }
-      
-      // Normalize option code
       const normalizedCode = normalizeOptionCode(option.code)
-      
-      // Create the option (createdProductId is guaranteed to be defined here)
-      const createdOption = await createProductOption(createdProductId!, {
+      optionsPayload.push({
         name: option.name,
         code: normalizedCode,
         values: option.values,
       })
-      
-      createdOptionIds.push(createdOption.id)
-      normalizedOptions.push({
-        code: normalizedCode,
-        values: option.values,
-      })
+      normalizedOptions.push({ code: normalizedCode, values: option.values })
     }
-    
-    // Step 3: Generate variant combinations
-    const variantCombinations = generateVariantCombinations(normalizedOptions)
-    
-    if (variantCombinations.length === 0) {
-      // No valid combinations, but options were created
-      return {
-        success: true,
-        productId: createdProductId,
-        optionsCreated: createdOptionIds.length,
-        variantsCreated: 0,
-      }
-    }
-    
-    // Step 4: Create variants for each combination
-    const basePrice = input.price || 0
-    const baseCurrency = input.currency || 'USD'
-    const baseInventory = input.inventory || 0
-    
-    for (const combination of variantCombinations) {
-      // Generate deterministic SKU
-      const variantSku = generateVariantSKU(input.sku, combination)
-      
-      // Create the variant (createdProductId is guaranteed to be defined here)
-      const variant = await createProductVariant(createdProductId!, {
-        sku: variantSku,
+
+    // Generate the full Cartesian product of option values.
+    const combinations = generateVariantCombinations(normalizedOptions)
+    const basePrice = input.price ?? 0
+    const baseCurrency = input.currency ?? 'USD'
+    const baseInventory = input.inventory ?? 0
+
+    for (const combination of combinations) {
+      variantsPayload.push({
+        sku: generateVariantSKU(input.sku, combination),
         price: basePrice,
         currency: baseCurrency,
         inventory: baseInventory,
         status: 'draft', // Variants start as draft until merchant reviews
         option_values: combination,
       })
-      
-      createdVariantIds.push(variant.id)
     }
-    
-    return {
-      success: true,
-      productId: createdProductId,
-      optionsCreated: createdOptionIds.length,
-      variantsCreated: createdVariantIds.length,
-    }
-    
-  } catch (error) {
-    // Compensation rollback: track failures so the caller is never lied to.
-    // The DB has NO multi-statement transaction here, so we must surface partial
-    // state explicitly when cleanup fails. See P0 audit (2026-08-26).
-    const originalError = error instanceof Error ? error.message : 'Unknown error occurred'
+  }
 
-    console.error('[createProductWithVariants] Failed; attempting compensation rollback:', {
-      productId: createdProductId,
-      optionIds: createdOptionIds,
-      variantIds: createdVariantIds,
-      originalError,
+  // Single DB transaction. The RPC enforces RLS/ownership and rolls back on any
+  // failure, so this layer never needs compensation cleanup.
+  const rpcClient = supabase as unknown as AtomicRpcClient
+  const { data, error } = await rpcClient.rpc('create_product_atomic', {
+    p_store_id: input.store_id,
+    p_product: productPayload,
+    p_options: optionsPayload,
+    p_variants: variantsPayload,
+  })
+
+  if (error || !data) {
+    console.error('[createProductWithVariants] Atomic create failed', {
+      storeId: input.store_id,
+      error: error?.message ?? 'no data returned',
     })
-
-    const cleanupFailures: string[] = []
-    const deletedVariants: string[] = []
-    const deletedOptions: string[] = []
-    let deletedProduct = false
-
-    // 1) Delete variants in reverse insertion order
-    for (const variantId of [...createdVariantIds].reverse()) {
-      try {
-        const { error: delError } = await supabase
-          .from('product_variants')
-          .delete()
-          .eq('id', variantId)
-        if (delError) throw new Error(delError.message)
-        deletedVariants.push(variantId)
-      } catch (e) {
-        cleanupFailures.push(`variant ${variantId}: ${e instanceof Error ? e.message : String(e)}`)
-      }
-    }
-
-    // 2) Delete options in reverse insertion order
-    for (const optionId of [...createdOptionIds].reverse()) {
-      try {
-        const { error: delError } = await supabase
-          .from('product_options')
-          .delete()
-          .eq('id', optionId)
-        if (delError) throw new Error(delError.message)
-        deletedOptions.push(optionId)
-      } catch (e) {
-        cleanupFailures.push(`option ${optionId}: ${e instanceof Error ? e.message : String(e)}`)
-      }
-    }
-
-    // 3) Delete product last
-    if (createdProductId) {
-      try {
-        const { error: delError } = await supabase
-          .from('products')
-          .delete()
-          .eq('id', createdProductId)
-        if (delError) throw new Error(delError.message)
-        deletedProduct = true
-      } catch (e) {
-        cleanupFailures.push(`product ${createdProductId}: ${e instanceof Error ? e.message : String(e)}`)
-      }
-    }
-
-    // Build an honest error message that exposes partial state when cleanup fails.
-    let errorMessage = originalError
-    if (cleanupFailures.length > 0) {
-      const remainingVariants = createdVariantIds.length - deletedVariants.length
-      const remainingOptions = createdOptionIds.length - deletedOptions.length
-      const productRemains = createdProductId && !deletedProduct
-      const partialBits: string[] = []
-      if (remainingVariants > 0) partialBits.push(`${remainingVariants} variant(s)`)
-      if (remainingOptions > 0) partialBits.push(`${remainingOptions} option(s)`)
-      if (productRemains) partialBits.push('product')
-
-      errorMessage =
-        `${originalError}. ` +
-        `Compensation cleanup incomplete (${cleanupFailures.length} failure(s): ${cleanupFailures.join('; ')}). ` +
-        `Manual cleanup required — possible partial state remains: ${partialBits.join(', ') || 'none'}.`
-      console.error('[createProductWithVariants] Partial state — manual cleanup needed:', {
-        remainingVariants,
-        remainingOptions,
-        productRemains,
-        cleanupFailures,
-      })
-    } else {
-      console.error('[createProductWithVariants] Compensation rollback succeeded.')
-    }
-
     return {
       success: false,
-      error: errorMessage,
+      error: error?.message ?? 'Failed to create product',
     }
+  }
+
+  if (!data.success || !data.product_id) {
+    return {
+      success: false,
+      error: 'Atomic product creation returned an empty product id',
+    }
+  }
+
+  return {
+    success: true,
+    productId: data.product_id,
+    optionsCreated: data.options_created,
+    variantsCreated: data.variants_created,
   }
 }

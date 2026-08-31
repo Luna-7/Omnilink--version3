@@ -1,15 +1,23 @@
 /**
- * P0 Stabilization Tests for createProductWithVariants
+ * P0 Stabilization Tests for createProductWithVariants (Phase 2 — atomic create)
  *
  * See PRODUCT_VARIANT_FLOW_REPORT.md (2026-08-26) and the P0 task brief.
+ *
+ * Phase 2 replaced the multi-step, compensation-rollback orchestration with a
+ * single DB transaction via the `create_product_atomic` SECURITY INVOKER RPC.
+ * The option/variant *combination* logic stays in the application layer (and is
+ * still unit-tested here); ALL inserts happen in one `supabase.rpc` call, so the
+ * database guarantees atomicity (no orphan rows).
+ *
  * These tests verify:
- *   1. Single-SKU product creation succeeds.
- *   2. Product insert does NOT include the (non-existent) `category` /
- *      `category_id` top-level columns.
- *   3. One option with N values generates exactly N variants.
- *   4. Two options generate the full Cartesian product without duplicates.
- *   5. Duplicate SKU surfaces as a clear failure (no silent success).
- *   6. Partial variant failure triggers compensation rollback and is reported.
+ *   1. Single-SKU product creation succeeds (one rpc call, 0 options/variants).
+ *   2. The rpc `p_product` payload does NOT include (non-existent) `category` /
+ *      `category_id` top-level columns; they live under raw_data.
+ *   3. One option with N values produces exactly N variants in p_variants.
+ *   4. Two options produce the full Cartesian product (no duplicates) in p_variants.
+ *   5. An rpc error (e.g. duplicate SKU) surfaces as a clear failure (no silent success).
+ *   6. The whole create is a SINGLE atomic rpc call — a failure leaves no committed
+ *      product and reports failure (no partial state possible).
  *   7. `raw_data.options` is ignored; only `input.options` drive creation.
  *   8. Origin is stored on `raw_data.origin`; no fake `compositions` table is touched.
  */
@@ -21,119 +29,52 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // ---------------------------------------------------------------------------
 
 const stub = vi.hoisted(() => {
-  type Call = { table: string; method: string; payload?: unknown }
-  const calls: Call[] = []
-  let nextResult: { data: unknown; error: unknown } = { data: null, error: null }
-
-  // A reusable thenable chainable builder. Each `from()` returns a fresh builder
-  // whose current table is tracked on `_table`. Inserts capture the payload and
-  // produce a fake row containing the payload + a generated id.
-  const builder: any = {
-    _table: '' as string,
-    then(resolve: (v: unknown) => void, _reject?: (e: unknown) => void) {
-      resolve(nextResult)
-    },
-    insert(payload: unknown) {
-      calls.push({ table: builder._table, method: 'insert', payload })
-      const id = `mock-${builder._table}-${calls.length}`
-      nextResult = { data: { id, ...((payload as object) || {}) }, error: null }
-      return builder
-    },
-    select() { return builder },
-    single() { return builder },
-    maybeSingle() { return builder },
-    delete() {
-      calls.push({ table: builder._table, method: 'delete' })
-      nextResult = { data: null, error: null }
-      return builder
-    },
-    eq(key: string, val: unknown) {
-      calls.push({ table: builder._table, method: 'eq', payload: { [key]: val } })
-      return builder
-    },
-    in(_key: string, _vals: unknown[]) { return builder },
-    order() { return builder },
-    limit() { return builder },
+  type RpcCall = { name: string; params: Record<string, unknown> }
+  const rpcCalls: RpcCall[] = []
+  let nextRpcResult: { data: unknown; error: unknown } = {
+    data: { success: true, product_id: 'mock-prod-1', options_created: 0, variants_created: 0 },
+    error: null,
   }
 
   const supabase = {
-    from(table: string) {
-      builder._table = table
-      return builder
+    rpc(name: string, params: Record<string, unknown>) {
+      rpcCalls.push({ name, params })
+      return Promise.resolve(nextRpcResult)
     },
   }
 
-  return { supabase, calls, getNextResult: () => nextResult }
+  return {
+    supabase,
+    rpcCalls,
+    setNextRpcResult(r: { data: unknown; error: unknown }) {
+      nextRpcResult = r
+    },
+    reset() {
+      rpcCalls.length = 0
+      nextRpcResult = {
+        data: { success: true, product_id: 'mock-prod-1', options_created: 0, variants_created: 0 },
+        error: null,
+      }
+    },
+  }
 })
 
 vi.mock('@/lib/supabase/server', () => ({
   createClientServer: async () => stub.supabase,
 }))
 
-const variantServiceMock = vi.hoisted(() => {
-  const optionCalls: Array<{ productId: string; input: unknown }> = []
-  const variantCalls: Array<{ productId: string; input: unknown }> = []
-  let allVariantsError: Error | null = null
-  let failOnVariantCallIndex: number | null = null
-  return {
-    optionCalls,
-    variantCalls,
-    setAllVariantsError(e: Error | null) { allVariantsError = e },
-    setFailOnVariantCallIndex(i: number | null) { failOnVariantCallIndex = i },
-    createProductOption: async (productId: string, input: unknown) => {
-      optionCalls.push({ productId, input })
-      return {
-        id: `mock-option-${optionCalls.length}`,
-        product_id: productId,
-        name: (input as { name: string }).name,
-        code: (input as { code: string }).code,
-        position: 0,
-        values: (input as { values: string[] }).values,
-        created_at: '2026-08-26T00:00:00Z',
-      }
-    },
-    createProductVariant: async (productId: string, input: unknown) => {
-      variantCalls.push({ productId, input })
-      if (allVariantsError) throw allVariantsError
-      if (failOnVariantCallIndex !== null && variantCalls.length === failOnVariantCallIndex) {
-        throw new Error(`Variant creation failed on call #${failOnVariantCallIndex}`)
-      }
-      return {
-        id: `mock-variant-${variantCalls.length}`,
-        product_id: productId,
-        sku: (input as { sku?: string }).sku ?? null,
-        price: (input as { price?: number }).price ?? null,
-        currency: (input as { currency?: string }).currency ?? 'USD',
-        inventory: (input as { inventory?: number }).inventory ?? null,
-        status: (input as { status?: string }).status ?? 'draft',
-        option_values: (input as { option_values: Record<string, string> }).option_values,
-        raw_data: null,
-        semantic_data: null,
-        created_at: '2026-08-26T00:00:00Z',
-        updated_at: '2026-08-26T00:00:00Z',
-      }
-    },
-  }
-})
-
-vi.mock('@/lib/products/variants/service', () => variantServiceMock)
-
 // Now safe to import the service under test (after mocks are registered)
 import { createProductWithVariants } from '../product-with-variants-service'
 
-describe('createProductWithVariants (P0 stabilization)', () => {
+describe('createProductWithVariants (Phase 2 — atomic create)', () => {
   beforeEach(() => {
-    stub.calls.length = 0
-    variantServiceMock.optionCalls.length = 0
-    variantServiceMock.variantCalls.length = 0
-    variantServiceMock.setAllVariantsError(null)
-    variantServiceMock.setFailOnVariantCallIndex(null)
+    stub.reset()
   })
 
   // -------------------------------------------------------------------------
   // Test 1
   // -------------------------------------------------------------------------
-  it('Test 1: single-SKU product creation succeeds without options', async () => {
+  it('Test 1: single-SKU product creation succeeds with exactly one atomic rpc call', async () => {
     const result = await createProductWithVariants({
       store_id: 'store-1',
       name: 'Single SKU T-Shirt',
@@ -144,21 +85,23 @@ describe('createProductWithVariants (P0 stabilization)', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(result.productId).toMatch(/^mock-products-/)
+    expect(result.productId).toBe('mock-prod-1')
     expect(result.optionsCreated).toBe(0)
     expect(result.variantsCreated).toBe(0)
 
-    // Only one insert (products) and zero createProductOption/createProductVariant calls
-    const productInserts = stub.calls.filter(c => c.table === 'products' && c.method === 'insert')
-    expect(productInserts).toHaveLength(1)
-    expect(variantServiceMock.optionCalls).toHaveLength(0)
-    expect(variantServiceMock.variantCalls).toHaveLength(0)
+    // The entire create is ONE rpc call (atomic transaction).
+    expect(stub.rpcCalls).toHaveLength(1)
+    expect(stub.rpcCalls[0].name).toBe('create_product_atomic')
+    const params = stub.rpcCalls[0].params as { p_store_id: string; p_options: unknown[]; p_variants: unknown[] }
+    expect(params.p_store_id).toBe('store-1')
+    expect(params.p_options).toHaveLength(0)
+    expect(params.p_variants).toHaveLength(0)
   })
 
   // -------------------------------------------------------------------------
   // Test 2 — the actual P0 runtime bug fix verification
   // -------------------------------------------------------------------------
-  it('Test 2: product insert does NOT include category / category_id top-level columns', async () => {
+  it('Test 2: rpc p_product payload does NOT include category / category_id top-level columns', async () => {
     const result = await createProductWithVariants({
       store_id: 'store-1',
       name: 'Eyewear',
@@ -170,16 +113,14 @@ describe('createProductWithVariants (P0 stabilization)', () => {
     })
 
     expect(result.success).toBe(true)
-    const insertCall = stub.calls.find(c => c.table === 'products' && c.method === 'insert')
-    expect(insertCall).toBeDefined()
-    const payload = insertCall!.payload as Record<string, unknown>
+    const params = stub.rpcCalls[0].params as { p_product: Record<string, unknown> }
 
-    // The forbidden columns must NOT appear as top-level keys
-    expect(payload).not.toHaveProperty('category')
-    expect(payload).not.toHaveProperty('category_id')
+    // The forbidden columns must NOT appear as top-level keys on p_product.
+    expect(params.p_product).not.toHaveProperty('category')
+    expect(params.p_product).not.toHaveProperty('category_id')
 
-    // Category compatibility must still live under raw_data
-    expect(payload.raw_data).toMatchObject({
+    // Category compatibility must still live under raw_data.
+    expect(params.p_product.raw_data).toMatchObject({
       category: 'eyewear',
       category_id: 'cat-eyewear-1',
     })
@@ -189,6 +130,10 @@ describe('createProductWithVariants (P0 stabilization)', () => {
   // Test 3
   // -------------------------------------------------------------------------
   it('Test 3: one option with N values generates exactly N variants', async () => {
+    stub.setNextRpcResult({
+      data: { success: true, product_id: 'mock-prod-1', options_created: 1, variants_created: 2 },
+      error: null,
+    })
     const result = await createProductWithVariants({
       store_id: 'store-1',
       name: 'Cap',
@@ -202,11 +147,13 @@ describe('createProductWithVariants (P0 stabilization)', () => {
     expect(result.success).toBe(true)
     expect(result.optionsCreated).toBe(1)
     expect(result.variantsCreated).toBe(2)
-    expect(variantServiceMock.optionCalls).toHaveLength(1)
-    expect(variantServiceMock.variantCalls).toHaveLength(2)
+
+    const params = stub.rpcCalls[0].params as { p_options: unknown[]; p_variants: unknown[] }
+    expect(params.p_options).toHaveLength(1)
+    expect(params.p_variants).toHaveLength(2)
 
     // Deterministic SKU generation: CAP-1 + lowercase key prefix + uppercase value prefix
-    const skus = variantServiceMock.variantCalls.map(c => (c.input as { sku: string }).sku).sort()
+    const skus = (params.p_variants as Array<{ sku: string }>).map(v => v.sku).sort()
     expect(skus).toEqual(['CAP-1-col-BLA', 'CAP-1-col-WHI'])
   })
 
@@ -214,6 +161,10 @@ describe('createProductWithVariants (P0 stabilization)', () => {
   // Test 4
   // -------------------------------------------------------------------------
   it('Test 4: two options generate the Cartesian product (no duplicates)', async () => {
+    stub.setNextRpcResult({
+      data: { success: true, product_id: 'mock-prod-1', options_created: 2, variants_created: 4 },
+      error: null,
+    })
     const result = await createProductWithVariants({
       store_id: 'store-1',
       name: 'T-Shirt',
@@ -229,9 +180,8 @@ describe('createProductWithVariants (P0 stabilization)', () => {
     expect(result.optionsCreated).toBe(2)
     expect(result.variantsCreated).toBe(4)
 
-    const combos = variantServiceMock.variantCalls.map(c =>
-      JSON.stringify((c.input as { option_values: Record<string, string> }).option_values),
-    )
+    const params = stub.rpcCalls[0].params as { p_variants: Array<{ option_values: Record<string, string> }> }
+    const combos = params.p_variants.map(v => JSON.stringify(v.option_values))
     const unique = new Set(combos)
     expect(unique.size).toBe(4)
 
@@ -242,10 +192,13 @@ describe('createProductWithVariants (P0 stabilization)', () => {
   })
 
   // -------------------------------------------------------------------------
-  // Test 5
+  // Test 5 — duplicate SKU surfaces as a clear failure (no silent success)
   // -------------------------------------------------------------------------
-  it('Test 5: duplicate SKU surfaces as a clear failure (no silent success)', async () => {
-    variantServiceMock.setAllVariantsError(new Error('SKU already exists in this store'))
+  it('Test 5: rpc error (duplicate SKU) surfaces as a clear failure', async () => {
+    stub.setNextRpcResult({
+      data: null,
+      error: { message: 'SKU already exists in this store' },
+    })
 
     const result = await createProductWithVariants({
       store_id: 'store-1',
@@ -257,16 +210,18 @@ describe('createProductWithVariants (P0 stabilization)', () => {
 
     expect(result.success).toBe(false)
     expect(result.error).toMatch(/SKU already exists/)
-    // Product should NOT have a productId on failure
+    // No product id is returned on failure.
     expect(result.productId).toBeUndefined()
   })
 
   // -------------------------------------------------------------------------
-  // Test 6 — partial failure must surface, not be swallowed
+  // Test 6 — atomic guarantee: a single rpc attempt, failure leaves nothing.
   // -------------------------------------------------------------------------
-  it('Test 6: partial variant failure triggers compensation and reports failure (never silent success)', async () => {
-    // First variant succeeds, second throws — classic mid-flow failure.
-    variantServiceMock.setFailOnVariantCallIndex(2)
+  it('Test 6: a mid-flow failure is a single atomic attempt — no partial state, reported as failure', async () => {
+    stub.setNextRpcResult({
+      data: null,
+      error: { message: 'Variant creation failed inside the transaction' },
+    })
 
     const result = await createProductWithVariants({
       store_id: 'store-1',
@@ -277,14 +232,13 @@ describe('createProductWithVariants (P0 stabilization)', () => {
     })
 
     expect(result.success).toBe(false)
-    expect(result.error).toMatch(/Variant creation failed on call #2/)
+    expect(result.error).toMatch(/Variant creation failed/)
 
-    // Compensation must have been attempted for at least: 1 variant + 1 option + 1 product.
-    const deleteCalls = stub.calls.filter(c => c.method === 'delete')
-    const deletedTables = new Set(deleteCalls.map(c => c.table))
-    expect(deletedTables.has('product_variants')).toBe(true)
-    expect(deletedTables.has('product_options')).toBe(true)
-    expect(deletedTables.has('products')).toBe(true)
+    // Exactly one atomic rpc call — there is no sequential insert/compensation
+    // dance, so a failure cannot leave orphan rows committed.
+    expect(stub.rpcCalls).toHaveLength(1)
+    expect(stub.rpcCalls[0].params).toHaveProperty('p_variants')
+    expect(result.productId).toBeUndefined()
   })
 
   // -------------------------------------------------------------------------
@@ -306,18 +260,15 @@ describe('createProductWithVariants (P0 stabilization)', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(variantServiceMock.optionCalls).toHaveLength(1)
-    expect(variantServiceMock.variantCalls).toHaveLength(1)
+    const params = stub.rpcCalls[0].params as { p_options: Array<{ name: string; code: string; values: string[] }> }
+    expect(params.p_options).toHaveLength(1)
 
-    // Only the real option was created
-    const createdOption = variantServiceMock.optionCalls[0].input as { name: string; code: string; values: string[] }
+    // Only the real option was passed to the rpc.
+    const createdOption = params.p_options[0]
     expect(createdOption.name).toBe('Color')
     expect(createdOption.code).toBe('color')
     expect(createdOption.values).toEqual(['Black'])
-
-    // No 'FakeColor' option ever reached createProductOption
-    const allOptionNames = variantServiceMock.optionCalls.map(c => (c.input as { name: string }).name)
-    expect(allOptionNames).not.toContain('FakeColor')
+    expect(createdOption.name).not.toBe('FakeColor')
   })
 
   // -------------------------------------------------------------------------
@@ -334,16 +285,10 @@ describe('createProductWithVariants (P0 stabilization)', () => {
     })
 
     expect(result.success).toBe(true)
-    const tablesTouched = new Set(stub.calls.map(c => c.table))
-    // The orchestration service must NEVER write to a fake composition table.
-    expect(tablesTouched.has('compositions')).toBe(false)
-    expect(tablesTouched.has('product_composition')).toBe(false)
-    expect(tablesTouched.has('product_compositions')).toBe(false)
-    // Only the products table is touched for a single-SKU product.
-    expect([...tablesTouched]).toEqual(['products'])
+    // Only the atomic rpc is used — no direct table writes at all.
+    expect(stub.rpcCalls).toHaveLength(1)
 
-    const insertCall = stub.calls.find(c => c.table === 'products' && c.method === 'insert')
-    const payload = insertCall!.payload as { raw_data?: Record<string, unknown> }
-    expect(payload.raw_data?.origin).toBe('China')
+    const params = stub.rpcCalls[0].params as { p_product: { raw_data?: Record<string, unknown> } }
+    expect(params.p_product.raw_data?.origin).toBe('China')
   })
 })

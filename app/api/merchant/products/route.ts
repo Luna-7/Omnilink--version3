@@ -7,6 +7,7 @@ import {
 } from '@/lib/products/canonical-attributes'
 import { ProductAttributeValidationError } from '@/lib/product/errors'
 import { createProductWithVariants } from '@/lib/products/product-with-variants-service'
+import { resolveSchemaByIndustrySlug } from '@/lib/semantic/schema-service'
 
 type ProductInsert = Database['public']['Tables']['products']['Insert']
 
@@ -93,6 +94,42 @@ export async function POST(request: NextRequest) {
     // Extract options from body if present
     const options = Array.isArray(body.options) ? body.options : undefined
 
+    // Phase 2B: resolve the canonical target category + raw attributes EARLY so
+    // the semantic schema is resolved BEFORE the product row is inserted. A
+    // missing schema must never create an orphan products row.
+    const targetCategory =
+      typeof body.category === 'string'
+        ? body.category
+        : isRecord(body.raw_data) && typeof body.raw_data.category === 'string'
+          ? body.raw_data.category
+          : undefined
+
+    const rawAttributes = Array.isArray(body.attributes)
+      ? body.attributes
+      : isRecord(body.raw_data) && Array.isArray(body.raw_data.attributes)
+        ? body.raw_data.attributes
+        : []
+
+    // Schema resolution (trusted SERVICE_ROLE_ONLY reader, Phase 1) MUST precede
+    // the product INSERT. If attributes are supplied but the industry schema is
+    // missing, fail fast with 422 and create nothing.
+    if (rawAttributes.length > 0 && targetCategory) {
+      const resolution = await resolveSchemaByIndustrySlug(targetCategory, '1.0')
+      if (!resolution.found) {
+        console.error('[POST /api/merchant/products] Semantic schema not found', {
+          storeId: store.id,
+          industry: targetCategory,
+        })
+        return NextResponse.json(
+          {
+            error: `Semantic schema not found for industry '${targetCategory}'`,
+            code: 'SCHEMA_NOT_FOUND',
+          },
+          { status: 422 },
+        )
+      }
+    }
+
     // Use orchestration service to create product with options and variants
     const orchestrationResult = await createProductWithVariants({
       name: body.name,
@@ -140,20 +177,9 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Process attributes if present via Canonical Service
-    const targetCategory =
-      typeof body.category === 'string'
-        ? body.category
-        : isRecord(body.raw_data) && typeof body.raw_data.category === 'string'
-          ? body.raw_data.category
-          : undefined
-
-    const rawAttributes = Array.isArray(body.attributes)
-      ? body.attributes
-      : isRecord(body.raw_data) && Array.isArray(body.raw_data.attributes)
-        ? body.raw_data.attributes
-        : []
-
+    // Process attributes if present via Canonical Service.
+    // targetCategory / rawAttributes were resolved earlier (before the product
+    // INSERT) as part of Phase 2B ordering — do not re-derive them here.
     if (rawAttributes.length > 0) {
       const validAttributes: CanonicalProductAttribute[] = []
 
