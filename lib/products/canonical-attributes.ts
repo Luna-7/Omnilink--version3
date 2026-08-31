@@ -2,8 +2,8 @@ import { createClientServer } from '@/lib/supabase/server'
 import {
   getSemanticFieldsBySchemaId,
   saveProductSemantics,
-  saveUnknownFields,
 } from '@/lib/semantic/processor'
+import { saveUnknownFieldsTrusted } from '@/lib/semantic/trusted-unknown-fields-writer'
 import {
   resolveSchemaByIndustrySlug,
   SchemaNotFoundError,
@@ -832,7 +832,11 @@ export async function saveCanonicalProductAttributes(
   }
 
   if (mapping.unknownFields.length > 0) {
-    await saveUnknownFields(
+    // `semantic_unknown_fields` is SERVICE_ROLE_ONLY — the merchant session
+    // client cannot write it (the write was previously silently dropped by RLS).
+    // Route through the trusted server-only writer instead (ownership already
+    // verified via the RLS-scoped product read in loadProductContext).
+    await saveUnknownFieldsTrusted(
       productId,
       schemaId,
       mapping.unknownFields,
