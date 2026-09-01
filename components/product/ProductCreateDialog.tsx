@@ -256,8 +256,26 @@ export function ProductCreateDialog() {
       })
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.error || (isZh ? '创建商品失败，请重试' : 'Failed to create product'))
+        const errData = await res.json().catch(() => ({} as { error?: string; code?: string }))
+        // Surface the server's diagnostic code so we can tell apart
+        //   NO_SESSION                  -> cookie didn't reach the API
+        //   AUTH_CLIENT_INIT_FAILED     -> server-side env is misconfigured
+        //   STORE_NOT_FOUND / 4xx codes -> product/data issue (rare)
+        // The previous "throw new Error(errData.error)" swallowed `code`,
+        // which made the 401 indistinguishable from any other failure.
+        const code = errData.code || `HTTP_${res.status}`
+        const baseMsg = errData.error || (isZh ? '创建商品失败，请重试' : 'Failed to create product')
+        let friendly = baseMsg
+        if (res.status === 401) {
+          friendly = isZh
+            ? '会话已失效或未送达服务器（code: ' + code + '）。请刷新页面或重新登录；若多域名访问，请确认当前域名与登录域名一致。'
+            : 'Session is missing or expired (code: ' + code + '). Reload or sign in again; if you use multiple hostnames, the cookie must be set on the same hostname you are saving from.'
+        } else if (code === 'AUTH_CLIENT_INIT_FAILED') {
+          friendly = isZh
+            ? '服务端 Supabase 配置缺失（env 未注入）。请检查部署环境的 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY。'
+            : 'Server Supabase client failed to initialize (missing env). Check NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY on the deployment.'
+        }
+        throw new Error(friendly)
       }
 
       const resData = await res.json()
