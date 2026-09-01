@@ -3,7 +3,20 @@ import {
   normalizeOptionCode,
   validateOptionValues,
   generateVariantCombinations,
+  canonicalizeOptionValues,
 } from './variants/validation'
+
+/**
+ * Per-combination override supplied by the merchant-facing variant matrix.
+ * Matched against generated combinations via `canonicalizeOptionValues`.
+ */
+export interface VariantOverrideInput {
+  option_values: Record<string, string>
+  sku?: string
+  price?: number
+  inventory?: number
+  status?: string
+}
 
 /**
  * Input for creating a product with options and variants
@@ -30,6 +43,9 @@ export interface CreateProductWithVariantsInput {
     code: string
     values: string[]
   }>
+
+  // Optional per-SKU overrides (price/inventory/sku) from the variant matrix
+  variants?: VariantOverrideInput[]
 }
 
 /**
@@ -170,12 +186,37 @@ export async function createProductWithVariants(
     const baseCurrency = input.currency ?? 'USD'
     const baseInventory = input.inventory ?? 0
 
+    // Index merchant-supplied per-SKU overrides by canonical option_values
+    // signature so they match whichever combination the generator produces,
+    // regardless of axis ordering.
+    const overrideMap = new Map<string, VariantOverrideInput>()
+    if (Array.isArray(input.variants)) {
+      for (const override of input.variants) {
+        if (!override || typeof override !== 'object') continue
+        if (!override.option_values || typeof override.option_values !== 'object') continue
+        overrideMap.set(canonicalizeOptionValues(override.option_values), override)
+      }
+    }
+
     for (const combination of combinations) {
+      const override = overrideMap.get(canonicalizeOptionValues(combination))
+
+      const overridePrice = override?.price
+      const overrideInventory = override?.inventory
+
       variantsPayload.push({
-        sku: generateVariantSKU(input.sku, combination),
-        price: basePrice,
+        sku: override?.sku?.trim() || generateVariantSKU(input.sku, combination),
+        price:
+          typeof overridePrice === 'number' && Number.isFinite(overridePrice) && overridePrice >= 0
+            ? overridePrice
+            : basePrice,
         currency: baseCurrency,
-        inventory: baseInventory,
+        inventory:
+          typeof overrideInventory === 'number' &&
+          Number.isInteger(overrideInventory) &&
+          overrideInventory >= 0
+            ? overrideInventory
+            : baseInventory,
         status: 'draft', // Variants start as draft until merchant reviews
         option_values: combination,
       })

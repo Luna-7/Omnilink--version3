@@ -22,10 +22,21 @@ function getSanitizedSupabaseUrl(url: string | undefined): string {
   return 'https://placeholder.supabase.co'
 }
 
-const supabaseUrl = getSanitizedSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
-
 export async function createClientServer() {
+  // Resolve env per-call (not at module load) so a missing/invalid config
+  // fails loudly exactly when auth is attempted, instead of silently falling
+  // back to a placeholder project that can never validate the session cookie.
+  const supabaseUrl = getSanitizedSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+  if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co' || !supabaseAnonKey) {
+    throw new Error(
+      '[createClientServer] Missing or invalid NEXT_PUBLIC_SUPABASE_URL / ' +
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY. The server cannot read the auth cookie ' +
+        'without a valid Supabase project. Check .env.local / deployment env vars.',
+    )
+  }
+
   const cookieStore = await cookies()
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {

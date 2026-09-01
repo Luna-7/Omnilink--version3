@@ -94,6 +94,11 @@ export async function POST(request: NextRequest) {
     // Extract options from body if present
     const options = Array.isArray(body.options) ? body.options : undefined
 
+    // Optional per-SKU overrides from the variant matrix (price/stock/SKU
+    // per combination). The service validates and matches them against the
+    // generated combinations; anything malformed is ignored there.
+    const variants = Array.isArray(body.variants) ? body.variants : undefined
+
     // Phase 2B: resolve the canonical target category + raw attributes EARLY so
     // the semantic schema is resolved BEFORE the product row is inserted. A
     // missing schema must never create an orphan products row.
@@ -146,6 +151,7 @@ export async function POST(request: NextRequest) {
       raw_data: rawData,
       store_id: store.id,
       options: options,
+      variants: variants,
     })
 
     if (!orchestrationResult.success || !orchestrationResult.productId) {

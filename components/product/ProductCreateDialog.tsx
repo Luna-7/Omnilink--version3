@@ -1,15 +1,16 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, AlertCircle } from 'lucide-react'
+import { Plus, X, AlertCircle, LayoutTemplate } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import { ProductBasicInfo } from './create/ProductBasicInfo'
-import { ProductEnhancementFields } from './create/ProductEnhancementFields'
+import { ProductAttributesPanel, type AttributeRow } from './create/ProductAttributesPanel'
+import { VariantMatrixTable, type VariantMatrixRow } from './create/VariantMatrixTable'
 import { ProductMediaUpload } from './create/ProductMediaUpload'
-import { ProductVariantEntry, type VariantOptionDraft } from './create/ProductVariantEntry'
 import { ProductCreateFooter } from './create/ProductCreateFooter'
-import type { BasicProductFormData, EnhancementAttributeItem, ImageFileItem } from './create/types'
+import type { BasicProductFormData, ImageFileItem } from './create/types'
+import { getCategoryTemplate } from '@/lib/product/category-templates'
 
 const INITIAL_FORM_DATA: BasicProductFormData = {
   title: '',
@@ -29,9 +30,16 @@ export function ProductCreateDialog() {
 
   const [isOpen, setIsOpen] = useState(false)
   const [formData, setFormData] = useState<BasicProductFormData>(INITIAL_FORM_DATA)
-  const [enhancementAttributes, setEnhancementAttributes] = useState<EnhancementAttributeItem[]>([])
+  // Product traits (spec table) and sale variants (SKU matrix) share ONE input
+  // surface; each row carries a role and is split into the right payload field
+  // at submit time.
+  const [attributeRows, setAttributeRows] = useState<AttributeRow[]>([])
+  const [variantMatrixRows, setVariantMatrixRows] = useState<VariantMatrixRow[]>([])
   const [images, setImages] = useState<ImageFileItem[]>([])
-  const [variantOptions, setVariantOptions] = useState<VariantOptionDraft[]>([])
+
+  // Category template prefill state
+  const appliedTemplateRef = useRef<string | null>(null)
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMode, setSubmitMode] = useState<'draft' | 'active' | null>(null)
@@ -39,12 +47,79 @@ export function ProductCreateDialog() {
 
   const handleOpen = () => {
     setFormData(INITIAL_FORM_DATA)
-    setEnhancementAttributes([])
+    setAttributeRows([])
+    setVariantMatrixRows([])
     setImages([])
-    setVariantOptions([])
     setErrorMessage(null)
+    appliedTemplateRef.current = null
+    setTemplateNotice(null)
     setIsOpen(true)
   }
+
+  /** The same slug rule used when shipping option codes to the server. */
+  const slugifyKey = (key: string) => key.trim().toLowerCase().replace(/\s+/g, '_')
+
+  /**
+   * Category template prefill (Taobao/Shopify-style): once the merchant picks
+   * a category, the matching template pre-fills trait rows (spec-table facts)
+   * and variant rows (purchasable axes with sensible default values).
+   *
+   * Merge rules:
+   *  - Only keys not already present are appended — anything the merchant
+   *    typed is never overwritten.
+   *  - Re-selecting the same category is a no-op (appliedTemplateRef guard).
+   *  - Switching categories appends the new template's missing rows.
+   */
+  useEffect(() => {
+    const categoryKey = formData.categoryId || formData.category
+    if (!categoryKey) return
+    const template = getCategoryTemplate(categoryKey)
+    if (!template) return
+    if (appliedTemplateRef.current === template.id) return
+    appliedTemplateRef.current = template.id
+
+    setAttributeRows((prev) => {
+      const existingKeys = new Set(prev.map((r) => r.key))
+      const additions: AttributeRow[] = []
+
+      for (const field of template.fields) {
+        if (existingKeys.has(field.key)) continue
+        additions.push({
+          id: `tpl_${template.id}_${field.key}`,
+          role: 'trait',
+          key: field.key,
+          label: isZh ? field.nameZh : field.nameEn,
+          value: '',
+          values: [],
+          unit: field.unit,
+          placeholder: isZh ? field.placeholderZh : field.placeholderEn,
+        })
+      }
+
+      for (const preset of template.variantPresets ?? []) {
+        if (existingKeys.has(preset.code)) continue
+        additions.push({
+          id: `tpl_${template.id}_${preset.code}`,
+          role: 'variant',
+          key: preset.code,
+          label: isZh ? preset.nameZh : preset.nameEn,
+          value: '',
+          values: [...preset.defaultValues],
+        })
+      }
+
+      if (additions.length === 0) return prev
+
+      const traitCount = additions.filter((r) => r.role === 'trait').length
+      const variantCount = additions.length - traitCount
+      setTemplateNotice(
+        isZh
+          ? `已按「${template.titleZh}」品类模板预填 ${traitCount} 个商品特征${variantCount > 0 ? `、${variantCount} 个销售规格` : ''}，可直接修改或删除`
+          : `Prefilled ${traitCount} traits${variantCount > 0 ? ` and ${variantCount} variant axes` : ''} from the "${template.titleEn}" template — edit freely`,
+      )
+      return [...prev, ...additions]
+    })
+  }, [formData.category, formData.categoryId, isZh])
 
   const handleClose = () => {
     if (isSubmitting) return
@@ -95,7 +170,37 @@ export function ProductCreateDialog() {
     setErrorMessage(null)
 
     try {
-      // 1. Build canonical attributes payload
+      // 1. Split the unified attribute rows into the two payload fields:
+      //      trait   -> canonical attributes (storefront spec table)
+      //      variant -> product options (expanded into SKUs server-side)
+      const traitAttributes = attributeRows.filter(
+        (r) => r.role === 'trait' && r.value.trim().length > 0,
+      )
+      const variantOptions = attributeRows
+        .filter((r) => r.role === 'variant' && r.values.length > 0)
+        .map((r) => ({
+          name: r.label.trim(),
+          // Server-side `normalizeOptionCode(option.code)` calls `.trim()` on
+          // this field, so it MUST be present — a missing code crashes every
+          // variant creation with a TypeError. Derived from the stable slug.
+          code: slugifyKey(r.key),
+          values: r.values,
+        }))
+
+      // Per-SKU overrides from the variant matrix (price/stock/SKU per
+      // combination). The server matches each entry to its generated
+      // combination via normalized option_values, so no client key is needed.
+      const variantOverrides =
+        variantOptions.length > 0 && variantMatrixRows.length > 0
+          ? variantMatrixRows.map((row) => ({
+              option_values: row.optionValues,
+              sku: row.sku.trim() || undefined,
+              price: row.price.trim() ? parseFloat(row.price) : undefined,
+              inventory: row.inventory.trim() ? parseInt(row.inventory, 10) : undefined,
+            }))
+          : undefined
+
+      // 2. Build canonical attributes payload
       const validCanonicalAttributes = [
         {
           fieldKey: 'country_of_origin',
@@ -107,23 +212,25 @@ export function ProductCreateDialog() {
           confidence: 1.0,
           isStandard: true,
         },
-        ...enhancementAttributes
-          .filter((a) => a.value.trim().length > 0)
-          .map((a) => ({
-            fieldKey: a.key.trim().toLowerCase().replace(/\s+/g, '_'),
-            label: a.label.trim(),
-            value: a.value.trim(),
-            unit: a.unit?.trim() || null,
-            type: a.type || ('text' as const),
-            source: 'manual' as const,
-            confidence: 1.0,
-            isStandard: true,
-          })),
+        ...traitAttributes.map((a) => ({
+          fieldKey: a.key.trim().toLowerCase().replace(/\s+/g, '_'),
+          label: a.label.trim(),
+          value: a.value.trim(),
+          unit: a.unit?.trim() || null,
+          type: 'text' as const,
+          source: 'manual' as const,
+          confidence: 1.0,
+          isStandard: true,
+        })),
       ]
 
-      // 2. Call Product Creation API
+      // 3. Call Product Creation API
       const res = await fetch('/api/merchant/products', {
         method: 'POST',
+        // Same-origin requests send cookies by default, but being explicit
+        // guards against any cross-origin/proxy deployment where credentials
+        // would otherwise be dropped (a classic silent 401 cause).
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.title.trim(),
@@ -138,6 +245,7 @@ export function ProductCreateDialog() {
           origin: formData.origin.trim(),
           attributes: validCanonicalAttributes,
           options: variantOptions.length > 0 ? variantOptions : undefined,
+          variants: variantOverrides,
           raw_data: {
             category: formData.category,
             category_id: formData.categoryId || undefined,
@@ -248,7 +356,7 @@ export function ProductCreateDialog() {
               </div>
             )}
 
-            {/* Modal Body - 仅保留 01 商品信息 / 02 增强信息 / 03 商品图片 / 规格入口 */}
+            {/* Modal Body - 01 商品信息 / 02 商品属性（特征+规格统一入口） / 03 商品图片 */}
             <div className="p-5 overflow-y-auto space-y-6 flex-1">
               {/* 01 商品信息 */}
               <ProductBasicInfo
@@ -257,24 +365,54 @@ export function ProductCreateDialog() {
                 disabled={isSubmitting}
               />
 
-              {/* 02 增强信息 */}
-              <ProductEnhancementFields
-                attributes={enhancementAttributes}
-                onChange={setEnhancementAttributes}
+              {/* 品类模板预填提示 */}
+              {templateNotice && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-[4px] bg-[#EFF4FF] border border-[#024AD8]/20 text-[11px] text-[#024AD8]">
+                  <div className="flex items-center gap-1.5">
+                    <LayoutTemplate size={13} className="shrink-0" />
+                    <span className="font-medium">{templateNotice}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTemplateNotice(null)}
+                    className="text-[#024AD8]/60 hover:text-[#024AD8] cursor-pointer"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* 02 商品属性（商品特征 + 销售规格，统一入口） */}
+              <ProductAttributesPanel
+                rows={attributeRows}
+                onChange={setAttributeRows}
                 disabled={isSubmitting}
               />
+
+              {/* 02b 变体矩阵（有销售规格时出现，逐 SKU 定价/库存） */}
+              {attributeRows.some((r) => r.role === 'variant' && r.values.length > 0) && (
+                <VariantMatrixTable
+                  axes={attributeRows
+                    .filter((r) => r.role === 'variant' && r.values.length > 0)
+                    .map((r) => ({
+                      code: slugifyKey(r.key),
+                      name: r.label,
+                      values: r.values,
+                    }))}
+                  rows={variantMatrixRows}
+                  onChange={setVariantMatrixRows}
+                  basePrice={formData.price}
+                  baseInventory={formData.inventory || '0'}
+                  baseSku={formData.sku}
+                  currency={formData.currency}
+                  disabled={isSubmitting}
+                />
+              )}
 
               {/* 03 商品图片 */}
               <ProductMediaUpload
                 images={images}
                 onChange={setImages}
-                disabled={isSubmitting}
-              />
-
-              {/* 轻量规格提示入口 */}
-              <ProductVariantEntry
-                options={variantOptions}
-                onChange={setVariantOptions}
                 disabled={isSubmitting}
               />
             </div>

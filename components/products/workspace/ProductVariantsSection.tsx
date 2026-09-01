@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useRef, useState } from 'react'
 import { Plus, Trash2, AlertCircle, Sparkles, SlidersHorizontal, Check } from 'lucide-react'
 import { useLanguage } from '@/context/LanguageContext'
 import type { ProductOption, ProductVariant } from '@/lib/products/variants/types'
-import type { VariantDraft, VariantOptionInput } from '@/lib/products/domain-types'
+import type { VariantDraft } from '@/lib/products/domain-types'
 import { reconcileVariantItems } from '@/lib/products/variants/reconcile'
+import { generateVariantKey } from '@/lib/products/variants/identity'
 
 interface ProductVariantsSectionProps {
   productId?: string
@@ -24,6 +25,35 @@ const DIMENSION_PRESETS = [
   { nameZh: '版本', nameEn: 'Edition', code: 'edition', defaultValues: ['基础版', '专业版', '旗舰版'] },
 ]
 
+/**
+ * Stable combination key for a variant, matching the key algorithm used by
+ * `generateVariantCombinations` so reconcile can preserve merchant edits
+ * across re-generation. Falls back to JSON for malformed option_values.
+ */
+function comboKeyOf(optionValues: Record<string, string>): string {
+  try {
+    return generateVariantKey(optionValues)
+  } catch {
+    return JSON.stringify(optionValues)
+  }
+}
+
+/**
+ * Fully controlled sales-variant editor.
+ *
+ * Data flow (single direction, NO echo effects):
+ *   parent state (options/variants) -> this component renders
+ *   user action -> setOptions / setVariants -> parent re-renders
+ *
+ * The previous implementation kept a local `variantItems` mirror and synced
+ * it both ways via useEffect, which could loop (each sync produced fresh
+ * object identities + fresh timestamps). The mirror is gone: `variants` is
+ * the single source of truth.
+ *
+ * ID conventions (consumed by the workspace save routine):
+ *   - existing DB rows keep their uuid
+ *   - newly created options/variants get a `temp-` prefixed id
+ */
 export function ProductVariantsSection({
   productId,
   options,
@@ -34,94 +64,52 @@ export function ProductVariantsSection({
 }: ProductVariantsSectionProps) {
   const { isZh } = useLanguage()
 
-  // Single Product vs Multi-Variant mode selection state
-  const [variantMode, setVariantMode] = useState<'single' | 'multi'>(() => {
-    return options.length > 0 || variants.length > 0 ? 'multi' : 'single'
-  })
+  // Derived, not synced: multi mode whenever dimensions or variants exist.
+  // After a confirmed reset both are empty, so the single banner shows —
+  // no extra "explicit" flag is needed.
+  const variantMode: 'single' | 'multi' =
+    options.length > 0 || variants.length > 0 ? 'multi' : 'single'
 
   const [error, setError] = useState('')
   const [batchPrice, setBatchPrice] = useState<string>('')
   const [batchInventory, setBatchInventory] = useState<string>('')
   const [showBatchToolbar, setShowBatchToolbar] = useState(false)
-  const [variantItems, setVariantItems] = useState<VariantDraft[]>(() => {
-    return variants.map((v) => ({
-      key: v.id,
-      optionValues: v.option_values as Record<string, string>,
-      sku: v.sku || undefined,
-      price: v.price || undefined,
-      inventory: v.inventory ?? undefined,
-      skuSource: v.sku ? 'manual' : undefined,
-    }))
-  })
 
-  // Synchronize mode if external props change
-  useEffect(() => {
-    if ((options.length > 0 || variants.length > 0) && variantMode === 'single') {
-      setVariantMode('multi')
-    }
-  }, [options.length, variants.length])
-
-  // Sync variantItems with external variants prop
-  useEffect(() => {
-    setVariantItems(
-      variants.map((v) => ({
-        key: v.id,
-        optionValues: v.option_values as Record<string, string>,
-        sku: v.sku || undefined,
-        price: v.price || undefined,
-        inventory: v.inventory ?? undefined,
-        skuSource: v.sku ? 'manual' : undefined,
-      }))
-    )
-  }, [variants])
-
-  // Sync variantItems back to ProductVariant format for external API
-  useEffect(() => {
-    const newVariants: ProductVariant[] = variantItems.map((v) => ({
-      id: v.key,
-      product_id: productId || '',
-      sku: v.sku || null,
-      price: v.price || null,
-      currency: 'CNY',
-      inventory: v.inventory ?? null,
-      status: 'active',
-      option_values: v.optionValues,
-      raw_data: null,
-      semantic_data: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }))
-    setVariants(newVariants)
-  }, [variantItems, productId, setVariants])
+  // Ref counter for temp ids (avoids Date.now()/Math.random() in handlers).
+  const tempSeq = useRef(0)
+  const nextTempId = (prefix: string) => {
+    tempSeq.current += 1
+    return `temp-${prefix}-${tempSeq.current}`
+  }
 
   const handleModeChange = (mode: 'single' | 'multi') => {
-    if (mode === 'single' && (options.length > 0 || variants.length > 0)) {
-      if (
-        window.confirm(
-          isZh
-            ? '切换为「单一商品」模式将重置已设置的销售维度和变体 SKU 列表，确认切换吗？'
-            : 'Switching to Single Product mode will clear current sales dimensions and variants. Continue?'
-        )
-      ) {
-        setOptions([])
-        setVariants([])
-        setVariantMode('single')
+    if (mode === 'single') {
+      if (options.length > 0 || variants.length > 0) {
+        if (
+          window.confirm(
+            isZh
+              ? '切换为「单一商品」模式将重置已设置的销售维度和变体 SKU 列表，确认切换吗？'
+              : 'Switching to Single Product mode will clear current sales dimensions and variants. Continue?',
+          )
+        ) {
+          setOptions([])
+          setVariants([])
+        }
       }
-    } else {
-      setVariantMode(mode)
-      if (mode === 'multi' && options.length === 0) {
-        addOption()
-      }
+      return
+    }
+    if (options.length === 0) {
+      addOption()
     }
   }
 
-  const addOption = (preset?: typeof DIMENSION_PRESETS[0]) => {
+  const addOption = (preset?: (typeof DIMENSION_PRESETS)[0]) => {
     const name = preset ? (isZh ? preset.nameZh : preset.nameEn) : ''
     const code = preset ? preset.code : `dimension_${options.length + 1}`
     const values = preset ? preset.defaultValues : ['']
 
     const newOption: ProductOption = {
-      id: `opt-${Date.now()}-${options.length}`,
+      id: nextTempId('opt'),
       product_id: productId || '',
       name,
       code,
@@ -129,42 +117,40 @@ export function ProductVariantsSection({
       values,
       created_at: new Date().toISOString(),
     }
-    setOptions([...options, newOption])
+    setOptions((prev) => [...prev, newOption])
     setError('')
   }
 
-  const updateOption = (index: number, field: keyof ProductOption, value: any) => {
-    const updatedOptions = [...options]
-    updatedOptions[index] = { ...updatedOptions[index], [field]: value }
-    setOptions(updatedOptions)
+  const updateOption = (index: number, field: keyof ProductOption, value: unknown) => {
+    setOptions((prev) => prev.map((o, i) => (i === index ? { ...o, [field]: value } : o)))
   }
 
   const removeOption = (index: number) => {
-    const updatedOptions = options.filter((_, i) => i !== index)
-    setOptions(updatedOptions)
+    setOptions((prev) => prev.filter((_, i) => i !== index))
   }
 
   const addOptionValue = (optionIndex: number) => {
-    const updatedOptions = [...options]
-    updatedOptions[optionIndex] = {
-      ...updatedOptions[optionIndex],
-      values: [...updatedOptions[optionIndex].values, ''],
-    }
-    setOptions(updatedOptions)
+    setOptions((prev) =>
+      prev.map((o, i) => (i === optionIndex ? { ...o, values: [...o.values, ''] } : o)),
+    )
   }
 
   const updateOptionValue = (optionIndex: number, valueIndex: number, value: string) => {
-    const updatedOptions = [...options]
-    updatedOptions[optionIndex].values[valueIndex] = value
-    setOptions(updatedOptions)
+    setOptions((prev) =>
+      prev.map((o, i) =>
+        i === optionIndex
+          ? { ...o, values: o.values.map((v, vi) => (vi === valueIndex ? value : v)) }
+          : o,
+      ),
+    )
   }
 
   const removeOptionValue = (optionIndex: number, valueIndex: number) => {
-    const updatedOptions = [...options]
-    updatedOptions[optionIndex].values = updatedOptions[optionIndex].values.filter(
-      (_, i) => i !== valueIndex
+    setOptions((prev) =>
+      prev.map((o, i) =>
+        i === optionIndex ? { ...o, values: o.values.filter((_, vi) => vi !== valueIndex) } : o,
+      ),
     )
-    setOptions(updatedOptions)
   }
 
   // Calculate Cartesian Product combination stats
@@ -178,68 +164,116 @@ export function ProductVariantsSection({
 
   const totalPossibleCombinations = validOptions.reduce(
     (acc, opt) => acc * (opt.values.length || 1),
-    validOptions.length > 0 ? 1 : 0
+    validOptions.length > 0 ? 1 : 0,
   )
+
+  /** Map current DB/local variants to reconcile drafts keyed by COMBINATION key. */
+  const toDrafts = (source: ProductVariant[]): VariantDraft[] =>
+    source.map((v) => ({
+      key: comboKeyOf(v.option_values as Record<string, string>),
+      optionValues: v.option_values as Record<string, string>,
+      sku: v.sku || undefined,
+      price: v.price ?? undefined,
+      inventory: v.inventory ?? undefined,
+      skuSource: v.sku ? 'manual' : undefined,
+    }))
+
+  /**
+   * Map reconcile drafts back to ProductVariant rows, preserving the DB id
+   * of surviving combinations (matched by combination key) so the save
+   * routine PATCHes them instead of re-creating; brand-new combinations get
+   * a `temp-` id and will be POSTed.
+   */
+  const toVariants = (drafts: VariantDraft[], previous: ProductVariant[]): ProductVariant[] => {
+    const idByComboKey = new Map(
+      previous.map((v) => [comboKeyOf(v.option_values as Record<string, string>), v.id]),
+    )
+    const now = new Date().toISOString()
+    return drafts.map((d) => ({
+      id: idByComboKey.get(d.key) ?? `temp-${d.key}`,
+      product_id: productId || '',
+      sku: d.sku || null,
+      price: d.price ?? null,
+      currency: previous[0]?.currency || 'CNY',
+      inventory: d.inventory ?? null,
+      status: 'active',
+      option_values: d.optionValues,
+      raw_data: null,
+      semantic_data: null,
+      created_at: now,
+      updated_at: now,
+    }))
+  }
 
   const handleGenerateVariants = () => {
     if (validOptions.length === 0) {
       setError(
         isZh
           ? '请至少设置一个销售维度并填写有效的选项值 (例如: 颜色 ➔ 黑色, 白色)'
-          : 'Please add at least one sales dimension with valid option values'
+          : 'Please add at least one sales dimension with valid option values',
       )
       return
     }
 
-    // Generate new variant items using reconciliation
-    setVariantItems((previous) =>
-      reconcileVariantItems(
+    let drafts: VariantDraft[]
+    try {
+      drafts = reconcileVariantItems(
         validOptions.map((o) => ({ name: o.name, values: o.values })),
-        previous,
+        toDrafts(variants),
         {
-          defaultPrice: 100,
-          defaultInventory: 0,
           generateSku: (combo) => {
             const vals = Object.values(combo.optionValues).join('-')
             return `SKU-${vals.toUpperCase().replace(/\s+/g, '')}`
           },
         },
-      ),
-    )
+      )
+    } catch (genErr) {
+      setError(genErr instanceof Error ? genErr.message : String(genErr))
+      return
+    }
 
+    setVariants((prev) => toVariants(drafts, prev))
     setError('')
   }
 
-  const updateVariant = (key: string, field: keyof VariantDraft, value: any) => {
-    setVariantItems((prev) =>
-      prev.map((v) => (v.key === key ? { ...v, [field]: value } : v))
+  const updateVariant = (id: string, field: 'sku' | 'price' | 'inventory', value: string) => {
+    setVariants((prev) =>
+      prev.map((v) => {
+        if (v.id !== id) return v
+        if (field === 'sku') return { ...v, sku: value || null }
+        if (field === 'price') {
+          const num = parseFloat(value)
+          return { ...v, price: value === '' || isNaN(num) ? null : num }
+        }
+        const num = parseInt(value, 10)
+        return { ...v, inventory: value === '' || isNaN(num) ? null : num }
+      }),
     )
   }
 
-  const removeVariant = (key: string) => {
-    setVariantItems((prev) => prev.filter((v) => v.key !== key))
+  const removeVariant = (id: string) => {
+    setVariants((prev) => prev.filter((v) => v.id !== id))
   }
 
   const handleBatchApplyPrice = () => {
     const priceNum = parseFloat(batchPrice)
     if (isNaN(priceNum) || priceNum < 0) return
-    setVariantItems((prev) => prev.map((v) => ({ ...v, price: priceNum })))
+    setVariants((prev) => prev.map((v) => ({ ...v, price: priceNum })))
   }
 
   const handleBatchApplyInventory = () => {
     const invNum = parseInt(batchInventory, 10)
     if (isNaN(invNum) || invNum < 0) return
-    setVariantItems((prev) => prev.map((v) => ({ ...v, inventory: invNum })))
+    setVariants((prev) => prev.map((v) => ({ ...v, inventory: invNum })))
   }
 
   const handleAutoGenerateSkus = () => {
-    setVariantItems((prev) =>
+    setVariants((prev) =>
       prev.map((v) => {
         if (v.sku && v.sku.trim()) return v
-        const vals = Object.values(v.optionValues).join('-')
-        const generated = `SKU-${vals.toUpperCase().replace(/\s+/g, '')}`
-        return { ...v, sku: generated, skuSource: 'generated' as const }
-      })
+        const vals = Object.values(v.option_values as Record<string, string>).join('-')
+        return { ...v, sku: `SKU-${vals.toUpperCase().replace(/\s+/g, '')}` }
+      }),
     )
   }
 
@@ -328,7 +362,7 @@ export function ProductVariantsSection({
                 const isAdded = options.some(
                   (o) =>
                     o.code.toLowerCase() === preset.code ||
-                    o.name.toLowerCase() === preset.nameZh.toLowerCase()
+                    o.name.toLowerCase() === preset.nameZh.toLowerCase(),
                 )
                 return (
                   <button
@@ -498,15 +532,15 @@ export function ProductVariantsSection({
             </div>
           )}
 
-          {/* Variants Matrix Table */}
-          {variantItems.length > 0 && (
+          {/* Variants Matrix Table — reads directly from the controlled prop */}
+          {variants.length > 0 && (
             <div className="space-y-3 pt-2">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-200">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-bold text-slate-900">
                     {isZh
-                      ? `已生成销售版本矩阵 (${variantItems.length} SKU)`
-                      : `Generated Sales Variants (${variantItems.length} SKUs)`}
+                      ? `已生成销售版本矩阵 (${variants.length} SKU)`
+                      : `Generated Sales Variants (${variants.length} SKUs)`}
                   </h3>
                 </div>
 
@@ -522,8 +556,8 @@ export function ProductVariantsSection({
                         ? '隐藏批量工具'
                         : 'Hide Batch Tools'
                       : isZh
-                      ? '显示批量改价/改库存/生成 SKU'
-                      : 'Batch Operations'}
+                        ? '显示批量改价/改库存/生成 SKU'
+                        : 'Batch Operations'}
                   </span>
                 </button>
               </div>
@@ -593,18 +627,16 @@ export function ProductVariantsSection({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {variantItems.map((variant) => (
-                      <tr key={variant.key} className="hover:bg-slate-50/60">
+                    {variants.map((variant) => (
+                      <tr key={variant.id} className="hover:bg-slate-50/60">
                         <td className="py-2.5 px-3.5 font-bold text-slate-900">
-                          {Object.entries(variant.optionValues)
-                            .map(([_, v]) => `${v}`)
-                            .join(' / ')}
+                          {Object.values(variant.option_values as Record<string, string>).join(' / ')}
                         </td>
                         <td className="py-2.5 px-3.5">
                           <input
                             type="text"
                             value={variant.sku || ''}
-                            onChange={(e) => updateVariant(variant.key, 'sku', e.target.value)}
+                            onChange={(e) => updateVariant(variant.id, 'sku', e.target.value)}
                             placeholder="SKU-001"
                             disabled={disabled}
                             className="h-8 px-2.5 rounded-[4px] bg-white border border-slate-200 text-xs font-mono text-slate-900 w-36 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
@@ -613,10 +645,8 @@ export function ProductVariantsSection({
                         <td className="py-2.5 px-3.5">
                           <input
                             type="number"
-                            value={variant.price || ''}
-                            onChange={(e) =>
-                              updateVariant(variant.key, 'price', parseFloat(e.target.value) || undefined)
-                            }
+                            value={variant.price ?? ''}
+                            onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
                             placeholder="0.00"
                             disabled={disabled}
                             className="h-8 px-2.5 rounded-[4px] bg-white border border-slate-200 text-xs font-bold text-slate-900 w-24 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
@@ -626,13 +656,7 @@ export function ProductVariantsSection({
                           <input
                             type="number"
                             value={variant.inventory ?? ''}
-                            onChange={(e) =>
-                              updateVariant(
-                                variant.key,
-                                'inventory',
-                                e.target.value ? parseInt(e.target.value, 10) : undefined
-                              )
-                            }
+                            onChange={(e) => updateVariant(variant.id, 'inventory', e.target.value)}
                             placeholder="100"
                             disabled={disabled}
                             className="h-8 px-2.5 rounded-[4px] bg-white border border-slate-200 text-xs font-bold text-slate-900 w-20 focus:outline-none focus:ring-1 focus:ring-[#024AD8]"
@@ -650,7 +674,7 @@ export function ProductVariantsSection({
                         <td className="py-2.5 px-3.5 text-right">
                           <button
                             type="button"
-                            onClick={() => removeVariant(variant.key)}
+                            onClick={() => removeVariant(variant.id)}
                             className="p-1 text-slate-400 hover:text-[#D32F2F] rounded-[4px] cursor-pointer transition-colors"
                             title={isZh ? '删除此不售版本' : 'Remove variant'}
                           >
@@ -669,4 +693,3 @@ export function ProductVariantsSection({
     </div>
   )
 }
-

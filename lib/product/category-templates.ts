@@ -11,6 +11,17 @@ export interface AttributeTemplateField {
   placeholderEn?: string
 }
 
+/**
+ * A suggested sales-variant axis for a category (e.g. Size for shoes).
+ * Purely a UX preset: merchants can edit or delete it after prefill.
+ */
+export interface VariantPresetField {
+  code: string
+  nameZh: string
+  nameEn: string
+  defaultValues: string[]
+}
+
 export interface ProductCategoryTemplate {
   id: string
   category: string
@@ -19,6 +30,8 @@ export interface ProductCategoryTemplate {
   descriptionZh?: string
   descriptionEn?: string
   fields: AttributeTemplateField[]
+  /** Suggested purchasable axes (color/size/...), prefilled as variant rows. */
+  variantPresets?: VariantPresetField[]
 }
 
 export const PRODUCT_CATEGORY_TEMPLATES: Record<string, ProductCategoryTemplate> = {
@@ -80,6 +93,14 @@ export const PRODUCT_CATEGORY_TEMPLATES: Record<string, ProductCategoryTemplate>
         placeholderEn: 'e.g. 142',
       },
     ],
+    variantPresets: [
+      {
+        code: 'color',
+        nameZh: '颜色',
+        nameEn: 'Color',
+        defaultValues: ['黑色', '玳瑁色'],
+      },
+    ],
   },
 
   '光学眼镜': {
@@ -122,6 +143,14 @@ export const PRODUCT_CATEGORY_TEMPLATES: Record<string, ProductCategoryTemplate>
         unit: 'mm',
         placeholderZh: '如: 140',
         placeholderEn: 'e.g. 140',
+      },
+    ],
+    variantPresets: [
+      {
+        code: 'color',
+        nameZh: '颜色',
+        nameEn: 'Color',
+        defaultValues: ['黑色', '银色'],
       },
     ],
   },
@@ -174,6 +203,14 @@ export const PRODUCT_CATEGORY_TEMPLATES: Record<string, ProductCategoryTemplate>
         placeholderEn: 'e.g. BT 5.4 / LDAC',
       },
     ],
+    variantPresets: [
+      {
+        code: 'color',
+        nameZh: '颜色',
+        nameEn: 'Color',
+        defaultValues: ['曜石黑', '月光白'],
+      },
+    ],
   },
 
   '智能手表': {
@@ -218,6 +255,20 @@ export const PRODUCT_CATEGORY_TEMPLATES: Record<string, ProductCategoryTemplate>
         placeholderEn: 'e.g. Heart rate, SpO2, Dual GPS',
       },
     ],
+    variantPresets: [
+      {
+        code: 'case_size',
+        nameZh: '表壳尺寸',
+        nameEn: 'Case Size',
+        defaultValues: ['41mm', '45mm'],
+      },
+      {
+        code: 'color',
+        nameZh: '颜色',
+        nameEn: 'Color',
+        defaultValues: ['午夜色', '星光色'],
+      },
+    ],
   },
 
   '运动鞋': {
@@ -257,6 +308,20 @@ export const PRODUCT_CATEGORY_TEMPLATES: Record<string, ProductCategoryTemplate>
         nameEn: 'Shoe Application',
         type: 'select',
         options: ['Running', 'Basketball', 'Training', 'Casual'],
+      },
+    ],
+    variantPresets: [
+      {
+        code: 'size',
+        nameZh: '尺码',
+        nameEn: 'Size',
+        defaultValues: ['40', '41', '42', '43', '44'],
+      },
+      {
+        code: 'color',
+        nameZh: '颜色',
+        nameEn: 'Color',
+        defaultValues: ['黑白'],
       },
     ],
   },

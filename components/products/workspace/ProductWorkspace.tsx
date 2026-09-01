@@ -12,6 +12,8 @@ import { ProductCommercialSection } from './ProductCommercialSection'
 import { ProductDescriptionSection } from './ProductDescriptionSection'
 import { ProductKnowledgeSection } from './ProductKnowledgeSection'
 import { ProductRelationsSection } from './ProductRelationsSection'
+import { ProductAttributesSection, type ProductAttributeValue } from './ProductAttributesSection'
+import { ProductVariantsSection } from './ProductVariantsSection'
 import { FuturePreviewModal } from './FuturePreviewModal'
 
 import { ProductMediaUploaderRef, ExistingAsset } from '@/components/products/ProductMediaUploader'
@@ -105,6 +107,16 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     return []
   })
 
+  // Canonical attributes (category-template driven spec editing)
+  const [attributeValues, setAttributeValues] = useState<ProductAttributeValue[]>([])
+  const [attributesLoading, setAttributesLoading] = useState(false)
+  const [attributesError, setAttributesError] = useState<string | null>(null)
+  const [attributesLegacy, setAttributesLegacy] = useState(false)
+  // Keys as last loaded from the server — the save routine diffs against
+  // these to build the `deletions` list and to detect removed variants.
+  const loadedAttributeKeysRef = useRef<string[]>([])
+  const loadedVariantIdsRef = useRef<string[]>([])
+
   // Product Relations
   const [relations, setRelations] = useState<ProductRelation[]>([])
 
@@ -170,14 +182,16 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     if (!initialData) {
       setIsLoading(true)
     }
+    setAttributesLoading(true)
 
     try {
-      const [mgmtSettled, assetsSettled, optionsSettled, variantsSettled, relationsSettled] = await Promise.allSettled([
+      const [mgmtSettled, assetsSettled, optionsSettled, variantsSettled, relationsSettled, attributesSettled] = await Promise.allSettled([
         fetch(`/api/merchant/products/${productId}/management`),
         fetch(`/api/assets?product_id=${productId}`),
         fetch(`/api/products/${productId}/options`),
         fetch(`/api/products/${productId}/variants`),
         fetch(`/api/merchant/products/${productId}/relations`),
+        fetch(`/api/merchant/products/${productId}/canonical-attributes`),
       ])
 
       if (mgmtSettled.status === 'fulfilled' && mgmtSettled.value.ok) {
@@ -224,7 +238,27 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         const variantsData = await variantsSettled.value.json()
         if (Array.isArray(variantsData.variants)) {
           setVariants(variantsData.variants)
+          loadedVariantIdsRef.current = variantsData.variants.map((v: ProductVariant) => v.id)
         }
+      }
+
+      if (attributesSettled.status === 'fulfilled') {
+        if (attributesSettled.value.ok) {
+          const canonical = await attributesSettled.value.json()
+          if (Array.isArray(canonical?.attributes)) {
+            setAttributeValues(canonical.attributes)
+            loadedAttributeKeysRef.current = canonical.attributes.map(
+              (a: ProductAttributeValue) => a.fieldKey,
+            )
+            setAttributesLegacy(Boolean(canonical.is_legacy))
+            setAttributesError(null)
+          }
+        } else {
+          setAttributesError(
+            isZh ? '商品属性加载失败，可重试' : 'Failed to load attributes — retry available',
+          )
+        }
+        setAttributesLoading(false)
       }
 
       if (relationsSettled.status === 'fulfilled' && relationsSettled.value.ok) {
@@ -238,7 +272,7 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
     } finally {
       setIsLoading(false)
     }
-  }, [productId, demoFallback, initialData, getSaveController])
+  }, [productId, demoFallback, initialData, getSaveController, isZh])
 
   useEffect(() => {
     let isMounted = true
@@ -340,8 +374,14 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
         }
       }
 
-      // Handle Options & Variants persistence if options exist
-      if (targetProductId && options.length > 0) {
+      // Handle Options & Variants persistence:
+      //   - options/variants with a `temp-` id are NEW → POST
+      //   - variants with a DB id are EXISTING → PATCH (price/stock/SKU edits)
+      //   - variants present at load time but now missing → DELETE
+      // (Options have no PATCH/DELETE endpoint yet; their edits are
+      // intentionally out of scope here. The block also runs when options
+      // were CLEARED — the deletion diff below then removes stale variants.)
+      if (targetProductId && (options.length > 0 || loadedVariantIdsRef.current.length > 0)) {
         try {
           for (const option of options) {
             if (option.id.startsWith('temp-')) {
@@ -372,10 +412,68 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
                   option_values: variant.option_values,
                 }),
               })
+            } else {
+              await fetch(`/api/products/${targetProductId}/variants/${variant.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sku: variant.sku || null,
+                  price: variant.price || null,
+                  currency: variant.currency,
+                  inventory: variant.inventory ?? null,
+                  status: variant.status,
+                  option_values: variant.option_values,
+                }),
+              })
             }
           }
+
+          const currentVariantIds = new Set(variants.map((v) => v.id))
+          const removedVariantIds = loadedVariantIdsRef.current.filter(
+            (id) => !currentVariantIds.has(id),
+          )
+          for (const removedId of removedVariantIds) {
+            await fetch(`/api/products/${targetProductId}/variants/${removedId}`, {
+              method: 'DELETE',
+            })
+          }
+          loadedVariantIdsRef.current = variants
+            .filter((v) => !v.id.startsWith('temp-'))
+            .map((v) => v.id)
         } catch (vErr) {
           console.error('Error saving variants matrix:', vErr)
+        }
+      }
+
+      // Persist canonical attributes (category-template spec fields) with an
+      // explicit deletions diff so removed fields are actually dropped.
+      if (targetProductId) {
+        try {
+          const currentKeys = attributeValues.map((a) => a.fieldKey)
+          const deletions = loadedAttributeKeysRef.current.filter(
+            (k) => !currentKeys.includes(k),
+          )
+          const putRes = await fetch(
+            `/api/merchant/products/${targetProductId}/canonical-attributes`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                category: category || undefined,
+                category_id: categoryId || undefined,
+                attributes: attributeValues,
+                deletions: deletions.length > 0 ? deletions : undefined,
+              }),
+            },
+          )
+          if (putRes.ok) {
+            loadedAttributeKeysRef.current = currentKeys
+            setAttributesLegacy(false)
+          } else {
+            console.error('Error saving canonical attributes:', await putRes.text())
+          }
+        } catch (aErr) {
+          console.error('Error saving canonical attributes:', aErr)
         }
       }
 
@@ -610,6 +708,32 @@ export function ProductWorkspace({ productId, initialData }: ProductWorkspacePro
               disabled={isSaving}
             />
           </div>
+        </div>
+
+        {/* ZONE 2: SPECIFICATIONS & SALES VARIANTS（与创建端同源：品类模板 + 变体矩阵） */}
+        <div className="space-y-6">
+          <ProductAttributesSection
+            productId={productId}
+            category={category}
+            categoryId={categoryId}
+            attributeValues={attributeValues}
+            onChangeAttributeValues={setAttributeValues}
+            isLoading={attributesLoading}
+            isLegacyFallback={attributesLegacy}
+            error={attributesError}
+            onRetry={loadProductDetails}
+            disabled={isSaving}
+            onOpenPreview={handleOpenPreview}
+          />
+
+          <ProductVariantsSection
+            productId={productId}
+            options={options}
+            setOptions={setOptions}
+            variants={variants}
+            setVariants={setVariants}
+            disabled={isSaving}
+          />
         </div>
 
         {/* ZONE 3: PRODUCT RELATIONSHIPS */}

@@ -48,3 +48,6 @@ bun.lock
 # Local-only artifacts (unused asset, audit reports, one-off diagnostic scripts)
 src/
 deliverables/
+
+# Supabase CLI local state (project ref / org ids, machine-specific)
+supabase/.temp/
