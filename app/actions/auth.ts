@@ -1,7 +1,31 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClientServer } from '@/lib/supabase/server'
+
+/**
+ * Resolve the origin this request was served from.
+ *
+ * Needed because signUp() without `emailRedirectTo` falls back to the
+ * "Site URL" configured in Supabase Dashboard — which is usually still
+ * http://localhost:3000. On a deployed site that means the confirmation
+ * link lands on localhost, the session cookie is written to localhost, and
+ * the deployment the user actually signed up from never gets a session.
+ * Deriving the origin from the request makes signup work on any hostname
+ * (Vercel production, per-push preview URLs, or a custom domain).
+ */
+async function getRequestOrigin(): Promise<string | undefined> {
+  try {
+    const h = await headers()
+    const host = h.get('x-forwarded-host') ?? h.get('host')
+    if (!host) return undefined
+    const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
+    return `${proto}://${host}`
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * P0 Auth Flow — server actions for sign in / sign up / sign out.
@@ -73,7 +97,12 @@ export async function signupAction(
   }
 
   const supabase = await createClientServer()
-  const { data, error } = await supabase.auth.signUp({ email, password })
+  const origin = await getRequestOrigin()
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: origin ? { emailRedirectTo: `${origin}/auth/callback` } : undefined,
+  })
 
   if (error) {
     if (error.message.includes('already registered')) {
