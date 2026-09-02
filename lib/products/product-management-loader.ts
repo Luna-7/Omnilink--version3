@@ -175,18 +175,23 @@ export async function loadProductDetailModel(
   let media: import('./product-media').ProductMediaAsset[] = []
   try {
     const supabase = await createClientServer()
+    // NOTE: `product_assets` has no `position` column (never created by any
+    // migration). Selecting or ordering by it makes PostgREST fail the whole
+    // query with 42703, so media silently came back empty even after a
+    // successful upload. Gallery order falls back to upload order (created_at)
+    // and `position` below is filled from the array index.
     const { data: mediaData } = await supabase
       .from('product_assets')
-      .select('id, url, asset_type, position, metadata')
+      .select('id, url, asset_type, metadata, created_at')
       .eq('product_id', productId)
-      .order('position', { ascending: true })
+      .order('created_at', { ascending: true })
 
     if (Array.isArray(mediaData)) {
       media = mediaData.map((item: any, index: number) => ({
         id: item.id,
         url: item.url,
         mediaType: item.asset_type === 'video' ? 'video' : 'image',
-        position: item.position ?? index,
+        position: index,
         alt: item.metadata?.alt ?? null,
         mimeType: item.metadata?.mimeType ?? null,
         width: item.metadata?.width ?? null,

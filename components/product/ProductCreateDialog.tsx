@@ -11,6 +11,7 @@ import { ProductMediaUpload } from './create/ProductMediaUpload'
 import { ProductCreateFooter } from './create/ProductCreateFooter'
 import type { BasicProductFormData, ImageFileItem } from './create/types'
 import { getCategoryTemplate } from '@/lib/product/category-templates'
+import { uploadProductMedia } from '@/lib/product-media/upload-client'
 
 const INITIAL_FORM_DATA: BasicProductFormData = {
   title: '',
@@ -44,6 +45,10 @@ export function ProductCreateDialog() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMode, setSubmitMode] = useState<'draft' | 'active' | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // Set when the product row was created but at least one image failed to
+  // upload. Keeps the dialog open with a way out instead of silently
+  // dropping the user on a product that has no media.
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null)
 
   const handleOpen = () => {
     setFormData(INITIAL_FORM_DATA)
@@ -51,6 +56,7 @@ export function ProductCreateDialog() {
     setVariantMatrixRows([])
     setImages([])
     setErrorMessage(null)
+    setCreatedProductId(null)
     appliedTemplateRef.current = null
     setTemplateNotice(null)
     setIsOpen(true)
@@ -292,23 +298,42 @@ export function ProductCreateDialog() {
       // A future Product Knowledge provenance task may introduce a real composition domain
       // for multi-component products; for now, do NOT POST /composition here.
 
-      // 4. Upload product images sequentially if provided
+      // 4. Upload product images sequentially if provided.
+      //    Goes through the shared upload client so this path matches the
+      //    product editor exactly. The previous call was broken twice over:
+      //      - product_id was sent as a query param, but the route reads it
+      //        from the multipart body  -> 400 "product_id is required"
+      //      - asset_id was never sent at all -> 400 "asset_id is required"
+      //    and the response was never inspected, so every image failed
+      //    silently and the product landed with no media at all.
       if (images.length > 0) {
-        for (let i = 0; i < images.length; i++) {
-          try {
-            const fileItem = images[i]
-            const imgFormData = new FormData()
-            imgFormData.append('file', fileItem.file)
-            imgFormData.append('is_primary', i === 0 ? 'true' : 'false')
-            imgFormData.append('position', String(i))
+        const uploadErrors: string[] = []
 
-            await fetch(`/api/merchant/media/upload?product_id=${createdId}`, {
-              method: 'POST',
-              body: imgFormData,
-            })
-          } catch (uploadErr) {
-            console.warn(`Image ${i + 1} upload note:`, uploadErr)
+        for (let i = 0; i < images.length; i++) {
+          const fileItem = images[i]
+          const result = await uploadProductMedia({
+            productId: createdId,
+            assetId: crypto.randomUUID(),
+            file: fileItem.file,
+          })
+
+          if (!result.success) {
+            uploadErrors.push(
+              isZh
+                ? `第 ${i + 1} 张（${fileItem.file.name}）：${result.error ?? '上传失败'}`
+                : `Image ${i + 1} (${fileItem.file.name}): ${result.error ?? 'upload failed'}`,
+            )
           }
+        }
+
+        if (uploadErrors.length > 0) {
+          setCreatedProductId(createdId)
+          setErrorMessage(
+            isZh
+              ? `商品已创建成功，但 ${uploadErrors.length}/${images.length} 张图片上传失败：${uploadErrors.join('；')}。可前往商品编辑页重新上传。`
+              : `Product created, but ${uploadErrors.length}/${images.length} image(s) failed: ${uploadErrors.join('; ')}. You can re-upload them on the product edit page.`,
+          )
+          return
         }
       }
 
@@ -368,9 +393,25 @@ export function ProductCreateDialog() {
 
             {/* Error Banner */}
             {errorMessage && (
-              <div className="mx-5 mt-4 p-3 rounded-[4px] bg-[#FFF2F2] border border-[#FFCDD2] flex items-center gap-2 text-xs text-[#D32F2F] shrink-0">
-                <AlertCircle size={15} className="shrink-0" />
-                <span className="font-medium">{errorMessage}</span>
+              <div className="mx-5 mt-4 p-3 rounded-[4px] bg-[#FFF2F2] border border-[#FFCDD2] shrink-0">
+                <div className="flex items-start gap-2 text-xs text-[#D32F2F]">
+                  <AlertCircle size={15} className="shrink-0 mt-px" />
+                  <span className="font-medium">{errorMessage}</span>
+                </div>
+                {createdProductId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = createdProductId
+                      handleClose()
+                      router.push(`/dashboard/products/${id}/edit`)
+                      router.refresh()
+                    }}
+                    className="mt-2 ml-[23px] px-3 py-1.5 rounded-[4px] bg-[#024AD8] hover:bg-[#003198] text-white text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    {isZh ? '前往商品编辑页重新上传' : 'Go to product page to re-upload'}
+                  </button>
+                )}
               </div>
             )}
 
